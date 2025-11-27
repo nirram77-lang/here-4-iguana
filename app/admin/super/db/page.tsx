@@ -431,6 +431,46 @@ export default function DatabaseManager() {
     }
   }
 
+  // Clear all cooldowns (delete matches and activeMatches)
+  const clearAllCooldowns = async () => {
+    if (!confirm('Clear all match cooldowns? This will delete all matches and active matches.')) return
+    
+    setProcessing(true)
+    try {
+      // Delete all matches
+      const matchesSnapshot = await getDocs(collection(db, 'matches'))
+      for (const matchDoc of matchesSnapshot.docs) {
+        await deleteDoc(doc(db, 'matches', matchDoc.id))
+      }
+      console.log(`✅ Deleted ${matchesSnapshot.size} matches`)
+      
+      // Delete all active matches
+      const activeMatchesSnapshot = await getDocs(collection(db, 'activeMatches'))
+      for (const matchDoc of activeMatchesSnapshot.docs) {
+        await deleteDoc(doc(db, 'activeMatches', matchDoc.id))
+      }
+      console.log(`✅ Deleted ${activeMatchesSnapshot.size} active matches`)
+      
+      // Also clear swipedRight/swipedLeft from users to allow fresh swiping
+      const usersSnapshot = await getDocs(collection(db, 'users'))
+      for (const userDoc of usersSnapshot.docs) {
+        await updateDoc(doc(db, 'users', userDoc.id), {
+          swipedRight: [],
+          swipedLeft: []
+        })
+      }
+      console.log(`✅ Cleared swipes from ${usersSnapshot.size} users`)
+      
+      await loadAllData()
+      alert('✅ All cooldowns cleared! Users can now match again.')
+    } catch (error) {
+      console.error('❌ Error clearing cooldowns:', error)
+      alert('Error clearing cooldowns')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   // Full cleanup
   const fullCleanup = async () => {
     if (!confirm('⚠️ FULL CLEANUP\n\nThis will:\n- Delete all dummy users\n- Delete all deleted users\n- Delete all matches\n- Delete all chats\n- Reset all phone identities\n\nAre you sure?')) return
@@ -1035,6 +1075,24 @@ export default function DatabaseManager() {
                   className="w-full bg-cyan-600 hover:bg-cyan-700"
                 >
                   {processing ? 'Processing...' : `Delete ${stats.totalChats} Chats`}
+                </Button>
+              </div>
+
+              {/* Clear Match Cooldowns */}
+              <div className="bg-[#0d2920]/50 rounded-xl border border-purple-500/30 p-6">
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                  <RotateCcw className="h-5 w-5 text-purple-400" />
+                  Clear Match Cooldowns
+                </h3>
+                <p className="text-white/60 text-sm mb-4">
+                  Remove 12-hour cooldown between users (delete all matches and active matches)
+                </p>
+                <Button
+                  onClick={clearAllCooldowns}
+                  disabled={processing}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  {processing ? 'Processing...' : '⏰ Clear All Cooldowns'}
                 </Button>
               </div>
 

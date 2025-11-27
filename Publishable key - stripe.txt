@@ -8,6 +8,18 @@ SECURE KEY
 sk_test_51SO9wRGgzDjUcfZ01PSWNcKxTg7zEEMDh3193Du2kc7TqqHTqVNW5IcMIlHqcvD6x3X9vlHeNvmAnQNT70ggGxih00FbeCaRR7
 
 
+לינקים חשובים 
+
+
+
+ARCHI - Admin
+iguanabar2@gmail.com
+bBFyiiA2gicf
+
+super admin
+nir.ram77@gmail.com	
+Iguana2020!
+
 
 
 PRICE ID
@@ -48,9 +60,7 @@ navigator.geolocation.getCurrentPosition(
 📍 YOUR LOCATION: 31.6969697 34.5778645
 
 
-📍 YOUR LOCATION: 31.6964864 34.5800704
-
-📍 YOUR LOCATION: 31.6969702 34.577887
+📍 YOUR LOCATION: 31.6969951 34.5778336
 
 
 
