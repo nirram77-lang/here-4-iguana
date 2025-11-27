@@ -1,0 +1,107 @@
+"use client"
+
+import { createContext, useContext, useEffect, useState } from 'react'
+import { 
+  User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
+} from 'firebase/auth'
+import { auth } from './firebase'
+
+interface AuthContextType {
+  user: User | null
+  loading: boolean
+  signUp: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
+  logout: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextType>({} as AuthContextType)
+
+export function useAuth() {
+  return useContext(AuthContext)
+}
+
+// ✅ Helper: Check if running on mobile device
+function isMobile(): boolean {
+  if (typeof window === 'undefined') return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // ✅ Check for redirect result on mobile (after Google Sign-In redirect)
+  useEffect(() => {
+    const checkRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth)
+        if (result?.user) {
+          console.log('✅ Redirect sign-in successful:', result.user.email)
+        }
+      } catch (error) {
+        console.error('❌ Redirect sign-in error:', error)
+      }
+    }
+    
+    checkRedirectResult()
+  }, [])
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user)
+      setLoading(false)
+    })
+    return unsubscribe
+  }, [])
+
+  const signUp = async (email: string, password: string) => {
+    await createUserWithEmailAndPassword(auth, email, password)
+  }
+
+  const signIn = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password)
+  }
+
+  // ✅ FIX: Use redirect on mobile, popup on desktop
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider()
+    
+    if (isMobile()) {
+      console.log('📱 Mobile detected - using redirect flow')
+      await signInWithRedirect(auth, provider)
+      // Note: User will be redirected and come back to the app
+      // getRedirectResult will handle the auth result
+    } else {
+      console.log('💻 Desktop detected - using popup flow')
+      await signInWithPopup(auth, provider)
+    }
+  }
+
+  const logout = async () => {
+    await signOut(auth)
+  }
+
+  const value = {
+    user,
+    loading,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    logout
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  )
+}

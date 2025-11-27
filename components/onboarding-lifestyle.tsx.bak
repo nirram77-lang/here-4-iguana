@@ -1,0 +1,334 @@
+﻿"use client"
+
+import { useState } from "react"
+import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, Wine, Cigarette, Ruler, Heart } from "lucide-react"
+
+interface OnboardingLifestyleProps {
+  onNext: (data: {
+    drinking: 'never' | 'social' | 'regular'
+    smoking: 'no' | 'social' | 'yes'
+    height: string
+    lookingFor: 'relationship' | 'casual' | 'friends'
+  }) => void
+  onBack: () => void
+}
+
+export default function OnboardingLifestyle({ onNext, onBack }: OnboardingLifestyleProps) {
+  const [drinking, setDrinking] = useState<'never' | 'social' | 'regular'>('social')
+  const [smoking, setSmoking] = useState<'no' | 'social' | 'yes'>('no')
+  const [heightValue, setHeightValue] = useState(170)
+  const [heightUnit, setHeightUnit] = useState<'cm' | 'inch'>('cm')
+  const [lookingFor, setLookingFor] = useState<'relationship' | 'casual' | 'friends'>('relationship')
+
+  const cmToInch = (cm: number) => Math.round(cm / 2.54)
+  const inchToCm = (inch: number) => Math.round(inch * 2.54)
+
+  const displayValue = heightUnit === 'cm' ? heightValue : cmToInch(heightValue)
+  const minValue = heightUnit === 'cm' ? 100 : 39
+  const maxValue = heightUnit === 'cm' ? 220 : 87
+
+  const handleHeightChange = (value: number) => {
+    if (heightUnit === 'cm') {
+      setHeightValue(value)
+    } else {
+      setHeightValue(inchToCm(value))
+    }
+  }
+
+  const handleUnitToggle = (unit: 'cm' | 'inch') => {
+    setHeightUnit(unit)
+  }
+
+  const handleNext = () => {
+    const height = heightUnit === 'cm' ? ${heightValue}cm : ${cmToInch(heightValue)}"
+    onNext({ drinking, smoking, height, lookingFor })
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-4 p-6">
+        <button
+          onClick={onBack}
+          className="p-2 hover:bg-white/10 rounded-full transition-colors"
+        >
+          <ChevronLeft className="w-6 h-6 text-white" />
+        </button>
+        <div className="flex-1">
+          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: "60%" }}
+              animate={{ width: "80%" }}
+              className="h-full bg-gradient-to-r from-[#4ade80] to-[#22c55e]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 px-6 py-8 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md mx-auto"
+        >
+          {/* Title */}
+          <div className="text-center mb-10">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", duration: 0.6 }}
+              className="text-7xl mb-4"
+            >
+              🌟
+            </motion.div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Your Lifestyle
+            </h1>
+            <p className="text-white/60">
+              Help others get to know you better
+            </p>
+          </div>
+
+          {/* Drinking */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Wine className="w-5 h-5 text-[#4ade80]" />
+              <label className="text-white font-semibold">Drinking</label>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: 'never', label: 'Never', emoji: '🚫' },
+                { value: 'social', label: 'Socially', emoji: '🍷' },
+                { value: 'regular', label: 'Regularly', emoji: '🍺' }
+              ].map((option) => (
+                <motion.button
+                  key={option.value}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setDrinking(option.value as any)}
+                  className={
+                    p-4 rounded-2xl border-2 transition-all
+                    
+                  }
+                >
+                  <div className="text-3xl mb-2">{option.emoji}</div>
+                  <div className="text-sm font-medium">{option.label}</div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Smoking */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Cigarette className="w-5 h-5 text-[#4ade80]" />
+              <label className="text-white font-semibold">Smoking</label>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: 'no', label: 'No', emoji: '🚭' },
+                { value: 'social', label: 'Socially', emoji: '💨' },
+                { value: 'yes', label: 'Yes', emoji: '🚬' }
+              ].map((option) => (
+                <motion.button
+                  key={option.value}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSmoking(option.value as any)}
+                  className={
+                    p-4 rounded-2xl border-2 transition-all
+                    
+                  }
+                >
+                  <div className="text-3xl mb-2">{option.emoji}</div>
+                  <div className="text-sm font-medium">{option.label}</div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Height */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Ruler className="w-5 h-5 text-[#4ade80]" />
+                <label className="text-white font-semibold">Height</label>
+              </div>
+              
+              {/* Unit Toggle */}
+              <div className="flex gap-1 bg-white/5 rounded-full p-1 border border-white/10">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleUnitToggle('cm')}
+                  className={
+                    px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    
+                  }
+                >
+                  cm
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleUnitToggle('inch')}
+                  className={
+                    px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                    
+                  }
+                >
+                  inch
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Height Display */}
+            <div className="text-center mb-6">
+              <motion.div
+                key={displayValue}
+                initial={{ scale: 1.2, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-5xl font-bold text-white mb-1"
+              >
+                {displayValue}
+              </motion.div>
+              <div className="text-[#4ade80] text-lg font-medium">
+                {heightUnit === 'cm' ? 'centimeters' : 'inches'}
+              </div>
+            </div>
+
+            {/* Slider */}
+            <div className="relative px-2">
+              <input
+                type="range"
+                min={minValue}
+                max={maxValue}
+                value={displayValue}
+                onChange={(e) => handleHeightChange(Number(e.target.value))}
+                className="height-slider"
+                style={{
+                  background: linear-gradient(to right, 
+                    #4ade80 0%, 
+                    #4ade80 %, 
+                    rgba(255,255,255,0.1) %, 
+                    rgba(255,255,255,0.1) 100%)
+                }}
+              />
+              
+              {/* Min/Max Labels */}
+              <div className="flex justify-between mt-2 text-white/40 text-xs">
+                <span>{minValue}{heightUnit === 'cm' ? 'cm' : '"'}</span>
+                <span>{maxValue}{heightUnit === 'cm' ? 'cm' : '"'}</span>
+              </div>
+            </div>
+
+            <style jsx>{
+              .height-slider {
+                width: 100%;
+                height: 12px;
+                border-radius: 999px;
+                outline: none;
+                -webkit-appearance: none;
+                appearance: none;
+                cursor: pointer;
+                transition: all 0.3s ease;
+              }
+              
+              .height-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #4ade80, #22c55e);
+                cursor: pointer;
+                box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.2),
+                           0 4px 12px rgba(0, 0, 0, 0.3);
+                transition: all 0.2s ease;
+              }
+              
+              .height-slider::-webkit-slider-thumb:hover {
+                transform: scale(1.15);
+                box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.3),
+                           0 6px 16px rgba(0, 0, 0, 0.4);
+              }
+              
+              .height-slider::-webkit-slider-thumb:active {
+                transform: scale(1.05);
+              }
+              
+              .height-slider::-moz-range-thumb {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #4ade80, #22c55e);
+                cursor: pointer;
+                border: none;
+                box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.2),
+                           0 4px 12px rgba(0, 0, 0, 0.3);
+                transition: all 0.2s ease;
+              }
+              
+              .height-slider::-moz-range-thumb:hover {
+                transform: scale(1.15);
+                box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.3),
+                           0 6px 16px rgba(0, 0, 0, 0.4);
+              }
+              
+              .height-slider::-moz-range-thumb:active {
+                transform: scale(1.05);
+              }
+            }</style>
+          </div>
+
+          {/* Looking For */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Heart className="w-5 h-5 text-[#4ade80]" />
+              <label className="text-white font-semibold">Looking For</label>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: 'relationship', label: 'Relationship', emoji: '💑' },
+                { value: 'casual', label: 'Casual', emoji: '😊' },
+                { value: 'friends', label: 'Friends', emoji: '🤝' }
+              ].map((option) => (
+                <motion.button
+                  key={option.value}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setLookingFor(option.value as any)}
+                  className={
+                    p-4 rounded-2xl border-2 transition-all
+                    
+                  }
+                >
+                  <div className="text-3xl mb-2">{option.emoji}</div>
+                  <div className="text-sm font-medium">{option.label}</div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+        </motion.div>
+      </div>
+
+      {/* Bottom Button */}
+      <div className="p-6 bg-[#0d2920]/50 border-t border-[#4ade80]/20">
+        <Button
+          onClick={handleNext}
+          className="
+            w-full h-14 
+            bg-gradient-to-r from-[#4ade80] to-[#22c55e] 
+            hover:from-[#3bc970] hover:to-[#16a34a]
+            text-[#0d2920] text-lg font-bold rounded-2xl
+            shadow-lg shadow-[#4ade80]/20
+          "
+        >
+          Continue
+        </Button>
+      </div>
+    </div>
+  )
+}

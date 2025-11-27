@@ -1,0 +1,93 @@
+// fix-dummy-locations.js
+// Run: node fix-dummy-locations.js
+
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, query, where, getDocs, doc, updateDoc, Timestamp } = require('firebase/firestore');
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyA6laY3N84Pe_Fl1769bIoP4NbCxjmqP_o",
+  authDomain: "i4iguana-89ed1.firebaseapp.com",
+  projectId: "i4iguana-89ed1",
+  storageBucket: "i4iguana-89ed1.firebasestorage.app",
+  messagingSenderId: "143460198551",
+  appId: "1:143460198551:web:5db80d325a549f3e4661d2"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Your location (from the console: 31.686656, 34.583347)
+const YOUR_LAT = 31.686656;
+const YOUR_LNG = 34.583347;
+
+async function fixDummyUsers() {
+  console.log('🔧 Starting to fix dummy users locations...\n');
+  console.log(`📍 Your location: ${YOUR_LAT}, ${YOUR_LNG}\n`);
+  
+  try {
+    // Get all dummy users
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('uid', '>=', 'nearby_user_'),
+      where('uid', '<=', 'nearby_user_\uf8ff')
+    );
+    
+    const snapshot = await getDocs(q);
+    console.log(`📊 Found ${snapshot.size} dummy users\n`);
+    
+    if (snapshot.size === 0) {
+      console.log('❌ No dummy users found!');
+      return;
+    }
+    
+    let fixed = 0;
+    
+    for (const docSnap of snapshot.docs) {
+      const user = docSnap.data();
+      
+      // Generate random location within 50-450m
+      const distance = 50 + Math.random() * 400;
+      const angle = Math.random() * 2 * Math.PI;
+      
+      // Calculate offset
+      const latOffset = (distance / 111000) * Math.cos(angle);
+      const lngOffset = (distance / (111000 * Math.cos(YOUR_LAT * Math.PI / 180))) * Math.sin(angle);
+      
+      const newLat = YOUR_LAT + latOffset;
+      const newLng = YOUR_LNG + lngOffset;
+      
+      console.log(`🔧 Fixing ${user.name || user.displayName || 'Unknown'}`);
+      console.log(`   Old: ${user.location?.latitude?.toFixed(6)}, ${user.location?.longitude?.toFixed(6)}`);
+      console.log(`   New: ${newLat.toFixed(6)}, ${newLng.toFixed(6)} (~${Math.round(distance)}m)`);
+      
+      // Update user location
+      try {
+        await updateDoc(doc(db, 'users', docSnap.id), {
+          'location.latitude': newLat,
+          'location.longitude': newLng,
+          'location.lastUpdated': Timestamp.now()
+        });
+        console.log(`   ✅ Updated!\n`);
+        fixed++;
+      } catch (error) {
+        console.log(`   ❌ Failed: ${error.message}\n`);
+      }
+    }
+    
+    console.log('='.repeat(60));
+    console.log(`🎉 SUCCESS! Fixed ${fixed} out of ${snapshot.size} users`);
+    console.log('🔄 Refresh your app (F5) to see the changes!');
+    console.log('='.repeat(60));
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+  }
+  
+  process.exit(0);
+}
+
+// Run it!
+fixDummyUsers();

@@ -1,0 +1,427 @@
+// lib/firestore-service.ts
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  query,
+  where,
+  limit,
+  orderBy,
+  Timestamp,
+  addDoc,
+  serverTimestamp
+} from 'firebase/firestore'
+import { db } from './firebase'
+
+export interface UserProfile {
+  uid: string
+  email: string
+  displayName: string
+  name: string
+  age: number
+  gender: 'male' | 'female' | 'other'
+  lookingFor: 'male' | 'female' | 'both'
+  photos: string[]
+  photoURL: string
+  hobbies: string[]
+  bio: string
+  location: {
+    latitude: number
+    longitude: number
+    geohash: string
+  }
+  preferences: {
+    lookingFor: string
+    minDistance: number
+    maxDistance: number
+    ageRange: number[]
+  }
+  swipedRight: string[]
+  swipedLeft: string[]
+  matches: string[]
+  passesLeft: number
+  isPremium: boolean
+  lastResetDate: string
+  onboardingComplete: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Calculate distance between two coordinates in meters
+ * Using Haversine formula
+ */
+export function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371e3
+  const φ1 = (lat1 * Math.PI) / 180
+  const φ2 = (lat2 * Math.PI) / 180
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  return R * c
+}
+
+/**
+ * Get geohash neighbors
+ */
+export function getGeohashNeighbors(geohash: string, precision: number = 6): string[] {
+  if (geohash.length < precision) {
+    return [geohash]
+  }
+  
+  const prefix = geohash.substring(0, precision)
+  const neighbors = [prefix]
+  
+  const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz'
+  const lastChar = prefix[prefix.length - 1]
+  const lastCharIndex = BASE32.indexOf(lastChar)
+  
+  for (let i = -2; i <= 2; i++) {
+    if (i === 0) continue
+    const newIndex = (lastCharIndex + i + BASE32.length) % BASE32.length
+    const newPrefix = prefix.substring(0, prefix.length - 1) + BASE32[newIndex]
+    neighbors.push(newPrefix)
+  }
+  
+  return neighbors
+}
+
+/**
+ * Get user profile by ID
+ */
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    const userSnap = await getDoc(userRef)
+    
+    if (userSnap.exists()) {
+      return userSnap.data() as UserProfile
+    }
+    return null
+  } catch (error) {
+    console.error('Error getting user profile:', error)
+    return null
+  }
+}
+
+/**
+ * Create or update user profile
+ */
+export async function setUserProfile(userId: string, data: Partial<UserProfile>): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    await setDoc(userRef, {
+      ...data,
+      uid: userId,
+      updatedAt: new Date().toISOString(),
+      createdAt: data.createdAt || new Date().toISOString()
+    }, { merge: true })
+    console.log('✅ Profile saved successfully')
+  } catch (error) {
+    console.error('❌ Error setting profile:', error)
+    throw error
+  }
+}
+
+/**
+ * Update user profile
+ */
+export async function updateUserProfile(userId: string, data: Partial<UserProfile>): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    await updateDoc(userRef, {
+      ...data,
+      updatedAt: new Date().toISOString()
+    })
+    console.log('✅ Profile updated successfully')
+  } catch (error) {
+    console.error('❌ Error updating profile:', error)
+    throw error
+  }
+}
+
+/**
+ * Update user location
+ */
+export async function updateUserLocation(
+  userId: string,
+  latitude: number,
+  longitude: number,
+  geohash: string
+): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    await updateDoc(userRef, {
+      location: {
+        latitude,
+        longitude,
+        geohash
+      },
+      updatedAt: new Date().toISOString()
+    })
+  } catch (error) {
+    console.error('Error updating location:', error)
+    throw error
+  }
+}
+
+/**
+ * Find nearby users - FIXED VERSION
+ */
+export async function findNearbyUsers(
+  currentUserId: string,
+  location: { latitude: number; longitude: number; geohash: string },
+  radiusInMeters: number = 1000,
+  limitCount: number = 10
+): Promise<any[]> {
+  try {
+    console.log('🔍 Searching for nearby users...')
+    console.log(`📍 Your location: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`)
+    console.log(`📏 Search radius: ${radiusInMeters}m`)
+    
+    // Get current user data for filtering
+    const currentUserRef = doc(db, 'users', currentUserId)
+    const currentUserSnap = await getDoc(currentUserRef)
+    const currentUserData = currentUserSnap.exists() ? currentUserSnap.data() : null
+    
+    // Get list of already swiped users
+    const swipedUsers = [
+      ...(currentUserData?.swipedRight || []),
+      ...(currentUserData?.swipedLeft || [])
+    ]
+    
+    console.log(`⏭️ Skipping ${swipedUsers.length} already swiped users`)
+    
+    const usersRef = collection(db, 'users')
+    const querySnapshot = await getDocs(usersRef)
+    const nearbyUsers: any[] = []
+    
+    console.log(`📊 Total users in database: ${querySnapshot.size}`)
+    
+    querySnapshot.forEach((docSnap) => {
+      const userData = docSnap.data()
+      
+      // Skip current user (check both doc.id and uid)
+      if (docSnap.id === currentUserId || userData.uid === currentUserId) {
+        console.log(`⏭️ Skipping current user`)
+        return
+      }
+      
+      // Skip already swiped users
+      if (swipedUsers.includes(docSnap.id) || swipedUsers.includes(userData.uid)) {
+        return
+      }
+      
+      // Check if user has location
+      if (!userData.location?.latitude || !userData.location?.longitude) {
+        return
+      }
+      
+      // Calculate distance
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        userData.location.latitude,
+        userData.location.longitude
+      )
+      
+      // Include users within radius
+      if (distance <= radiusInMeters) {
+        nearbyUsers.push({
+          ...userData,
+          id: docSnap.id,
+          uid: userData.uid || docSnap.id,
+          distance: Math.round(distance)
+        })
+      }
+    })
+    
+    console.log(`✅ Found ${nearbyUsers.length} new users within ${radiusInMeters}m`)
+    
+    // Sort by distance (closest first)
+    nearbyUsers.sort((a, b) => a.distance - b.distance)
+    
+    // Return limited results
+    return nearbyUsers.slice(0, limitCount)
+    
+  } catch (error) {
+    console.error('❌ Error finding nearby users:', error)
+    return []
+  }
+}
+
+/**
+ * Swipe right on a user
+ */
+export async function swipeRight(currentUserId: string, targetUserId: string): Promise<boolean> {
+  try {
+    const currentUserRef = doc(db, 'users', currentUserId)
+    const targetUserRef = doc(db, 'users', targetUserId)
+    
+    const currentUserSnap = await getDoc(currentUserRef)
+    const targetUserSnap = await getDoc(targetUserRef)
+    
+    if (!currentUserSnap.exists() || !targetUserSnap.exists()) {
+      return false
+    }
+    
+    const currentUserData = currentUserSnap.data()
+    const targetUserData = targetUserSnap.data()
+    
+    // Add to swipedRight
+    await updateDoc(currentUserRef, {
+      swipedRight: [...(currentUserData.swipedRight || []), targetUserId],
+      updatedAt: new Date().toISOString()
+    })
+    
+    // Check if it's a match
+    const isMatch = (targetUserData.swipedRight || []).includes(currentUserId)
+    
+    if (isMatch) {
+      // Add to matches for both users
+      await updateDoc(currentUserRef, {
+        matches: [...(currentUserData.matches || []), targetUserId]
+      })
+      await updateDoc(targetUserRef, {
+        matches: [...(targetUserData.matches || []), currentUserId]
+      })
+      
+      console.log('🎉 It\'s a match!')
+    }
+    
+    return isMatch
+    
+  } catch (error) {
+    console.error('Error swiping right:', error)
+    return false
+  }
+}
+
+/**
+ * Swipe left on a user
+ */
+export async function swipeLeft(currentUserId: string, targetUserId: string): Promise<void> {
+  try {
+    const currentUserRef = doc(db, 'users', currentUserId)
+    const currentUserSnap = await getDoc(currentUserRef)
+    
+    if (currentUserSnap.exists()) {
+      const currentUserData = currentUserSnap.data()
+      await updateDoc(currentUserRef, {
+        swipedLeft: [...(currentUserData.swipedLeft || []), targetUserId],
+        updatedAt: new Date().toISOString()
+      })
+    }
+  } catch (error) {
+    console.error('Error swiping left:', error)
+    throw error
+  }
+}
+
+/**
+ * Get user matches
+ */
+export async function getUserMatches(userId: string): Promise<UserProfile[]> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    const userSnap = await getDoc(userRef)
+    
+    if (!userSnap.exists()) {
+      return []
+    }
+    
+    const userData = userSnap.data()
+    const matchIds = userData.matches || []
+    
+    if (matchIds.length === 0) {
+      return []
+    }
+    
+    const matches: UserProfile[] = []
+    
+    for (const matchId of matchIds) {
+      const matchRef = doc(db, 'users', matchId)
+      const matchSnap = await getDoc(matchRef)
+      
+      if (matchSnap.exists()) {
+        matches.push(matchSnap.data() as UserProfile)
+      }
+    }
+    
+    return matches
+    
+  } catch (error) {
+    console.error('Error getting matches:', error)
+    return []
+  }
+}
+
+/**
+ * Send a message
+ */
+export async function sendMessage(
+  matchId: string,
+  senderId: string,
+  receiverId: string,
+  text: string
+): Promise<void> {
+  try {
+    const messagesRef = collection(db, 'messages')
+    
+    await addDoc(messagesRef, {
+      matchId,
+      senderId,
+      receiverId,
+      text,
+      timestamp: serverTimestamp(),
+      read: false
+    })
+    
+    console.log('✅ Message sent successfully')
+  } catch (error) {
+    console.error('❌ Error sending message:', error)
+    throw error
+  }
+}
+
+/**
+ * Get messages for a match
+ */
+export async function getMessages(matchId: string): Promise<any[]> {
+  try {
+    const messagesRef = collection(db, 'messages')
+    const q = query(
+      messagesRef,
+      where('matchId', '==', matchId),
+      orderBy('timestamp', 'asc')
+    )
+    
+    const querySnapshot = await getDocs(q)
+    const messages: any[] = []
+    
+    querySnapshot.forEach((doc) => {
+      messages.push({
+        id: doc.id,
+        ...doc.data()
+      })
+    })
+    
+    return messages
+  } catch (error) {
+    console.error('Error getting messages:', error)
+    return []
+  }
+}

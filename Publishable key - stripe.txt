@@ -1,0 +1,134 @@
+Publishable key
+
+pk_test_51SO9wRGgzDjUcfZ0IyWW1jOYC1mqRQ6BWkKP065xjKXBSNcAs4QqWkn8T2PfE1cp0gkQEs8oKl5XcijlRL1jPdvJ00IhkK3XiB
+
+
+SECURE KEY
+
+sk_test_51SO9wRGgzDjUcfZ01PSWNcKxTg7zEEMDh3193Du2kc7TqqHTqVNW5IcMIlHqcvD6x3X9vlHeNvmAnQNT70ggGxih00FbeCaRR7
+
+
+
+
+PRICE ID
+
+14.90
+price_1SOA29GgzDjUcfZ0mpJ03Rn9
+
+19.90
+price_1SOA5KGgzDjUcfZ0ck2C4RMO
+
+2.99
+price_1SOA6qGgzDjUcfZ0hRZ7UtRS
+
+
+Signing Secret
+whsec_7691b6a75d0fedd88d52ae1e3b6d4eee32fc45e6dc22e9e3adb354f8aeaaeaf5
+
+
+פקודה להרצת סקריפט הבדיקות 
+cd i4iguana-tests
+bash run-all-tests.sh ..
+
+חשוב לזכור:
+
+Stripe Listener חייב לרוץ תמיד בזמן פיתוח
+אל תסגור את Terminal #1 - תן לו לרוץ
+אם תסגור - פשוט הרץ שוב: stripe listen --forward-to localhost:3000/api/stripe-webhook
+
+
+
+פקודה להרצה ב- consol - F12 - לדעת את המיקום המדויק שלי 
+
+navigator.geolocation.getCurrentPosition(
+  pos => console.log('📍 YOUR LOCATION:', pos.coords.latitude, pos.coords.longitude),
+  err => console.log('❌ Location error:', err)
+);
+
+📍 YOUR LOCATION: 31.6969697 34.5778645
+
+
+📍 YOUR LOCATION: 31.6964864 34.5800704
+
+📍 YOUR LOCATION: 31.6969702 34.577887
+
+
+
+✅ Adva
+   Distance: 401m
+   Location: 31.695059, 34.581454
+   Geohash:  sv8s6fty2
+
+✅ Agam
+   Distance: 311m
+   Location: 31.695901, 34.580901
+   Geohash:  sv8s6ft60
+
+✅ Ahinoam
+   Distance: 53m
+   Location: 31.697006, 34.578425
+   Geohash:  sv8s6f4hs
+
+✅ Aliza
+   Distance: 255m
+   Location: 31.697171, 34.580545
+   Geohash:  sv8s6fm6q
+
+✅ Alona
+   Distance: 202m
+   Location: 31.695159, 34.578031
+   Geohash:  sv8s6cexq
+
+✅ Amit
+   Distance: 152m
+   Location: 31.695608, 34.577699
+   Geohash:  sv8s6fsrw
+
+✅ Anat
+   Distance: 142m
+   Location: 31.698099, 34.578562
+   Geohash:  sv8s6f6be
+
+✅ Anat
+   Distance: 388m
+   Location: 31.694667, 34.580949
+   Geohash:  sv8s6fnw7
+
+✅ Atara
+   Distance: 310m
+   Location: 31.695314, 34.580497
+   Geohash:  sv8s6f70g
+
+
+🌐 האפליקציה שלך כעת חיה ב:
+Production URL:
+https://i4iguana-app.vercel.app/
+
+https://i4iguana-app.vercel.app/
+
+
+
+const firebaseConfig = {
+  apiKey: "AIza...משהו...",  ← זה מה שאנחנו צריכים!
+  authDomain: "i4iguana-89ed1.firebaseapp.com",
+  projectId: "i4iguana-89ed1",
+  storageBucket: "i4iguana-89ed1.firebasestorage.app",
+  messagingSenderId: "...",
+  appId: "..."
+};
+
+
+
+
+
+
+https://i4iguana-pob2k90j1-nirram77-8391s-projects.vercel.app
+Inspect (Logs & Monitoring):
+https://vercel.com/nirram77-8391s-projects/i4iguana-app/C65k5eqP9VquNpCcQEqdCL2pKKsq
+
+
+🎯 מה עכשיו?
+פתח את:
+https://i4iguana-pob2k90j1-nirram77-8391s-projects.vercel.app
+2️⃣ הגדר Custom Domain (אופציונלי):
+אם יש לך דומיין (למשל i4iguana.com):

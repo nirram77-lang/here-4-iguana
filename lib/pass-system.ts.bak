@@ -1,0 +1,178 @@
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import { db } from './firebase'
+import { PASS_CONFIG, ERROR_MESSAGES } from './constants'
+
+export interface UserPassData {
+  passesLeft: number
+  isPremium: boolean
+  lastResetDate: string
+  matchesCountToday: number
+}
+
+/**
+ * Get user's pass data from Firestore
+ */
+export async function getUserPassData(userId: string): Promise<UserPassData> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    const userSnap = await getDoc(userRef)
+    
+    if (userSnap.exists()) {
+      const data = userSnap.data()
+      const today = new Date().toDateString()
+      
+      // Check if we need to reset (new day)
+      if (data.lastResetDate !== today) {
+        const newPassesCount = data.isPremium ? PASS_CONFIG.PREMIUM_PASSES : PASS_CONFIG.FREE_PASSES
+        
+        await updateDoc(userRef, {
+          passesLeft: newPassesCount,
+          lastResetDate: today,
+          matchesCountToday: 0
+        })
+        
+        console.log(`🔄 Reset for new day: ${newPassesCount} passes, 0 matches`)
+        
+        return {
+          passesLeft: newPassesCount,
+          isPremium: data.isPremium || false,
+          lastResetDate: today,
+          matchesCountToday: 0
+        }
+      }
+      
+      return {
+        passesLeft: data.passesLeft ?? (data.isPremium ? PASS_CONFIG.PREMIUM_PASSES : PASS_CONFIG.FREE_PASSES),
+        isPremium: data.isPremium || false,
+        lastResetDate: data.lastResetDate || today,
+        matchesCountToday: data.matchesCountToday || 0
+      }
+    }
+    
+    // If user doesn't exist, create with default values
+    const defaultData: UserPassData = {
+      passesLeft: PASS_CONFIG.FREE_PASSES,
+      isPremium: false,
+      lastResetDate: new Date().toDateString(),
+      matchesCountToday: 0
+    }
+    
+    await setDoc(userRef, defaultData, { merge: true })
+    console.log('✅ Default data created for user')
+    
+    return defaultData
+    
+  } catch (error) {
+    console.error('❌ Error getting user pass data:', error)
+    throw new Error(ERROR_MESSAGES.FIRESTORE_LOAD_ERROR)
+  }
+}
+
+/**
+ * Use a pass (decrement counter)
+ */
+export async function usePass(userId: string): Promise<number> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    const userData = await getUserPassData(userId)
+    
+    if (userData.passesLeft <= 0) {
+      throw new Error(ERROR_MESSAGES.NO_PASSES_LEFT)
+    }
+    
+    const newPassCount = userData.passesLeft - 1
+    
+    await updateDoc(userRef, {
+      passesLeft: newPassCount
+    })
+    
+    console.log(`✅ Pass used. ${newPassCount} passes remaining`)
+    return newPassCount
+    
+  } catch (error) {
+    console.error('❌ Error using pass:', error)
+    if (error instanceof Error && error.message === ERROR_MESSAGES.NO_PASSES_LEFT) {
+      throw error
+    }
+    throw new Error(ERROR_MESSAGES.FIRESTORE_SAVE_ERROR)
+  }
+}
+
+/**
+ * Upgrade user to premium
+ */
+export async function upgradeToPremium(userId: string): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    
+    await updateDoc(userRef, {
+      isPremium: true,
+      passesLeft: PASS_CONFIG.PREMIUM_PASSES,
+      lastResetDate: new Date().toDateString()
+    })
+    
+    console.log('🎉 User upgraded to premium!')
+    
+  } catch (error) {
+    console.error('❌ Error upgrading to premium:', error)
+    throw new Error(ERROR_MESSAGES.FIRESTORE_SAVE_ERROR)
+  }
+}
+
+/**
+ * Check if user has passes left
+ */
+export async function hasPassesLeft(userId: string): Promise<boolean> {
+  try {
+    const userData = await getUserPassData(userId)
+    return userData.passesLeft > 0
+  } catch (error) {
+    console.error('❌ Error checking passes:', error)
+    return false
+  }
+}
+
+/**
+ * Get warning message if passes are low
+ */
+export async function getPassWarning(userId: string): Promise<string | null> {
+  try {
+    const userData = await getUserPassData(userId)
+    
+    if (userData.passesLeft === 0) {
+      return ERROR_MESSAGES.NO_PASSES_LEFT
+    }
+    
+    if (userData.passesLeft === 1 && !userData.isPremium) {
+      return '⚠️ נותר לך Pass אחד אחרון להיום!'
+    }
+    
+    return null
+    
+  } catch (error) {
+    console.error('❌ Error getting pass warning:', error)
+    return null
+  }
+}
+
+/**
+ * Reset passes manually (for testing)
+ */
+export async function resetPassesManually(userId: string, isPremium: boolean = false): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId)
+    const passCount = isPremium ? PASS_CONFIG.PREMIUM_PASSES : PASS_CONFIG.FREE_PASSES
+    
+    await updateDoc(userRef, {
+      passesLeft: passCount,
+      isPremium,
+      lastResetDate: new Date().toDateString()
+    })
+    
+    console.log(`🔄 Passes reset to ${passCount}`)
+    
+  } catch (error) {
+    console.error('❌ Error resetting passes:', error)
+    throw new Error(ERROR_MESSAGES.FIRESTORE_SAVE_ERROR)
+  }
+}

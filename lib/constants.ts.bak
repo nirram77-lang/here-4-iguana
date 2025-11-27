@@ -1,0 +1,95 @@
+// lib/constants.ts
+
+// ===================================
+// 🎯 PASS SYSTEM CONFIG
+// ===================================
+export const PASS_CONFIG = {
+  FREE_PASSES: 1,           // Free users get 1 pass
+  PREMIUM_PASSES: 999,      // Premium users get unlimited
+  MAX_MATCHES_FREE: 2,      // Free users: 2 matches per 2 hours
+  LOCK_DURATION: 2 * 60 * 60 * 1000, // 2 hours in milliseconds
+} as const
+
+// ===================================
+// 💎 PREMIUM PRICING
+// ===================================
+export const PREMIUM_PRICING = {
+  WEEKLY: {
+    price: 14.90,
+    displayPrice: '$14.90',
+    stripePriceId: 'price_weekly_1490', // Replace with actual Stripe Price ID
+    duration: 7 * 24 * 60 * 60 * 1000, // 7 days
+  },
+  MONTHLY: {
+    price: 19.90,
+    displayPrice: '$19.90',
+    stripePriceId: 'price_monthly_1990', // Replace with actual Stripe Price ID
+    duration: 30 * 24 * 60 * 60 * 1000, // 30 days
+  },
+  SKIP_TIMER: {
+    price: 2.99,
+    displayPrice: '$2.99',
+    stripePriceId: 'price_skip_timer_299', // Replace with actual Stripe Price ID
+  },
+} as const
+
+// ===================================
+// 🔔 ERROR MESSAGES
+// ===================================
+export const ERROR_MESSAGES = {
+  NO_PASSES_LEFT: 'אין לך יותר Passes להיום! חכה שעתיים או שדרג לפרימיום.',
+  USER_LOCKED: 'אתה חסום! המתן או שדרג לפרימיום.',
+  FIRESTORE_LOAD_ERROR: 'שגיאה בטעינת נתונים מ-Firestore',
+  FIRESTORE_SAVE_ERROR: 'שגיאה בשמירת נתונים ל-Firestore',
+  LOCATION_ERROR: 'שגיאה בקבלת מיקום',
+  PAYMENT_ERROR: 'שגיאה בתהליך התשלום',
+  PAYMENT_CANCELLED: 'התשלום בוטל',
+} as const
+
+// ===================================
+// 🌍 LOCATION CONFIG
+// ===================================
+export const LOCATION_CONFIG = {
+  MIN_DISTANCE: 10,   // Minimum 10m
+  MAX_DISTANCE: 500,  // Maximum 500m
+  DEFAULT_DISTANCE: 500, // Default search radius
+} as const
+
+// ===================================
+// 🔥 FIREBASE CONFIG
+// ===================================
+export const FIREBASE_COLLECTIONS = {
+  USERS: 'users',
+  MATCHES: 'matches',
+  CHATS: 'chats',
+  NOTIFICATIONS: 'notifications',
+  PAYMENTS: 'payments',
+  SKIP_TIMER_PURCHASES: 'skipTimerPurchases',
+} as const
+
+// ===================================
+// 💳 STRIPE CONFIG
+// ===================================
+export const STRIPE_CONFIG = {
+  PUBLIC_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || '',
+  SUCCESS_URL: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success`,
+  CANCEL_URL: `${process.env.NEXT_PUBLIC_APP_URL}/payment-cancelled`,
+} as const
+
+// ===================================
+// 🎨 UI CONFIG
+// ===================================
+export const UI_CONFIG = {
+  SPLASH_DURATION: 2000,
+  MATCH_TIMER_DURATION: 600, // 10 minutes
+  TOAST_DURATION: 3000,
+} as const
+
+// ===================================
+// 📱 APP INFO
+// ===================================
+export const APP_INFO = {
+  NAME: 'I4IGUANA',
+  VERSION: '1.0.0',
+  SUPPORT_EMAIL: 'support@i4iguana.com',
+} as const

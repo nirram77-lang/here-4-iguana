@@ -1,0 +1,13 @@
+{
+  "name": "i4iguana-firebase-scripts",
+  "version": "1.0.0",
+  "description": "Firebase Admin scripts for I4IGUANA",
+  "main": "check-and-fix-users-ashkelon.js",
+  "scripts": {
+    "check": "node check-and-fix-users-ashkelon.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "ngeohash": "^0.6.3"
+  }
+}

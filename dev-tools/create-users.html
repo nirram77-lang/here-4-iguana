@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>יצירת משתמשים</title>
+    <style>
+        body { font-family: Arial; padding: 40px; background: #667eea; color: white; }
+        .box { background: white; color: black; padding: 30px; border-radius: 10px; max-width: 500px; }
+        button { width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; }
+        .primary { background: #667eea; color: white; }
+        .success { background: #28a745; color: white; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; display: none; }
+        .info { background: #d1ecf1; color: #0c5460; display: block; }
+        .ok { background: #d4edda; color: #155724; display: block; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>🦎 יצירת משתמשי טסט</h1>
+        
+        <button onclick="getLoc()" id="locBtn" class="primary">📍 קבל מיקום GPS</button>
+        
+        <div id="locInfo" style="display:none;">
+            <p>Lat: <span id="lat"></span></p>
+            <p>Lng: <span id="lng"></span></p>
+        </div>
+        
+        <select id="count">
+            <option value="3">3 משתמשים</option>
+            <option value="5" selected>5 משתמשים</option>
+            <option value="10">10 משתמשים</option>
+        </select>
+        
+        <button onclick="create()" id="createBtn" class="success" disabled>צור משתמשים</button>
+        
+        <div id="msg" class="status"></div>
+        <div id="list"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        let loc = null;
+        let app = null;
+        let auth = null;
+        let db = null;
+        
+        window.getLoc = async function() {
+            document.getElementById('locBtn').disabled = true;
+            document.getElementById('locBtn').textContent = 'מקבל...';
+            
+            try {
+                const pos = await new Promise((ok, no) => {
+                    navigator.geolocation.getCurrentPosition(ok, no, {
+                        enableHighAccuracy: true,
+                        timeout: 10000
+                    });
+                });
+                
+                loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                
+                document.getElementById('lat').textContent = loc.lat.toFixed(6);
+                document.getElementById('lng').textContent = loc.lng.toFixed(6);
+                document.getElementById('locInfo').style.display = 'block';
+                document.getElementById('createBtn').disabled = false;
+                document.getElementById('locBtn').textContent = '✅ התקבל';
+                
+            } catch (e) {
+                alert('שגיאה: ' + e.message);
+                document.getElementById('locBtn').disabled = false;
+                document.getElementById('locBtn').textContent = 'נסה שוב';
+            }
+        };
+        
+        window.create = async function() {
+            if (!loc) return alert('קודם קבל מיקום!');
+            
+            const btn = document.getElementById('createBtn');
+            btn.disabled = true;
+            btn.textContent = 'יוצר...';
+            
+            const num = parseInt(document.getElementById('count').value);
+            
+            try {
+                if (!app) {
+                    app = initializeApp({
+                        apiKey: "AIzaSyA6laY3N84Pe_Fl1769bIoP4NbCxjmqP_o",
+                        authDomain: "i4iguana-89ed1.firebaseapp.com",
+                        projectId: "i4iguana-89ed1",
+                        storageBucket: "i4iguana-89ed1.firebasestorage.app",
+                    });
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                }
+                
+                showMsg('info', 'יוצר משתמשים...');
+                
+                const users = [];
+                
+                for (let i = 0; i < num; i++) {
+                    const u = await makeUser(i + 1);
+                    users.push(u);
+                    showMsg('info', `נוצר ${i + 1}/${num}`);
+                }
+                
+                showList(users);
+                showMsg('ok', `✅ נוצרו ${users.length} משתמשים!`);
+                btn.textContent = 'צור עוד';
+                btn.disabled = false;
+                
+            } catch (e) {
+                alert('שגיאה: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = 'נסה שוב';
+            }
+        };
+        
+        async function makeUser(i) {
+            const names = ['דני', 'מיכל', 'יוסי', 'שירה', 'עומר', 'נועה', 'איתי', 'רונית'];
+            const email = `test${Date.now()}_${i}@test.com`;
+            const pass = '123456';
+            const name = names[Math.floor(Math.random() * names.length)];
+            const age = 18 + Math.floor(Math.random() * 20);
+            const gender = Math.random() > 0.5 ? 'male' : 'female';
+            
+            const dist = 10 + Math.random() * 40;
+            const angle = Math.random() * 2 * Math.PI;
+            
+            const newLat = loc.lat + (dist / 111320) * Math.cos(angle);
+            const newLng = loc.lng + (dist / (111320 * Math.cos(loc.lat * Math.PI / 180))) * Math.sin(angle);
+            
+            const cred = await createUserWithEmailAndPassword(auth, email, pass);
+            const uid = cred.user.uid;
+            
+            const geo = hash(newLat, newLng, 8);
+            
+            await setDoc(doc(db, 'users', uid), {
+                uid, name, age, email, gender,
+                photos: [`https://i.pravatar.cc/300?img=${i % 70}`],
+                hobbies: ['טיולים', 'ספורט', 'קפה'],
+                bio: 'טסט',
+                location: {
+                    latitude: newLat,
+                    longitude: newLng,
+                    geohash: geo,
+                    lastUpdated: Timestamp.now()
+                },
+                preferences: {
+                    minDistance: 10,
+                    maxDistance: 500,
+                    ageRange: [18, 35],
+                    lookingFor: gender === 'male' ? 'female' : 'male'
+                },
+                swipedRight: [],
+                swipedLeft: [],
+                matches: [],
+                passesLeft: 1,
+                isPremium: false,
+                lastResetDate: new Date().toDateString(),
+                createdAt: Timestamp.now(),
+                lastActive: Timestamp.now()
+            });
+            
+            return { email, pass, name, age, gender, dist: dist.toFixed(1) };
+        }
+        
+        function hash(lat, lng, p) {
+            const b32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+            let idx = 0, bit = 0, even = true, h = '';
+            let latMin = -90, latMax = 90, lonMin = -180, lonMax = 180;
+            
+            while (h.length < p) {
+                if (even) {
+                    const mid = (lonMin + lonMax) / 2;
+                    if (lng > mid) { idx = (idx << 1) + 1; lonMin = mid; }
+                    else { idx = idx << 1; lonMax = mid; }
+                } else {
+                    const mid = (latMin + latMax) / 2;
+                    if (lat > mid) { idx = (idx << 1) + 1; latMin = mid; }
+                    else { idx = idx << 1; latMax = mid; }
+                }
+                even = !even;
+                if (++bit === 5) { h += b32[idx]; bit = 0; idx = 0; }
+            }
+            return h;
+        }
+        
+        function showList(users) {
+            const list = document.getElementById('list');
+            list.innerHTML = '<h3>👥 נוצרו:</h3>';
+            users.forEach((u, i) => {
+                list.innerHTML += `
+                    <div style="padding:10px; background:#f0f0f0; margin:5px 0; border-radius:5px;">
+                        <b>${i+1}. ${u.name}</b> (${u.age}, ${u.gender === 'male' ? '♂️' : '♀️'})<br>
+                        <small>${u.email} | ${u.pass} | ${u.dist}m</small>
+                    </div>
+                `;
+            });
+        }
+        
+        function showMsg(type, txt) {
+            const m = document.getElementById('msg');
+            m.className = 'status ' + type;
+            m.textContent = txt;
+        }
+    </script>
+</body>
+</html>

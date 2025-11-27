@@ -1,0 +1,515 @@
+"use client"
+
+import { useEffect, useState, useMemo, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { X, Heart, MapPin, User as UserIcon, MessageCircle, ChevronLeft, ChevronRight, Crown, Check, Sparkles } from "lucide-react"
+import { auth, db } from "@/lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
+import { chatHasMessages } from "@/lib/chat-system"
+
+interface MatchScreenProps {
+  user: any
+  onContinue: () => void
+  onMeetNow: () => void
+  passesLeft: number
+  onPass: () => void
+  isPremium?: boolean
+  timeRemaining: number
+}
+
+interface UserProfile {
+  displayName: string
+  photoURL: string
+  photos?: string[]
+  bio?: string
+  age?: number
+  hobbies?: string[]
+}
+
+export default function MatchScreen({
+  user,
+  onContinue,
+  onMeetNow,
+  passesLeft,
+  onPass,
+  isPremium = false,
+  timeRemaining
+}: MatchScreenProps) {
+  const [showPremiumOffer, setShowPremiumOffer] = useState(false)
+  const [premiumOfferShownAt, setPremiumOfferShownAt] = useState<number | null>(null)
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
+  const [matchedUserProfile, setMatchedUserProfile] = useState<UserProfile | null>(null)
+  const [showProfile, setShowProfile] = useState<'none' | 'current' | 'matched'>('none')
+  const [showSendMessageConfirm, setShowSendMessageConfirm] = useState(false)
+  const [loadedMatchedUserId, setLoadedMatchedUserId] = useState<string | null>(null)
+  const [hasActiveChat, setHasActiveChat] = useState(false)
+
+  // Load current user profile - ONCE
+  useEffect(() => {
+    let isMounted = true
+    
+    const loadCurrentUser = async () => {
+      const authUser = auth.currentUser
+      if (!authUser) return
+      try {
+        const userDoc = await getDoc(doc(db, 'users', authUser.uid))
+        if (userDoc.exists() && isMounted) {
+          const userData = userDoc.data() as UserProfile
+          setCurrentUser(userData)
+        }
+      } catch (error) {
+        console.error('❌ Error loading current user:', error)
+      }
+    }
+    loadCurrentUser()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Load matched user ONLY ONCE
+  useEffect(() => {
+    let isMounted = true
+    
+    const userId = user?.uid || user?.id
+    
+    if (!userId || userId === loadedMatchedUserId) {
+      return
+    }
+    
+    const loadMatchedUser = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', userId))
+        if (userDoc.exists() && isMounted) {
+          setMatchedUserProfile(userDoc.data() as UserProfile)
+          setLoadedMatchedUserId(userId)
+        }
+      } catch (error) {
+        console.error('❌ Error loading matched user:', error)
+      }
+    }
+    loadMatchedUser()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [user?.uid, user?.id, loadedMatchedUserId])
+
+  // Check if there are existing messages
+  useEffect(() => {
+    const checkMessages = async () => {
+      const currentUserId = auth.currentUser?.uid
+      const matchedUserId = user?.uid || user?.id
+      
+      if (!currentUserId || !matchedUserId) return
+      
+      const matchId = [currentUserId, matchedUserId].sort().join('_')
+      
+      try {
+        const hasMessages = await chatHasMessages(matchId)
+        setHasActiveChat(hasMessages)
+        console.log(`💬 Chat has messages: ${hasMessages}`)
+      } catch (error) {
+        console.error('❌ Error checking messages:', error)
+      }
+    }
+    
+    checkMessages()
+  }, [user?.uid, user?.id])
+
+  const handleSendMessageClick = useCallback(() => {
+    setShowSendMessageConfirm(true)
+  }, [])
+
+  const confirmSendMessage = useCallback(() => {
+    setShowSendMessageConfirm(false)
+    onMeetNow()
+  }, [onMeetNow])
+
+  const handlePassClick = () => {
+    if (passesLeft > 0) {
+      onPass()
+    } else {
+      setShowPremiumOffer(true)
+      setPremiumOfferShownAt(Date.now())
+    }
+  }
+
+  const getTimerColor = () => {
+    if (timeRemaining <= 60) return "text-red-400"
+    if (timeRemaining <= 180) return "text-orange-400"
+    return "text-[#4ade80]"
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatDistance = (distance?: number) => {
+    if (!distance) return '0m'
+    if (distance < 1000) return `${Math.round(distance)}m`
+    return `${(distance / 1000).toFixed(1)}km`
+  }
+
+  const matchedUserName = useMemo(() => 
+    matchedUserProfile?.displayName || user?.name || 'Unknown',
+    [matchedUserProfile?.displayName, user?.name]
+  )
+  
+  const matchedUserAge = useMemo(() => 
+    matchedUserProfile?.age || user?.age || '??',
+    [matchedUserProfile?.age, user?.age]
+  )
+  
+  const matchedUserPhoto = useMemo(() => 
+    matchedUserProfile?.photoURL || matchedUserProfile?.photos?.[0] || user?.photos?.[0] || user?.image || user?.photoURL,
+    [matchedUserProfile?.photoURL, matchedUserProfile?.photos, user?.photos, user?.image, user?.photoURL]
+  )
+  
+  const currentUserPhoto = useMemo(() => 
+    currentUser?.photoURL || currentUser?.photos?.[0],
+    [currentUser?.photoURL, currentUser?.photos]
+  )
+
+  const closeProfile = () => setShowProfile('none')
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-hidden flex flex-col">
+      <div className="absolute inset-0 pointer-events-none">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-white rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              opacity: [0.2, 0.6, 0.2],
+              scale: [1, 1.5, 1],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              delay: Math.random() * 2,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0, y: -50 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", damping: 15 }}
+          className="text-center mb-8"
+        >
+          <motion.h1
+            animate={{ 
+              scale: [1, 1.05, 1],
+            }}
+            transition={{ 
+              duration: 2, 
+              repeat: Infinity,
+              ease: "easeInOut" 
+            }}
+            className="text-5xl font-serif font-bold text-white mb-2 drop-shadow-2xl"
+          >
+            It's a Match! 🎉
+          </motion.h1>
+          <p className="text-[#a8d5ba] text-lg font-medium">
+            You both liked each other
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2, type: "spring", damping: 12 }}
+          className="flex items-center justify-center gap-8 mb-8"
+        >
+          <motion.div
+            whileHover={{ scale: 1.1, rotate: -5 }}
+            onClick={() => setShowProfile('current')}
+            className="cursor-pointer"
+          >
+            <div className="relative">
+              <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-[#4ade80] shadow-2xl shadow-[#4ade80]/50">
+                <img 
+                  src={currentUserPhoto || '/placeholder.svg'} 
+                  alt="You" 
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#0d2920] px-3 py-1 rounded-full border-2 border-[#4ade80]">
+                <span className="text-white font-semibold text-sm">You</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            animate={{ 
+              scale: [1, 1.2, 1],
+              rotate: [0, -10, 10, 0]
+            }}
+            transition={{ 
+              duration: 1.5, 
+              repeat: Infinity,
+              ease: "easeInOut" 
+            }}
+            className="relative"
+          >
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 via-red-500 to-orange-500 flex items-center justify-center shadow-2xl shadow-pink-500/50">
+              <Heart className="h-10 w-10 text-white" fill="white" />
+            </div>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            onClick={() => setShowProfile('matched')}
+            className="cursor-pointer"
+          >
+            <div className="relative">
+              <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-pink-400 shadow-2xl shadow-pink-400/50">
+                <img 
+                  src={matchedUserPhoto || '/placeholder.svg'} 
+                  alt={matchedUserName}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#0d2920] px-3 py-1 rounded-full border-2 border-pink-400">
+                <span className="text-white font-semibold text-sm">{matchedUserName}</span>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-b from-[#1a4d3e]/80 to-[#0d2920]/80 backdrop-blur-xl rounded-3xl p-6 w-full max-w-sm border border-[#4ade80]/30 shadow-2xl mb-6"
+        >
+          <div className="text-center mb-4">
+            <h2 className="text-white text-2xl font-bold mb-1">
+              {matchedUserName}, {matchedUserAge}
+            </h2>
+            <div className="flex items-center justify-center gap-2 text-[#a8d5ba] text-sm">
+              <MapPin className="h-4 w-4" />
+              <span>{formatDistance(user?.distance)} away</span>
+            </div>
+          </div>
+
+          <div className="bg-[#0d2920]/50 rounded-2xl p-4 mb-4 border border-[#4ade80]/20">
+            <div className="text-center mb-4">
+              <p className="text-white/60 text-sm mb-2">Decide in:</p>
+              <div className={`text-5xl font-bold font-mono ${getTimerColor()}`}>
+                {formatTime(timeRemaining)}
+              </div>
+              {timeRemaining <= 60 && (
+                <p className="text-red-400 text-xs mt-2 font-semibold animate-pulse">
+                  ⏱️ Less than a minute!
+                </p>
+              )}
+            </div>
+            <p className="text-white/50 text-xs text-center">
+              🔒 Can't swipe until you decide
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="w-full max-w-sm space-y-3"
+        >
+          <Button
+            onClick={handleSendMessageClick}
+            className="w-full h-16 rounded-xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg shadow-lg"
+          >
+            <Heart className="mr-2 h-6 w-6" fill="currentColor" />
+            {hasActiveChat ? 'Continue Chatting' : 'Send Message'}
+          </Button>
+          
+          <Button
+            onClick={handlePassClick}
+            variant="outline"
+            className={`w-full h-14 rounded-xl font-semibold transition-all ${
+              passesLeft > 0
+                ? 'bg-transparent hover:bg-red-500/10 border-2 border-red-400/50 text-red-400 hover:border-red-400'
+                : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-400/50 text-amber-400 hover:border-amber-400 hover:bg-amber-500/20'
+            }`}
+          >
+            {passesLeft > 0 ? (
+              <>
+                <X className="mr-2 h-5 w-5" />
+                Pass ({passesLeft} left)
+              </>
+            ) : (
+              <>
+                <Crown className="mr-2 h-5 w-5" />
+                Upgrade to Pass
+              </>
+            )}
+          </Button>
+
+          <p className="text-center text-white/40 text-xs mt-4">
+            Choose wisely - this match expires in {formatTime(timeRemaining)}!
+          </p>
+        </motion.div>
+      </div>
+
+      {/* Send Message Confirmation */}
+      <AnimatePresence>
+        {showSendMessageConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] rounded-3xl p-8 max-w-md w-full border-2 border-[#4ade80]/30"
+            >
+              <div className="text-center mb-6">
+                <div className="text-6xl mb-4">💬</div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  {hasActiveChat ? `Continue chatting with ${matchedUserName}?` : `Send Message to ${matchedUserName}?`}
+                </h2>
+                <p className="text-white/60 text-sm">
+                  {hasActiveChat ? 'Return to your conversation' : 'This will open a chat with your match'}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <Button
+                  onClick={confirmSendMessage}
+                  className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] text-[#0d2920] font-bold text-lg rounded-xl"
+                >
+                  <MessageCircle className="mr-2 h-5 w-5" />
+                  {hasActiveChat ? 'Continue Chatting' : 'Yes, Start Chat'}
+                </Button>
+                <Button
+                  onClick={() => setShowSendMessageConfirm(false)}
+                  variant="outline"
+                  className="w-full h-12 bg-transparent border-2 border-white/20 text-white hover:bg-white/10 rounded-xl"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PREMIUM MODAL */}
+      <AnimatePresence>
+        {showPremiumOffer && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 50 }}
+              transition={{ type: "spring", damping: 20 }}
+              className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-3xl p-8 max-w-md w-full border border-amber-500/30 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute inset-0 overflow-hidden">
+                <motion.div
+                  animate={{ 
+                    rotate: 360,
+                    scale: [1, 1.2, 1]
+                  }}
+                  transition={{ 
+                    duration: 20, 
+                    repeat: Infinity,
+                    ease: "linear" 
+                  }}
+                  className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-amber-500/5 to-transparent rounded-full blur-3xl"
+                />
+              </div>
+
+              <div className="relative z-10">
+                <div className="text-center mb-6">
+                  <motion.div
+                    animate={{ rotate: [0, -10, 10, -10, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+                    className="inline-block text-7xl mb-4"
+                  >
+                    👑
+                  </motion.div>
+                  <h2 className="text-3xl font-black text-white mb-2">
+                    Out of Passes!
+                  </h2>
+                  <p className="text-gray-300 text-base leading-relaxed">
+                    Upgrade to <span className="text-amber-400 font-bold">Premium</span> and get 3 passes per day!
+                  </p>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-2xl p-6 mb-6 border border-amber-500/30">
+                  <div className="space-y-3">
+                    {[
+                      '3 Passes every day',
+                      'Priority matching',
+                      'See who liked you',
+                      'Unlimited rewinds'
+                    ].map((feature, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.1 * i }}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                          <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                        </div>
+                        <span className="text-white font-medium">{feature}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => {
+                      alert('Premium upgrade coming soon! 💎')
+                      setShowPremiumOffer(false)
+                    }}
+                    className="w-full h-14 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-500 hover:via-yellow-500 hover:to-amber-600 text-gray-900 font-bold text-lg rounded-xl shadow-xl relative overflow-hidden group"
+                  >
+                    <Sparkles className="mr-2 h-5 w-5" />
+                    Upgrade Now
+                  </Button>
+
+                  <Button
+                    onClick={() => setShowPremiumOffer(false)}
+                    variant="outline"
+                    className="w-full h-12 bg-transparent border-2 border-gray-600 text-gray-300 hover:bg-gray-800 rounded-xl"
+                  >
+                    Maybe Later
+                  </Button>
+                </div>
+
+                <p className="text-center text-gray-500 text-xs mt-4">
+                  Or wait 2 hours for your next pass
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}

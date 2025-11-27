@@ -1,0 +1,123 @@
+// scripts/create-profiles.mjs
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA6laY3N84Pe_Fl1769bIoP4NbCxjmqP_o",
+  authDomain: "i4iguana-89ed1.firebaseapp.com",
+  projectId: "i4iguana-89ed1",
+  storageBucket: "i4iguana-89ed1.firebasestorage.app",
+  messagingSenderId: "143460198551",
+  appId: "1:143460198551:web:5db80d325a549f3e4661d2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+function encodeGeohash(lat, lng, precision = 6) {
+  const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+  let geohash = '', bits = 0, bitsTotal = 0;
+  let latMin = -90, latMax = 90, lngMin = -180, lngMax = 180;
+  while (geohash.length < precision) {
+    if (bitsTotal % 2 === 0) {
+      const mid = (lngMin + lngMax) / 2;
+      if (lng > mid) { bits = (bits << 1) | 1; lngMin = mid; } 
+      else { bits = bits << 1; lngMax = mid; }
+    } else {
+      const mid = (latMin + latMax) / 2;
+      if (lat > mid) { bits = (bits << 1) | 1; latMin = mid; } 
+      else { bits = bits << 1; latMax = mid; }
+    }
+    bitsTotal++;
+    if (bitsTotal % 5 === 0) { geohash += BASE32[bits]; bits = 0; }
+  }
+  return geohash;
+}
+
+function getRandomLocation(centerLat, centerLng, minM = 10, maxM = 100) {
+  const r = minM + Math.random() * (maxM - minM);
+  const angle = Math.random() * 2 * Math.PI;
+  const rDeg = r / 111000;
+  const deltaLat = rDeg * Math.cos(angle);
+  const deltaLng = rDeg * Math.sin(angle) / Math.cos(centerLat * Math.PI / 180);
+  return { latitude: centerLat + deltaLat, longitude: centerLng + deltaLng };
+}
+
+async function createProfiles() {
+  console.log('🦎 I4IGUANA - Creating 100 dummy profiles...\n');
+  
+  // ✅ UPDATED: Your actual location (Rishon LeZion)
+  const centerLat = 31.6801;
+  const centerLng = 34.5866;
+  
+  console.log(`📍 Center: ${centerLat.toFixed(4)}, ${centerLng.toFixed(4)}`);
+  console.log(`📊 Range: 10-100 meters\n`);
+  
+  const names = ["שרה", "רחל", "לאה", "מיכל", "דנה", "נועה", "תמר", "רונית", "מיה", "עדן", "Sarah", "Emma", "Sophia", "Olivia", "Ava", "Isabella", "Mia", "Charlotte", "Amelia", "Harper"];
+  const hobbies = ["Yoga", "Reading", "Travel", "Photography", "Cooking", "Dancing", "Music", "Fitness"];
+  const bios = ["Coffee lover ☕", "Living my best life 💫", "Yoga instructor 🌱", "Travel addict ✈️"];
+  
+  let created = 0;
+  
+  for (let i = 0; i < 100; i++) {
+    const loc = getRandomLocation(centerLat, centerLng, 10, 100);
+    const geohash = encodeGeohash(loc.latitude, loc.longitude, 6);
+    const age = 21 + Math.floor(Math.random() * 15);
+    const name = names[Math.floor(Math.random() * names.length)];
+    const numHobbies = 3 + Math.floor(Math.random() * 4);
+    const userHobbies = [...hobbies].sort(() => Math.random() - 0.5).slice(0, numHobbies);
+    const bio = bios[Math.floor(Math.random() * bios.length)];
+    const numPhotos = 1 + Math.floor(Math.random() * 3);
+    const photos = Array.from({ length: numPhotos }, (_, idx) => 
+      `https://i.pravatar.cc/800?img=${(i * 10 + idx) % 70 + 1}`
+    );
+    
+    const profile = {
+      uid: `dummy_${Date.now()}_${i}`,
+      email: `dummy${i}@example.com`,
+      displayName: name,
+      name: name,
+      age: age,
+      gender: 'female',
+      lookingFor: 'male',
+      photos: photos,
+      photoURL: photos[0],
+      hobbies: userHobbies,
+      bio: bio,
+      location: { latitude: loc.latitude, longitude: loc.longitude, geohash: geohash },
+      preferences: { lookingFor: 'male', minDistance: 0, maxDistance: 1000, ageRange: [21, 35] },
+      swipedRight: [],
+      swipedLeft: [],
+      matches: [],
+      passesLeft: 1,
+      isPremium: false,
+      lastResetDate: new Date().toDateString(),
+      onboardingComplete: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    try {
+      await setDoc(doc(db, 'users', profile.uid), profile);
+      created++;
+      if (created % 10 === 0) {
+        console.log(`✅ Created ${created}/100 profiles`);
+      }
+    } catch (error) {
+      console.error(`❌ Error creating profile ${i}:`, error.message);
+    }
+    
+    if (i % 10 === 9) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+  
+  console.log(`\n🎉 Done! Successfully created ${created} profiles!`);
+  console.log('🔄 Refresh your app to see them!\n');
+  process.exit(0);
+}
+
+createProfiles().catch(error => {
+  console.error('❌ Error:', error);
+  process.exit(1);
+});

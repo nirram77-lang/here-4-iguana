@@ -1,0 +1,310 @@
+import { 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  serverTimestamp, 
+  Timestamp,
+  setDoc,
+  getDoc,
+  getDocs,
+  Unsubscribe
+} from 'firebase/firestore'
+import { db } from './firebase'
+
+export interface ChatMessage {
+  id: string
+  matchId: string
+  senderId: string
+  recipientId: string
+  text: string
+  timestamp: Timestamp
+  status: 'sent' | 'delivered' | 'read'
+  createdAt: Timestamp
+}
+
+export interface ChatMetadata {
+  matchId: string
+  lastMessage: string
+  lastMessageTime: Timestamp
+  unreadCount: {
+    [userId: string]: number
+  }
+}
+
+/**
+ * Send a message in a chat
+ * ✅ Saves to Firestore immediately
+ */
+export async function sendMessage(
+  matchId: string,
+  senderId: string,
+  recipientId: string,
+  text: string
+): Promise<string> {
+  try {
+    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    
+    const messageData = {
+      matchId,
+      senderId,
+      recipientId,
+      text,
+      timestamp: serverTimestamp(),
+      status: 'sent',
+      createdAt: serverTimestamp()
+    }
+    
+    const docRef = await addDoc(messagesRef, messageData)
+    
+    // Update chat metadata
+    await updateChatMetadata(matchId, text, recipientId)
+    
+    console.log('✅ Message sent:', docRef.id)
+    return docRef.id
+    
+  } catch (error) {
+    console.error('❌ Error sending message:', error)
+    throw new Error('Failed to send message')
+  }
+}
+
+/**
+ * Update chat metadata (last message, unread count)
+ */
+async function updateChatMetadata(
+  matchId: string,
+  lastMessage: string,
+  recipientId: string
+): Promise<void> {
+  try {
+    const chatMetaRef = doc(db, 'chats', matchId)
+    const chatMetaSnap = await getDoc(chatMetaRef)
+    
+    let unreadCount: { [key: string]: number } = {}
+    
+    if (chatMetaSnap.exists()) {
+      const existingData = chatMetaSnap.data()
+      unreadCount = existingData.unreadCount || {}
+    }
+    
+    // Increment unread count for recipient
+    unreadCount[recipientId] = (unreadCount[recipientId] || 0) + 1
+    
+    await setDoc(chatMetaRef, {
+      lastMessage: lastMessage.substring(0, 100), // Truncate
+      lastMessageTime: serverTimestamp(),
+      unreadCount
+    }, { merge: true })
+    
+  } catch (error) {
+    console.error('❌ Error updating chat metadata:', error)
+  }
+}
+
+/**
+ * Listen to messages in real-time
+ * ✅ Returns unsubscribe function
+ */
+export function listenToChatMessages(
+  matchId: string,
+  onMessagesUpdate: (messages: ChatMessage[]) => void
+): Unsubscribe {
+  try {
+    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const q = query(messagesRef, orderBy('timestamp', 'asc'))
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const messages: ChatMessage[] = []
+      
+      snapshot.forEach((doc) => {
+        messages.push({
+          id: doc.id,
+          ...doc.data()
+        } as ChatMessage)
+      })
+      
+      console.log(`💬 Loaded ${messages.length} messages`)
+      onMessagesUpdate(messages)
+    }, (error) => {
+      console.error('❌ Error listening to messages:', error)
+    })
+    
+    return unsubscribe
+    
+  } catch (error) {
+    console.error('❌ Error setting up message listener:', error)
+    return () => {} // Return empty unsubscribe
+  }
+}
+
+/**
+ * Mark messages as delivered
+ */
+export async function markMessagesAsDelivered(
+  matchId: string,
+  userId: string
+): Promise<void> {
+  try {
+    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const q = query(messagesRef)
+    const snapshot = await getDocs(q)
+    
+    const updates: Promise<void>[] = []
+    
+    snapshot.forEach((docSnap) => {
+      const message = docSnap.data() as ChatMessage
+      
+      // Update if message is for this user and status is 'sent'
+      if (message.recipientId === userId && message.status === 'sent') {
+        updates.push(
+          updateDoc(doc(db, 'chats', matchId, 'messages', docSnap.id), {
+            status: 'delivered'
+          })
+        )
+      }
+    })
+    
+    await Promise.all(updates)
+    console.log(`✅ Marked ${updates.length} messages as delivered`)
+    
+  } catch (error) {
+    console.error('❌ Error marking messages as delivered:', error)
+  }
+}
+
+/**
+ * Mark messages as read
+ */
+export async function markMessagesAsRead(
+  matchId: string,
+  userId: string
+): Promise<void> {
+  try {
+    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const q = query(messagesRef)
+    const snapshot = await getDocs(q)
+    
+    const updates: Promise<void>[] = []
+    
+    snapshot.forEach((docSnap) => {
+      const message = docSnap.data() as ChatMessage
+      
+      // Update if message is for this user and not already read
+      if (message.recipientId === userId && message.status !== 'read') {
+        updates.push(
+          updateDoc(doc(db, 'chats', matchId, 'messages', docSnap.id), {
+            status: 'read'
+          })
+        )
+      }
+    })
+    
+    await Promise.all(updates)
+    
+    // Reset unread count for this user
+    const chatMetaRef = doc(db, 'chats', matchId)
+    await updateDoc(chatMetaRef, {
+      [`unreadCount.${userId}`]: 0
+    })
+    
+    console.log(`✅ Marked ${updates.length} messages as read`)
+    
+  } catch (error) {
+    console.error('❌ Error marking messages as read:', error)
+  }
+}
+
+/**
+ * Get chat history (for initial load without listener)
+ */
+export async function getChatHistory(matchId: string): Promise<ChatMessage[]> {
+  try {
+    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const q = query(messagesRef, orderBy('timestamp', 'asc'))
+    const snapshot = await getDocs(q)
+    
+    const messages: ChatMessage[] = []
+    
+    snapshot.forEach((doc) => {
+      messages.push({
+        id: doc.id,
+        ...doc.data()
+      } as ChatMessage)
+    })
+    
+    console.log(`📜 Loaded ${messages.length} messages from history`)
+    return messages
+    
+  } catch (error) {
+    console.error('❌ Error getting chat history:', error)
+    return []
+  }
+}
+
+/**
+ * Delete a message (optional - for future)
+ */
+export async function deleteMessage(matchId: string, messageId: string): Promise<void> {
+  try {
+    const messageRef = doc(db, 'chats', matchId, 'messages', messageId)
+    await updateDoc(messageRef, {
+      text: '🚫 Message deleted',
+      deleted: true
+    })
+    
+    console.log('✅ Message deleted')
+    
+  } catch (error) {
+    console.error('❌ Error deleting message:', error)
+    throw new Error('Failed to delete message')
+  }
+}
+
+/**
+ * Check if chat has any messages
+ */
+export async function chatHasMessages(matchId: string): Promise<boolean> {
+  try {
+    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const snapshot = await getDocs(messagesRef)
+    
+    return snapshot.size > 0
+    
+  } catch (error) {
+    console.error('❌ Error checking chat messages:', error)
+    return false
+  }
+}
+```
+
+---
+
+## ✅ **מה הקובץ הזה עושה:**
+
+1. **שמירת הודעות** - כל הודעה נשמרת ל-Firestore מיד
+2. **Real-time listener** - שינויים מתעדכנים אוטומטית
+3. **סטטוס הודעות** - sent → delivered → read
+4. **Metadata** - הודעה אחרונה + unread count
+5. **טיפול בשגיאות** - try/catch בכל פונקציה
+
+---
+
+## 📱 **Structure ב-Firestore:**
+```
+chats/
+  {matchId}/
+    - lastMessage: string
+    - lastMessageTime: timestamp
+    - unreadCount: { userId1: 2, userId2: 0 }
+    
+    messages/
+      {messageId}/
+        - senderId
+        - recipientId
+        - text
+        - timestamp
+        - status: 'sent' | 'delivered' | 'read'

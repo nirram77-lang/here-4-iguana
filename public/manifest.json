@@ -1,0 +1,32 @@
+{
+  "name": "I4IGUANA - Meet Now",
+  "short_name": "I4IGUANA",
+  "description": "Proximity-based dating app - Meet people within 10-500 meters instantly",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d2920",
+  "theme_color": "#4ade80",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ]
+}

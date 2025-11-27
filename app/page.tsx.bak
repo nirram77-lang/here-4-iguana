@@ -1,0 +1,499 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import SplashScreen from "@/components/splash-screen"
+import WelcomeScreen from "@/components/welcome-screen"
+import LoginScreen from "@/components/login-screen"
+import OnboardingGender from "@/components/onboarding-gender"
+import OnboardingAge from "@/components/onboarding-age"
+import OnboardingHobbies from "@/components/onboarding-hobbies"
+import OnboardingPhotos from "@/components/onboarding-photos"
+import HomeScreen from "@/components/home-screen"
+import MatchScreen from "@/components/match-screen"
+import NotificationsScreen from "@/components/notifications-screen"
+import ProfileScreen from "@/components/profile-screen"
+import ChatScreen from "@/components/chat-screen"
+import { useAuth } from "@/lib/AuthContext"
+import { saveOnboardingData } from "@/lib/onboarding-service"
+import { getUserProfile, findNearbyAvailableUsers, updateUserLocation } from "@/lib/firestore-service"
+import { getCurrentLocation } from "@/lib/location-service"
+import { getUserPassData, usePass, recordMatch } from "@/lib/pass-system"
+import { 
+  getOrCreatePhoneIdentity, 
+  isPhoneIdentityLocked, 
+  lockPhoneIdentity,
+  getDevModePhoneNumber,
+  syncUserWithPhoneIdentity 
+} from "@/lib/phone-identity-service"
+
+type Screen = "splash" | "welcome" | "login" | "signup" | "onboarding-gender" | "onboarding-age" | "onboarding-hobbies" | "onboarding-photos" | "home" | "match" | "notifications" | "profile" | "chat"
+
+// Helper function to create consistent match IDs
+const createMatchId = (userId1: string, userId2: string) => {
+  return [userId1, userId2].sort().join('_')
+}
+
+export default function Page() {
+  const { user, loading: authLoading } = useAuth()
+  const [currentScreen, setCurrentScreen] = useState<Screen>("splash")
+  const [matchedUser, setMatchedUser] = useState<any>(null)
+  const [selectedMatch, setSelectedMatch] = useState<any>(null)
+  const [currentMatchId, setCurrentMatchId] = useState<string>("")
+  const [nearbyUsers, setNearbyUsers] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showOutOfPasses, setShowOutOfPasses] = useState(false)
+
+  // ✅ FIX: Track if location permission alert was shown
+  const locationAlertShownRef = useRef(false)
+
+  // Pass system state
+  const [passesLeft, setPassesLeft] = useState(1)
+  const [isPremium, setIsPremium] = useState(false)
+  const [isLockedInMatch, setIsLockedInMatch] = useState(false)
+  
+  // ✅ Phone Identity state - prevents Google account switching exploit
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string | null>(null)
+  const [isPhoneLocked, setIsPhoneLocked] = useState(false)
+  const [phoneLockTimeRemaining, setPhoneLockTimeRemaining] = useState(0)
+  
+  // Global timer
+  const [timeRemaining, setTimeRemaining] = useState(600)
+
+  const [onboardingData, setOnboardingData] = useState({
+    gender: 'male' as 'male' | 'female',
+    lookingFor: 'female' as 'male' | 'female' | 'both',
+    age: 25,
+    ageRange: [21, 35] as [number, number],
+    minDistance: 50,
+    maxDistance: 500,
+    hobbies: [] as string[],
+    photos: [] as string[],
+    bio: '',
+    name: '',
+  })
+
+  // ✅ OPTIMIZED: Handle auth state changes with timeout
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        console.log('⏳ Auth still loading...')
+        return
+      }
+
+      // ✅ FIX: Skip if already in onboarding flow - don't interrupt user!
+      const onboardingScreens = ["onboarding-gender", "onboarding-age", "onboarding-hobbies", "onboarding-photos"]
+      if (onboardingScreens.includes(currentScreen)) {
+        console.log('✅ Already in onboarding flow, not interrupting')
+        return
+      }
+
+      console.log('🔍 Auth check:', user?.email || 'No user')
+      
+      // No user → stay on/go to welcome (unless already in auth flow)
+      if (!user) {
+        const authFlowScreens = ["splash", "welcome", "login", "onboarding-gender", "onboarding-age", "onboarding-hobbies", "onboarding-photos"]
+        if (!authFlowScreens.includes(currentScreen)) {
+          console.log('❌ No user → WELCOME')
+          setCurrentScreen("welcome")
+        }
+        return
+      }
+      
+      // User exists → check if we need to navigate
+      // Skip if already on home/match/notifications/profile/chat
+      const appScreens = ["home", "match", "notifications", "profile", "chat"]
+      if (appScreens.includes(currentScreen)) {
+        console.log('✅ Already in app, staying on:', currentScreen)
+        return
+      }
+      
+      // ✅ Check profile with timeout (5 seconds max on mobile)
+      try {
+        const profilePromise = getUserProfile(user.uid)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile check timeout')), 5000)
+        )
+        
+        const profile = await Promise.race([profilePromise, timeoutPromise]) as any
+        
+        const hasCompletedOnboarding = profile?.onboardingComplete === true
+        const hasBasicProfile = profile && profile.photos && profile.photos.length > 0 && (profile.name || profile.displayName)
+        
+        if (hasCompletedOnboarding || hasBasicProfile) {
+          console.log('✅ Existing user → HOME')
+          setCurrentScreen("home")
+        } else {
+          console.log('🆕 New user → ONBOARDING')
+          setCurrentScreen("onboarding-gender")
+        }
+      } catch (error: any) {
+        console.error('⚠️ Error checking profile:', error.message)
+        // ✅ On timeout or error, assume new user → go to onboarding
+        console.log('🆕 Timeout/Error → ONBOARDING (safe default)')
+        setCurrentScreen("onboarding-gender")
+      }
+    }
+
+    checkAuth()
+  }, [user, authLoading, currentScreen])
+
+  // ✅ FIXED: Handle logout - navigate back to welcome
+  useEffect(() => {
+    // Skip if still loading auth
+    if (authLoading) return
+    
+    // ✅ FIX: Skip if already in onboarding flow - don't interrupt user!
+    const onboardingScreens = ["onboarding-gender", "onboarding-age", "onboarding-hobbies", "onboarding-photos"]
+    if (onboardingScreens.includes(currentScreen)) {
+      console.log('✅ In onboarding, skipping logout check')
+      return
+    }
+    
+    // ✅ Skip if on splash/welcome/login (already in auth flow)
+    const authFlowScreens = ["splash", "welcome", "login"]
+    if (authFlowScreens.includes(currentScreen)) return
+    
+    // If user logged out (user=null) while in app → go back to welcome
+    if (!user) {
+      console.log('🚪 User logged out → WELCOME')
+      setCurrentScreen("welcome")
+    }
+  }, [user, authLoading, currentScreen])
+
+  // ✅ Load pass data and check profile when on home screen
+  useEffect(() => {
+    const initializeHomeScreen = async () => {
+      if (!user || currentScreen !== "home") return
+
+      try {
+        // ✅ Step 1: Get or create phone identity
+        const phoneNumber = getDevModePhoneNumber(user.uid)
+        console.log('📱 Using phone number:', phoneNumber)
+        
+        const phoneIdentity = await getOrCreatePhoneIdentity(phoneNumber, user.uid)
+        setUserPhoneNumber(phoneNumber)
+        
+        // ✅ Step 2: Sync user profile with phone identity
+        await syncUserWithPhoneIdentity(user.uid, phoneNumber, {
+          email: user.email || undefined,
+          displayName: user.displayName || undefined,
+          photoURL: user.photoURL || undefined
+        })
+        
+        // ✅ Step 3: Check if phone is locked (2-hour cooldown)
+        const lockStatus = await isPhoneIdentityLocked(phoneNumber)
+        setIsPhoneLocked(lockStatus.isLocked)
+        setPhoneLockTimeRemaining(lockStatus.remainingTime)
+        
+        if (lockStatus.isLocked) {
+          console.log(`🔒 Phone locked for ${Math.floor(lockStatus.remainingTime / 60)} more minutes`)
+          // Show lock screen or disable swiping
+        }
+        
+        // ✅ Step 4: Load pass data (now based on phone identity)
+        const passData = await getUserPassData(user.uid)
+        setPassesLeft(passData.passesLeft)
+        setIsPremium(passData.isPremium)
+        
+        console.log(`📊 Pass Data:`, {
+          passesLeft: passData.passesLeft,
+          isPremium: passData.isPremium,
+          phoneLocked: lockStatus.isLocked
+        })
+
+        // ✅ Step 5: Load nearby users (only if not locked)
+        if (!lockStatus.isLocked) {
+          await loadNearbyUsers()
+        }
+      } catch (error) {
+        console.error('❌ Error initializing home screen:', error)
+      }
+    }
+
+    initializeHomeScreen()
+  }, [user, currentScreen])
+
+  // Global timer
+  useEffect(() => {
+    if (!isLockedInMatch || timeRemaining <= 0) return
+    
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        const newTime = prev > 0 ? prev - 1 : 0
+        
+        if (newTime === 0) {
+          console.log('⏰ Global timer expired!')
+          setIsLockedInMatch(false)
+          setCurrentScreen("home")
+        }
+        
+        return newTime
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isLockedInMatch, timeRemaining])
+
+  const loadNearbyUsers = async () => {
+    if (!user) return
+    
+    setLoading(true)
+    try {
+      // Get user's current location
+      const location = await getCurrentLocation()
+      console.log('📍 User location:', location)
+      
+      // Update user's location in Firestore
+      await updateUserLocation(user.uid, location.latitude, location.longitude)
+      
+      // Find nearby users
+      const users = await findNearbyAvailableUsers(
+        user.uid, 
+        location.latitude, 
+        location.longitude, 
+        onboardingData.maxDistance
+      )
+      
+      console.log(`👥 Found ${users.length} nearby users`)
+      setNearbyUsers(users)
+      
+      // ✅ FIX: Reset alert flag on successful load
+      locationAlertShownRef.current = false
+      
+    } catch (error: any) {
+      console.error('❌ Error loading nearby users:', error)
+      
+      // ✅ FIX: Show location permission alert ONLY ONCE per session
+      if (!locationAlertShownRef.current && 
+          (error.message?.includes('Location permission denied') || 
+           error.message?.includes('permission'))) {
+        
+        locationAlertShownRef.current = true // Mark as shown
+        
+        alert('📍 Location Access Required\n\nI4IGUANA needs your location to find nearby matches.\n\nPlease:\n1. Go to Settings\n2. Find I4IGUANA or your browser\n3. Enable Location permissions\n4. Refresh the page')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMatch = async (matchUser: any) => {
+    if (!user) return
+    
+    // ✅ Check if phone is locked before allowing match
+    if (isPhoneLocked) {
+      alert(`🔒 Your account is in cooldown mode.\n\nRemaining time: ${Math.floor(phoneLockTimeRemaining / 60)} minutes\n\nThis prevents abuse by switching Google accounts.`)
+      return
+    }
+    
+    try {
+      setMatchedUser(matchUser)
+      setIsLockedInMatch(true)
+      setTimeRemaining(600)
+      setCurrentScreen("match")
+      
+      // ✅ Record the match in phone identity
+      await recordMatch(user.uid)
+      
+      console.log('✅ Match created with user:', matchUser.name || matchUser.uid)
+    } catch (error) {
+      console.error('Error creating match:', error)
+    }
+  }
+
+  const handleMeetNow = async () => {
+    if (!user || !userPhoneNumber) return
+    
+    try {
+      // ✅ Lock phone identity for 2 hours
+      await lockPhoneIdentity(userPhoneNumber, 2)
+      console.log('🔒 Phone identity locked for 2 hours')
+      
+      setIsPhoneLocked(true)
+      setPhoneLockTimeRemaining(2 * 60 * 60) // 2 hours in seconds
+      
+      setSelectedMatch(matchedUser)
+      setIsLockedInMatch(false)
+      setCurrentScreen("chat")
+      
+      // Show confirmation
+      console.log('✅ Match accepted! Phone locked to prevent account switching exploit')
+    } catch (error) {
+      console.error('Error accepting match:', error)
+    }
+  }
+
+  const handlePass = async () => {
+    if (passesLeft > 0) {
+      const newPassesLeft = await usePass(user!.uid)
+      setPassesLeft(newPassesLeft)
+      setIsLockedInMatch(false)
+      setCurrentScreen("home")
+    } else {
+      setShowOutOfPasses(true)
+    }
+  }
+
+  const handleContinue = () => {
+    setIsLockedInMatch(false)
+    setCurrentScreen("home")
+  }
+
+  const handleSkipTimer = () => {
+    alert('Skip Timer feature coming soon! ($2.99)')
+  }
+
+  const handleOnboardingComplete = async (finalData: { photos: string[], bio: string, name: string }) => {
+    const completeData = {
+      ...onboardingData,
+      ...finalData,
+    }
+
+    console.log('🎉 Onboarding Complete:', completeData)
+
+    if (user) {
+      try {
+        await saveOnboardingData(user.uid, user.email || '', completeData)
+        console.log('✅ User data saved to Firestore!')
+        setCurrentScreen("home")
+      } catch (error) {
+        console.error('❌ Error saving onboarding data:', error)
+      }
+    }
+  }
+
+  const handleNavigate = (screen: string) => {
+    // Type assertion - we trust the components to send valid screen names
+    setCurrentScreen(screen as Screen)
+  }
+
+  // ✅ Type-safe wrappers for NotificationsScreen and ProfileScreen
+  const handleNotificationsNavigate = (screen: "home" | "notifications" | "profile" | "match") => {
+    setCurrentScreen(screen as Screen)
+  }
+
+  const handleProfileNavigate = (screen: string) => {
+    setCurrentScreen(screen as Screen)
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Splash Screen */}
+      {currentScreen === "splash" && (
+        <SplashScreen onComplete={() => setCurrentScreen("welcome")} />
+      )}
+      
+      {/* Welcome Screen */}
+      {currentScreen === "welcome" && (
+        <WelcomeScreen 
+          onLogin={() => setCurrentScreen("login")} 
+          onSignUp={() => setCurrentScreen("login")}
+        />
+      )}
+      
+      {/* ✅ Login Screen - FIXED: Use onSuccess prop */}
+      {currentScreen === "login" && (
+        <LoginScreen 
+          onSuccess={() => {
+            // Auth will handle navigation via useEffect
+            console.log('✅ Login successful')
+          }}
+        />
+      )}
+      
+      {/* Onboarding Screens */}
+      {currentScreen === "onboarding-gender" && (
+        <OnboardingGender 
+          onNext={(data) => {
+            setOnboardingData({ ...onboardingData, ...data })
+            setCurrentScreen("onboarding-age")
+          }} 
+        />
+      )}
+      
+      {currentScreen === "onboarding-age" && (
+        <OnboardingAge
+          onNext={(data) => {
+            setOnboardingData({ ...onboardingData, ...data })
+            setCurrentScreen("onboarding-hobbies")
+          }}
+          onBack={() => setCurrentScreen("onboarding-gender")}
+        />
+      )}
+      
+      {currentScreen === "onboarding-hobbies" && (
+        <OnboardingHobbies
+          onNext={(data) => {
+            setOnboardingData({ ...onboardingData, ...data })
+            setCurrentScreen("onboarding-photos")
+          }}
+          onBack={() => setCurrentScreen("onboarding-age")}
+        />
+      )}
+      
+      {currentScreen === "onboarding-photos" && (
+        <OnboardingPhotos
+          onComplete={handleOnboardingComplete}
+          onBack={() => setCurrentScreen("onboarding-hobbies")}
+        />
+      )}
+      
+      {/* Home Screen */}
+      {currentScreen === "home" && (
+        <HomeScreen
+          onMatch={handleMatch}
+          nearbyUsers={nearbyUsers}
+          loading={loading}
+          onRefresh={loadNearbyUsers}
+          onNavigate={handleNavigate}
+        />
+      )}
+      
+      {/* Match Screen */}
+      {currentScreen === "match" && matchedUser && (
+        <MatchScreen
+          user={matchedUser}
+          onContinue={handleContinue}
+          onMeetNow={handleMeetNow}
+          passesLeft={passesLeft}
+          onPass={handlePass}
+          isPremium={isPremium}
+          timeRemaining={timeRemaining}
+        />
+      )}
+      
+      {/* ✅ Notifications Screen - FIXED: Type-safe wrapper */}
+      {currentScreen === "notifications" && (
+        <NotificationsScreen 
+          onNavigate={handleNotificationsNavigate}
+          hasActiveMatch={isLockedInMatch}
+        />
+      )}
+      
+      {/* ✅ Profile Screen - FIXED: Type-safe wrapper */}
+      {currentScreen === "profile" && (
+        <ProfileScreen 
+          onNavigate={handleProfileNavigate}
+          hasActiveMatch={isLockedInMatch}
+        />
+      )}
+      
+      {/* Chat Screen */}
+      {currentScreen === "chat" && selectedMatch && user && (
+        <ChatScreen
+          matchId={createMatchId(user.uid, selectedMatch.uid)}
+          currentUserId={user.uid}
+          otherUserId={selectedMatch.uid}
+          matchUser={{
+            name: selectedMatch.displayName || selectedMatch.name || "User",
+            photo: selectedMatch.photoURL || selectedMatch.photos?.[0] || "/placeholder.jpg",
+            distance: selectedMatch.distance || "nearby"
+          }}
+          timeRemaining={timeRemaining}
+          onBack={() => setCurrentScreen("home")}
+        />
+      )}
+    </div>
+  )
+}

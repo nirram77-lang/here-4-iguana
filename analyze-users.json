@@ -1,0 +1,338 @@
+// Analyze All Users in Database
+// This script will scan all users and provide detailed analysis
+
+const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
+
+// Initialize Firebase Admin
+const serviceAccount = require('./serviceAccountKey.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const db = getFirestore();
+
+// Your known user ID (from the logs)
+const YOUR_USER_ID = 'UVe03sIfBseeD7V0M1WL8g1GhCp2';
+
+async function analyzeUsers() {
+  try {
+    console.log('🔍 Starting Database Analysis...');
+    console.log('═══════════════════════════════════════');
+    console.log('');
+
+    // Get all users
+    const usersSnapshot = await db.collection('users').get();
+    
+    if (usersSnapshot.empty) {
+      console.log('❌ No users found in database!');
+      return;
+    }
+
+    console.log(`📊 Total Users: ${usersSnapshot.size}`);
+    console.log('');
+
+    // Analysis objects
+    const analysis = {
+      total: usersSnapshot.size,
+      withLocation: 0,
+      withoutLocation: 0,
+      emailPatterns: {},
+      namePatterns: {},
+      hasPhotos: 0,
+      noPhotos: 0,
+      hasGeohash: 0,
+      noGeohash: 0,
+      recentlyUpdated: 0,
+      neverUpdated: 0,
+      yourAccount: null,
+      samples: {
+        withEmail: [],
+        withoutEmail: [],
+        withPhotos: [],
+        withoutPhotos: [],
+        withLocation: [],
+        withoutLocation: []
+      }
+    };
+
+    // Analyze each user
+    for (const doc of usersSnapshot.docs) {
+      const userId = doc.id;
+      const data = doc.data();
+      
+      // Check if this is your account
+      if (userId === YOUR_USER_ID) {
+        analysis.yourAccount = {
+          id: userId,
+          name: data.name || data.displayName || 'Unknown',
+          email: data.email || 'No email',
+          hasLocation: !!(data.latitude && data.longitude),
+          hasPhotos: !!(data.photos && data.photos.length > 0)
+        };
+        continue;
+      }
+
+      // Location analysis
+      if (data.latitude && data.longitude) {
+        analysis.withLocation++;
+        if (analysis.samples.withLocation.length < 5) {
+          analysis.samples.withLocation.push({
+            name: data.name || data.displayName || 'Unknown',
+            email: data.email || 'No email',
+            lat: data.latitude,
+            lng: data.longitude
+          });
+        }
+      } else {
+        analysis.withoutLocation++;
+        if (analysis.samples.withoutLocation.length < 5) {
+          analysis.samples.withoutLocation.push({
+            name: data.name || data.displayName || 'Unknown',
+            email: data.email || 'No email'
+          });
+        }
+      }
+
+      // Email pattern analysis
+      if (data.email) {
+        const email = data.email.toLowerCase();
+        const domain = email.split('@')[1] || 'unknown';
+        analysis.emailPatterns[domain] = (analysis.emailPatterns[domain] || 0) + 1;
+        
+        if (analysis.samples.withEmail.length < 5) {
+          analysis.samples.withEmail.push({
+            name: data.name || data.displayName || 'Unknown',
+            email: data.email
+          });
+        }
+      } else {
+        if (analysis.samples.withoutEmail.length < 5) {
+          analysis.samples.withoutEmail.push({
+            name: data.name || data.displayName || 'Unknown',
+            id: userId
+          });
+        }
+      }
+
+      // Name pattern analysis
+      const name = (data.name || data.displayName || '').toLowerCase();
+      if (name.includes('test') || name.includes('dummy') || name.includes('fake')) {
+        analysis.namePatterns.test_dummy = (analysis.namePatterns.test_dummy || 0) + 1;
+      }
+
+      // Photos analysis
+      if (data.photos && data.photos.length > 0) {
+        analysis.hasPhotos++;
+        if (analysis.samples.withPhotos.length < 3) {
+          analysis.samples.withPhotos.push({
+            name: data.name || data.displayName || 'Unknown',
+            email: data.email || 'No email',
+            photoCount: data.photos.length
+          });
+        }
+      } else {
+        analysis.noPhotos++;
+        if (analysis.samples.withoutPhotos.length < 3) {
+          analysis.samples.withoutPhotos.push({
+            name: data.name || data.displayName || 'Unknown',
+            email: data.email || 'No email'
+          });
+        }
+      }
+
+      // Geohash analysis
+      if (data.geohash) {
+        analysis.hasGeohash++;
+      } else {
+        analysis.noGeohash++;
+      }
+
+      // Update time analysis
+      if (data.lastLocationUpdate || data.updatedAt) {
+        analysis.recentlyUpdated++;
+      } else {
+        analysis.neverUpdated++;
+      }
+    }
+
+    // Print Analysis Report
+    console.log('');
+    console.log('═══════════════════════════════════════');
+    console.log('📊 DATABASE ANALYSIS REPORT');
+    console.log('═══════════════════════════════════════');
+    console.log('');
+
+    // Your Account
+    if (analysis.yourAccount) {
+      console.log('🛡️  YOUR ACCOUNT (Will be protected):');
+      console.log(`   Name: ${analysis.yourAccount.name}`);
+      console.log(`   Email: ${analysis.yourAccount.email}`);
+      console.log(`   Has Location: ${analysis.yourAccount.hasLocation ? '✅' : '❌'}`);
+      console.log(`   Has Photos: ${analysis.yourAccount.hasPhotos ? '✅' : '❌'}`);
+      console.log('');
+    }
+
+    console.log('📈 STATISTICS:');
+    console.log(`   Total Users: ${analysis.total}`);
+    console.log(`   Your Account: 1`);
+    console.log(`   Other Users: ${analysis.total - 1}`);
+    console.log('');
+
+    console.log('📍 LOCATION DATA:');
+    console.log(`   ✅ With Location: ${analysis.withLocation}`);
+    console.log(`   ❌ Without Location: ${analysis.withoutLocation}`);
+    console.log(`   ✅ With Geohash: ${analysis.hasGeohash}`);
+    console.log(`   ❌ Without Geohash: ${analysis.noGeohash}`);
+    console.log('');
+
+    console.log('📧 EMAIL DOMAINS:');
+    Object.entries(analysis.emailPatterns)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([domain, count]) => {
+        console.log(`   ${domain}: ${count} users`);
+      });
+    console.log('');
+
+    console.log('🖼️  PHOTOS:');
+    console.log(`   ✅ With Photos: ${analysis.hasPhotos}`);
+    console.log(`   ❌ Without Photos: ${analysis.noPhotos}`);
+    console.log('');
+
+    if (analysis.namePatterns.test_dummy > 0) {
+      console.log('🏷️  NAME PATTERNS:');
+      console.log(`   Test/Dummy/Fake in name: ${analysis.namePatterns.test_dummy}`);
+      console.log('');
+    }
+
+    console.log('🔄 UPDATE STATUS:');
+    console.log(`   Recently Updated: ${analysis.recentlyUpdated}`);
+    console.log(`   Never Updated: ${analysis.neverUpdated}`);
+    console.log('');
+
+    // Samples
+    console.log('═══════════════════════════════════════');
+    console.log('📋 SAMPLE DATA:');
+    console.log('═══════════════════════════════════════');
+    console.log('');
+
+    if (analysis.samples.withEmail.length > 0) {
+      console.log('✅ Users WITH Email (sample):');
+      analysis.samples.withEmail.forEach((user, i) => {
+        console.log(`   ${i + 1}. ${user.name} - ${user.email}`);
+      });
+      console.log('');
+    }
+
+    if (analysis.samples.withoutEmail.length > 0) {
+      console.log('❌ Users WITHOUT Email (sample):');
+      analysis.samples.withoutEmail.forEach((user, i) => {
+        console.log(`   ${i + 1}. ${user.name} (ID: ${user.id.substring(0, 8)}...)`);
+      });
+      console.log('');
+    }
+
+    if (analysis.samples.withLocation.length > 0) {
+      console.log('📍 Users WITH Location (sample):');
+      analysis.samples.withLocation.forEach((user, i) => {
+        console.log(`   ${i + 1}. ${user.name}`);
+        console.log(`      Email: ${user.email}`);
+        console.log(`      Location: ${user.lat}, ${user.lng}`);
+      });
+      console.log('');
+    }
+
+    if (analysis.samples.withoutLocation.length > 0) {
+      console.log('📍 Users WITHOUT Location (sample):');
+      analysis.samples.withoutLocation.forEach((user, i) => {
+        console.log(`   ${i + 1}. ${user.name} - ${user.email}`);
+      });
+      console.log('');
+    }
+
+    // Recommendations
+    console.log('═══════════════════════════════════════');
+    console.log('💡 RECOMMENDATIONS:');
+    console.log('═══════════════════════════════════════');
+    console.log('');
+
+    const recommendations = [];
+
+    // Recommend based on email domains
+    const topDomain = Object.entries(analysis.emailPatterns)
+      .sort((a, b) => b[1] - a[1])[0];
+    
+    if (topDomain && topDomain[1] > 50) {
+      recommendations.push(`Most users (${topDomain[1]}) use email domain: ${topDomain[0]}`);
+      recommendations.push(`Recommended filter: emailPatterns: ['@${topDomain[0]}']`);
+    }
+
+    // Recommend based on location
+    if (analysis.withLocation > 0) {
+      recommendations.push(`${analysis.withLocation} users already have location data`);
+      recommendations.push(`Update these users to be near your location`);
+    }
+
+    if (analysis.withoutLocation > 0) {
+      recommendations.push(`${analysis.withoutLocation} users have NO location`);
+      recommendations.push(`These users need location added`);
+    }
+
+    // Recommend based on photos
+    if (analysis.noPhotos > 50) {
+      recommendations.push(`${analysis.noPhotos} users have no photos`);
+      recommendations.push(`Consider these as dummy/incomplete users`);
+    }
+
+    recommendations.forEach((rec, i) => {
+      console.log(`${i + 1}. ${rec}`);
+    });
+    console.log('');
+
+    // Suggested filter config
+    console.log('═══════════════════════════════════════');
+    console.log('⚙️  SUGGESTED FILTER CONFIGURATION:');
+    console.log('═══════════════════════════════════════');
+    console.log('');
+    console.log('Based on the analysis, use this configuration:');
+    console.log('');
+    console.log('```javascript');
+    console.log('const DUMMY_USER_FILTERS = {');
+    
+    // Email patterns
+    const emailDomains = Object.keys(analysis.emailPatterns);
+    const suspiciousDomains = emailDomains.filter(d => 
+      d.includes('test') || d.includes('example') || d.includes('dummy') || d.includes('fake')
+    );
+    
+    if (suspiciousDomains.length > 0) {
+      console.log(`  emailPatterns: ['${suspiciousDomains.join("', '")}'],`);
+    } else if (topDomain) {
+      console.log(`  emailPatterns: ['@${topDomain[0]}'], // Most common domain`);
+    } else {
+      console.log(`  emailPatterns: [],`);
+    }
+    
+    console.log('  namePatterns: [],');
+    console.log('  fieldCheck: null,');
+    console.log('  specificIds: [],');
+    console.log('  // OR: Update ALL users except you:');
+    console.log('  updateAllExceptMe: true');
+    console.log('};');
+    console.log('```');
+    console.log('');
+
+    console.log('═══════════════════════════════════════');
+    console.log('✅ Analysis Complete!');
+    console.log('═══════════════════════════════════════');
+    
+  } catch (error) {
+    console.error('❌ Fatal error:', error);
+  } finally {
+    process.exit();
+  }
+}
+
+// Run analysis
+analyzeUsers();
