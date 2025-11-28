@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { X, Heart, MapPin, User as UserIcon, MessageCircle, ChevronLeft, ChevronRight, Crown, Check, Sparkles, Bell, Home, Clock } from "lucide-react"
+import { X, Heart, MapPin, User as UserIcon, MessageCircle, ChevronLeft, ChevronRight, Crown, Check, Sparkles, Bell, Home, Clock, XCircle } from "lucide-react"
 import { auth, db } from "@/lib/firebase"
 import { doc, getDoc, onSnapshot } from "firebase/firestore"
 import { chatHasMessages, clearChatMessages } from "@/lib/chat-system"
@@ -18,6 +18,7 @@ interface MatchScreenProps {
   onWeAreMeetingModalClose?: () => void  // ✅ NEW: Called when she closes the celebration modal
   passesLeft: number
   onPass: () => void
+  onNotInterested?: () => void  // ✅ NEW: Exit match without using pass (when no passes left)
   isPremium?: boolean
   timeRemaining: number
   onSkipTimer?: () => void
@@ -47,6 +48,7 @@ export default function MatchScreen({
   onWeAreMeetingModalClose,  // ✅ NEW: Close modal → return to home
   passesLeft,
   onPass,
+  onNotInterested,  // ✅ NEW: Exit match without pass
   isPremium = false,
   timeRemaining,
   onSkipTimer,
@@ -385,6 +387,17 @@ useEffect(() => {
     return "text-[#4ade80]"
   }
 
+  // ✅ NEW: Handle "Not Interested" - Exit match without using pass
+  const handleNotInterested = () => {
+    console.log('🚫 Not Interested clicked - exiting match')
+    if (onNotInterested) {
+      onNotInterested()
+    } else {
+      // Fallback to onContinue if onNotInterested not provided
+      onContinue()
+    }
+  }
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -444,7 +457,7 @@ useEffect(() => {
   const closeProfile = () => setShowProfile('none')
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto flex flex-col pb-24">
       {/* 🔊 Match Celebration Sound - Hidden */}
       <audio
         ref={matchSoundRef}
@@ -475,12 +488,12 @@ useEffect(() => {
         ))}
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-start p-4 pt-6 max-w-2xl mx-auto w-full">
         <motion.div
           initial={{ scale: 0.8, opacity: 0, y: -50 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           transition={{ type: "spring", damping: 15 }}
-          className="text-center mb-8"
+          className="text-center mb-4"
         >
           <motion.h1
             animate={{ 
@@ -491,11 +504,11 @@ useEffect(() => {
               repeat: Infinity,
               ease: "easeInOut" 
             }}
-            className="text-5xl font-serif font-bold text-white mb-2 drop-shadow-2xl"
+            className="text-4xl font-serif font-bold text-white mb-1 drop-shadow-2xl"
           >
             It's a Match! 🎉
           </motion.h1>
-          <p className="text-[#a8d5ba] text-lg font-medium">
+          <p className="text-[#a8d5ba] text-base font-medium">
             You both liked each other
           </p>
         </motion.div>
@@ -504,7 +517,7 @@ useEffect(() => {
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2, type: "spring", damping: 12 }}
-          className="flex items-center justify-center gap-8 mb-8"
+          className="flex items-center justify-center gap-6 mb-4"
         >
           <motion.div
             whileHover={{ scale: 1.1, rotate: -5 }}
@@ -512,7 +525,7 @@ useEffect(() => {
             className="cursor-pointer"
           >
             <div className="relative">
-              <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-[#4ade80] shadow-2xl shadow-[#4ade80]/50">
+              <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-[#4ade80] shadow-2xl shadow-[#4ade80]/50">
                 <img 
                   src={currentUserPhoto || '/placeholder.svg'} 
                   alt="You" 
@@ -537,8 +550,8 @@ useEffect(() => {
             }}
             className="relative"
           >
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 via-red-500 to-orange-500 flex items-center justify-center shadow-2xl shadow-pink-500/50">
-              <Heart className="h-10 w-10 text-white" fill="white" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 via-red-500 to-orange-500 flex items-center justify-center shadow-2xl shadow-pink-500/50">
+              <Heart className="h-8 w-8 text-white" fill="white" />
             </div>
           </motion.div>
 
@@ -548,7 +561,7 @@ useEffect(() => {
             className="cursor-pointer"
           >
             <div className="relative">
-              <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-pink-400 shadow-2xl shadow-pink-400/50">
+              <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-pink-400 shadow-2xl shadow-pink-400/50">
                 <img 
                   src={matchedUserPhoto || '/placeholder.svg'} 
                   alt={matchedUserName}
@@ -566,7 +579,7 @@ useEffect(() => {
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="bg-gradient-to-b from-[#1a4d3e]/80 to-[#0d2920]/80 backdrop-blur-xl rounded-2xl p-3 w-full max-w-sm border border-[#4ade80]/30 shadow-2xl mb-3"
+          className="bg-gradient-to-b from-[#1a4d3e]/80 to-[#0d2920]/80 backdrop-blur-xl rounded-2xl p-3 w-full max-w-sm border border-[#4ade80]/30 shadow-2xl mb-2"
         >
           <div className="text-center mb-2">
             <h2 className="text-white text-xl font-bold mb-0.5">
@@ -606,15 +619,15 @@ useEffect(() => {
           <Button
             onClick={handleSendMessageClick}
             disabled={timeRemaining <= 0}
-            className={`w-full h-12 rounded-xl font-bold text-base shadow-lg transition-all ${
+            className={`w-full h-11 rounded-xl font-bold text-sm shadow-lg transition-all ${
               timeRemaining <= 0
                 ? 'bg-gray-500/50 cursor-not-allowed text-gray-300'
                 : 'bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920]'
             }`}
           >
-            <Heart className="mr-2 h-6 w-6" fill={timeRemaining > 0 ? "currentColor" : "none"} />
+            <Heart className="mr-2 h-5 w-5" fill={timeRemaining > 0 ? "currentColor" : "none"} />
             {timeRemaining <= 0 
-              ? '⏰ Time Expired - No Messages'
+              ? '⏰ Time Expired'
               : (hasActiveChat ? 'Continue Chatting' : 'Send Message')
             }
           </Button>
@@ -643,64 +656,73 @@ useEffect(() => {
                   // Show celebration modal for HER
                   setShowWeAreMeetingModal(true)
                 }}
-                className="w-full h-14 rounded-xl font-bold text-lg shadow-lg transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white animate-pulse hover:animate-none"
+                className="w-full h-12 rounded-xl font-bold text-base shadow-lg transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white animate-pulse hover:animate-none"
               >
-                <Heart className="mr-2 h-6 w-6" />
+                <Heart className="mr-2 h-5 w-5" />
                 💕 We're Meeting!
               </Button>
             ) : (
               // ✅ MAN - Disabled button with explanation
-              <div className="w-full space-y-2">
+              <div className="w-full space-y-1">
                 <Button
                   disabled
-                  className="w-full h-12 rounded-xl font-bold text-lg shadow-lg bg-gradient-to-r from-gray-600 to-gray-700 text-gray-400 cursor-not-allowed opacity-70"
+                  className="w-full h-11 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-gray-600 to-gray-700 text-gray-400 cursor-not-allowed opacity-70"
                 >
                   <Heart className="mr-2 h-5 w-5" />
                   💚 We're Meeting
                 </Button>
-                <p className="text-center text-sm text-white/60 px-4">
-                  ✨ <span className="text-pink-400">She decides</span> when you meet!<br/>
-                  <span className="text-white/40 text-xs">Impress her in the chat 💬</span>
+                <p className="text-center text-xs text-white/60 px-4">
+                  ✨ <span className="text-pink-400">She decides</span> when you meet!
                 </p>
               </div>
             )
           )}
           
-          {/* ✅ FIXED: Pass Button - Shows correct state WITH DYNAMIC COUNTDOWN */}
-          <Button
-            onClick={handlePassClick}
-            disabled={!isPremium && passesLeft === 0}
-            variant="outline"
-            className={`w-full h-12 rounded-xl font-bold text-lg transition-all ${
-              isPremium
-                ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-400/50 text-amber-400 hover:border-amber-400 hover:bg-amber-500/20'
-                : passesLeft > 0
-                ? 'bg-transparent hover:bg-[#4ade80]/10 border-2 border-[#4ade80]/50 text-[#4ade80] hover:border-[#4ade80]'
-                : 'bg-white/5 border-2 border-white/20 text-white/40 cursor-not-allowed'
-            }`}
-          >
-            {isPremium ? (
-              <>
-                <Crown className="mr-2 h-6 w-6" />
-                Use Like (Unlimited)
-              </>
-            ) : passesLeft > 0 ? (
-              <>
-                <Check className="mr-2 h-6 w-6" />
-                Use Like ({passesLeft} left)
-              </>
-            ) : (
-              <div className="flex flex-col items-center">
-                <div className="flex items-center">
-                  <Clock className="mr-2 h-5 w-5" />
-                  Next Like Available In
-                </div>
-                <div className="text-2xl font-mono mt-1">
-                  {timeUntilNextPass > 0 ? formatPassResetTime(timeUntilNextPass) : 'Refreshing...'}
-                </div>
-              </div>
-            )}
-          </Button>
+          {/* ✅ Pass/Not Interested Button */}
+          {isPremium || passesLeft > 0 ? (
+            // ✅ Has passes - "Use Pass" button
+            <Button
+              onClick={handlePassClick}
+              variant="outline"
+              className={`w-full h-11 rounded-xl font-bold text-base transition-all ${
+                isPremium
+                  ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-400/50 text-amber-400 hover:border-amber-400 hover:bg-amber-500/20'
+                  : 'bg-transparent hover:bg-[#4ade80]/10 border-2 border-[#4ade80]/50 text-[#4ade80] hover:border-[#4ade80]'
+              }`}
+            >
+              {isPremium ? (
+                <>
+                  <Crown className="mr-2 h-5 w-5" />
+                  Use Pass (Unlimited)
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-5 w-5" />
+                  Use Pass ({passesLeft} left)
+                </>
+              )}
+            </Button>
+          ) : (
+            // ✅ No passes - "Not Interested" button to exit match
+            <Button
+              onClick={handleNotInterested}
+              variant="outline"
+              className="w-full h-11 rounded-xl font-bold text-base transition-all bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-400/50 text-red-400 hover:border-red-400 hover:bg-red-500/20"
+            >
+              <XCircle className="mr-2 h-5 w-5" />
+              🚫 Not Interested
+            </Button>
+          )}
+          
+          {/* ✅ Next Pass Timer - Only show when no passes */}
+          {!isPremium && passesLeft === 0 && timeUntilNextPass > 0 && (
+            <div className="text-center py-2 px-4 bg-white/5 rounded-xl border border-white/10">
+              <p className="text-white/50 text-xs mb-1">Next Pass Available In</p>
+              <p className="text-[#4ade80] text-lg font-mono font-bold">
+                {formatPassResetTime(timeUntilNextPass)}
+              </p>
+            </div>
+          )}
 
           {/* ✅ Skip Timer Button */}
           {onSkipTimer && (
@@ -806,7 +828,7 @@ useEffect(() => {
                     👑
                   </motion.div>
                   <h2 className="text-3xl font-black text-white mb-2">
-                    Out of Likes!
+                    Out of Passes!
                   </h2>
                   <p className="text-gray-300 text-base leading-relaxed">
                     Upgrade to <span className="text-amber-400 font-bold">Premium</span> for unlimited passes!
@@ -816,7 +838,7 @@ useEffect(() => {
                 <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-2xl p-6 mb-6 border border-amber-500/30">
                   <div className="space-y-3">
                     {[
-                      'Unlimited likes daily',
+                      'Unlimited passes daily',
                       'Priority matching',
                       'See who liked you',
                       'Unlimited rewinds'
@@ -874,7 +896,7 @@ useEffect(() => {
                       className="w-full h-16 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-xl rounded-xl shadow-2xl relative overflow-hidden group"
                     >
                       <Sparkles className="mr-3 h-6 w-6" />
-                      Buy 1 Like - $2.99
+                      Buy 1 Pass - $2.99
                       <motion.div
                         className="absolute inset-0 bg-white/20"
                         initial={{ x: "-100%" }}
@@ -898,7 +920,7 @@ useEffect(() => {
                 {timeUntilNextPass > 0 && (
                   <div className="text-center mt-6 p-4 bg-gradient-to-r from-[#4ade80]/10 to-[#22c55e]/10 rounded-xl border border-[#4ade80]/30">
                     <p className="text-gray-400 text-sm mb-2">
-                      Next free like available in:
+                      Next free pass available in:
                     </p>
                     <div className="text-3xl font-mono font-bold text-[#4ade80]">
                       {formatPassResetTime(timeUntilNextPass)}

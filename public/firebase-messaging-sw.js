@@ -27,9 +27,16 @@ messaging.onBackgroundMessage((payload) => {
   console.log('🦎 [SW] Background message received:', payload);
 
   const notificationTitle = payload.notification?.title || payload.data?.title || '🦎 I4IGUANA';
+  
+  // ✅ FIX: Use sender's photo as icon if available, otherwise use default
+  const senderPhoto = payload.data?.fromUserPhoto;
+  const notificationIcon = senderPhoto && senderPhoto.startsWith('http') 
+    ? senderPhoto 
+    : '/notification-icon-192.png';
+  
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.body || 'You have a new notification!',
-    icon: '/notification-icon-192.png',  // ✅ Our cute iguana icon
+    icon: notificationIcon,  // ✅ Use sender's photo!
     badge: '/notification-badge-72.png', // Small badge icon
     tag: payload.data?.tag || 'i4iguana-notification',
     data: payload.data || {},

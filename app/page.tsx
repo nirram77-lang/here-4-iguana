@@ -582,6 +582,13 @@ export default function Page() {
         
         if (hasCompletedOnboarding || hasBasicProfile) {
           console.log('✅ Existing user → HOME')
+          
+          // ✅ CRITICAL FIX: Load gender from profile for "She Decides" logic!
+          if (profile?.gender) {
+            console.log(`👤 Loading gender from profile: ${profile.gender}`)
+            setOnboardingData(prev => ({ ...prev, gender: profile.gender }))
+          }
+          
           setCurrentScreen("home")
         } else {
           console.log('🆕 New user → WELCOME ONBOARDING')
@@ -1242,13 +1249,14 @@ export default function Page() {
         const currentUserProfile = await getUserProfile(user.uid)
         
         if (currentUserProfile) {
+          // ✅ FIX: Profile photo FIRST (photos[0]), Google photo as FALLBACK
           await createMatchNotifications(
             user.uid,
             matchUser.uid,
             currentUserProfile.name || user.displayName || 'Someone',
             matchUser.name || matchUser.displayName || 'Someone',
-            currentUserProfile.photoURL || currentUserProfile.photos?.[currentUserProfile.photos.length - 1],
-            matchUser.photoURL || matchUser.photos?.[matchUser.photos.length - 1]
+            currentUserProfile.photos?.[0] || currentUserProfile.photoURL || '',
+            matchUser.photos?.[0] || matchUser.photoURL || ''
           )
           console.log('✅ Match notifications sent to both users')
         } else {
@@ -1366,6 +1374,61 @@ export default function Page() {
     setShowMatchEnded(true)
     
     console.log('🔙 Showing Match Ended screen')
+  }
+
+  // ✅ NEW: Handle "Not Interested" - Exit match without using pass
+  // Used when user has no passes but wants to exit the match
+  const handleNotInterested = async () => {
+    console.log('🚫 Not Interested clicked - exiting match without pass')
+    
+    // ✅ CRITICAL: Save match to history for 12-hour cooldown
+    // This prevents them from seeing each other again immediately
+    if (user && matchedUser) {
+      try {
+        console.log('📝 Saving match to history for cooldown...')
+        
+        // Create a match record for cooldown (even though they didn't really match)
+        const matchId = [user.uid, matchedUser.uid].sort().join('_')
+        const { doc, setDoc, Timestamp } = await import('firebase/firestore')
+        
+        await setDoc(doc(db, 'matches', matchId), {
+          users: [user.uid, matchedUser.uid],
+          timestamp: Timestamp.now(),
+          status: 'declined',  // Mark as declined
+          declinedBy: user.uid,
+          declinedAt: Timestamp.now()
+        }, { merge: true })
+        
+        console.log('✅ Match saved to history for 12h cooldown')
+        
+        // ✅ Clear active match from Firestore
+        await clearActiveMatch(user.uid, matchedUser.uid)
+        console.log('✅ Active match cleared')
+        
+        // ✅ Send notification to the other user that match ended
+        // (Optional - we can add this later if needed)
+        
+      } catch (error) {
+        console.error('❌ Error saving match history:', error)
+      }
+    }
+    
+    // Return to home screen
+    setIsLockedInMatch(false)
+    
+    // Clear match sound flag
+    if (matchedUser) {
+      const storageKey = `match_sound_played_${matchedUser.uid}`
+      sessionStorage.removeItem(storageKey)
+    }
+    
+    setMatchedUser(null)
+    setMatchExpiresAt(null)
+    
+    // Show Match Ended screen
+    setShowMatchEnded(true)
+    
+    console.log('🔙 Returning to home - Not Interested')
   }
 
   // ✅ "She Decides" - Handle "We're Meeting!" button
@@ -1635,6 +1698,52 @@ export default function Page() {
         setCurrentScreen("match")
       }
     } else if (notification.type === 'message' && notification.chatId) {
+      // ✅ FIX: Load the sender's profile before opening chat
+      try {
+        if (notification.fromUserId) {
+          console.log('📧 Loading sender profile for chat...')
+          const senderProfile = await getUserProfile(notification.fromUserId)
+          
+          if (senderProfile) {
+            // ✅ Set sender as selected match for chat
+            setSelectedMatch({
+              uid: notification.fromUserId,
+              name: senderProfile.name || senderProfile.displayName || 'User',
+              displayName: senderProfile.name || senderProfile.displayName || 'User',
+              // ✅ CRITICAL: Profile photo FIRST, Google photo as FALLBACK
+              photos: senderProfile.photos || [],
+              photoURL: senderProfile.photoURL || '',
+              distance: 'nearby'
+            })
+            console.log('✅ Sender profile loaded:', senderProfile.name, 'Photo:', senderProfile.photos?.[0])
+          } else {
+            // Fallback: use notification data
+            setSelectedMatch({
+              uid: notification.fromUserId,
+              name: notification.fromUserName || 'User',
+              displayName: notification.fromUserName || 'User',
+              photos: notification.fromUserPhoto ? [notification.fromUserPhoto] : [],
+              photoURL: notification.fromUserPhoto || '',
+              distance: 'nearby'
+            })
+            console.warn('⚠️ Using notification data for chat (profile not found)')
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error loading sender profile:', error)
+        // Fallback to notification data
+        if (notification.fromUserId) {
+          setSelectedMatch({
+            uid: notification.fromUserId,
+            name: notification.fromUserName || 'User',
+            displayName: notification.fromUserName || 'User',
+            photos: notification.fromUserPhoto ? [notification.fromUserPhoto] : [],
+            photoURL: notification.fromUserPhoto || '',
+            distance: 'nearby'
+          })
+        }
+      }
+      
       setCurrentScreen("chat")
     }
   }
@@ -1788,6 +1897,7 @@ export default function Page() {
           onWeAreMeetingModalClose={handleWeAreMeetingModalClose}  // ✅ NEW: Close modal → return to home
           passesLeft={passesLeft}
           onPass={handlePass}
+          onNotInterested={handleNotInterested}  // ✅ NEW: Exit match without using pass
           isPremium={isPremium}
           timeRemaining={timeRemaining}
           onNavigate={handleNavigate}
@@ -2123,15 +2233,46 @@ export default function Page() {
             setShowWeAreMeeting(true)
           } else if (inAppNotification.chatId && inAppNotification.fromUserId) {
             console.log('💬 Opening chat from notification:', inAppNotification.chatId)
-            // ✅ Set selectedMatch with the sender's info
-            setSelectedMatch({
-              uid: inAppNotification.fromUserId,
-              name: inAppNotification.senderName || 'User',
-              displayName: inAppNotification.senderName || 'User',
-              photos: inAppNotification.senderPhoto ? [inAppNotification.senderPhoto] : [],
-              photoURL: inAppNotification.senderPhoto,
-              distance: 'nearby'
-            } as any)
+            
+            // ✅ FIX: Load FULL profile from Firestore to get correct photo
+            try {
+              const senderProfile = await getUserProfile(inAppNotification.fromUserId)
+              
+              if (senderProfile) {
+                setSelectedMatch({
+                  uid: inAppNotification.fromUserId,
+                  name: senderProfile.name || senderProfile.displayName || 'User',
+                  displayName: senderProfile.name || senderProfile.displayName || 'User',
+                  // ✅ CRITICAL: Profile photo FIRST!
+                  photos: senderProfile.photos || [],
+                  photoURL: senderProfile.photoURL || '',
+                  distance: 'nearby'
+                } as any)
+                console.log('✅ Loaded sender profile for chat:', senderProfile.name)
+              } else {
+                // Fallback to notification data
+                setSelectedMatch({
+                  uid: inAppNotification.fromUserId,
+                  name: inAppNotification.senderName || 'User',
+                  displayName: inAppNotification.senderName || 'User',
+                  photos: inAppNotification.senderPhoto ? [inAppNotification.senderPhoto] : [],
+                  photoURL: inAppNotification.senderPhoto || '',
+                  distance: 'nearby'
+                } as any)
+              }
+            } catch (error) {
+              console.error('❌ Error loading sender profile:', error)
+              // Fallback
+              setSelectedMatch({
+                uid: inAppNotification.fromUserId,
+                name: inAppNotification.senderName || 'User',
+                displayName: inAppNotification.senderName || 'User',
+                photos: inAppNotification.senderPhoto ? [inAppNotification.senderPhoto] : [],
+                photoURL: inAppNotification.senderPhoto || '',
+                distance: 'nearby'
+              } as any)
+            }
+            
             setCurrentScreen('chat')
           } else if (inAppNotification.type === 'match') {
             setCurrentScreen('match')

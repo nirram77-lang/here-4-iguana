@@ -34,13 +34,42 @@ const ACTIVE_COUPONS: CouponConfig[] = [
     passCount: 1,
     description: '🎁 Bonus Pass - 1 Extra Swipe!'
   },
-  // Add more coupons as needed:
-  // {
-  //   code: 'LAUNCH2026',
-  //   type: 'premium',
-  //   durationDays: 30,
-  //   description: '🚀 Launch Special - 30 Days Premium!'
-  // },
+  // ═══════════════════════════════════════════════════════════
+  // 🎫 PILOT PASS COUPONS (1 Pass, 2 Days, Single Use)
+  // ═══════════════════════════════════════════════════════════
+  { code: 'PILOT-PASS-01', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-02', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-03', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-04', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-05', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-06', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-07', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-08', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-09', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-10', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-11', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-12', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-13', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-14', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  { code: 'PILOT-PASS-15', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
+  // ═══════════════════════════════════════════════════════════
+  // 💎 PILOT PREMIUM COUPONS (2 Days Premium, Single Use)
+  // ═══════════════════════════════════════════════════════════
+  { code: 'PILOT-VIP-01', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-02', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-03', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-04', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-05', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-06', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-07', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-08', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-09', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-10', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-11', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-12', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-13', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-14', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
+  { code: 'PILOT-VIP-15', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
 ]
 
 // ===================================

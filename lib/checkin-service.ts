@@ -22,6 +22,9 @@ export interface CheckInData {
 
 const CHECK_IN_DURATION = 4 * 60 * 60 * 1000  // 4 hours in milliseconds
 
+// ✅ NEW: Fixed 2km radius for all venues
+const CHECK_IN_RADIUS = 2000  // 2 kilometers in meters
+
 /**
  * Check in user to venue
  */
@@ -30,7 +33,7 @@ export async function performCheckIn(
   venueId: string,
   userLat: number,
   userLng: number,
-  gpsAccuracy?: number  // ✅ NEW: Optional GPS accuracy in meters
+  gpsAccuracy?: number
 ): Promise<CheckInData> {
   try {
     console.log('🔍 Performing check-in:', { userId, venueId, userLat, userLng, gpsAccuracy })
@@ -49,25 +52,26 @@ export async function performCheckIn(
       venue.location.longitude
     )
     
-    // ✅ FIXED: Add grace margin for GPS inaccuracy
-    // GPS accuracy can be 10-100m indoors, so we add a buffer
+    // ✅ FIXED: Use fixed 2km radius instead of venue.radius
+    // QR Code = identifies WHICH venue (unique ID)
+    // GPS = verifies user is IN THE AREA (not at home)
     const GPS_GRACE_MARGIN = 100  // 100m grace for GPS inaccuracy
-    const effectiveRadius = venue.radius + GPS_GRACE_MARGIN + (gpsAccuracy || 0)
+    const effectiveRadius = CHECK_IN_RADIUS + GPS_GRACE_MARGIN + (gpsAccuracy || 0)
     
     console.log(`📍 Location check:`)
     console.log(`   - User location: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`)
     console.log(`   - Venue location: ${venue.location.latitude.toFixed(6)}, ${venue.location.longitude.toFixed(6)}`)
     console.log(`   - Distance: ${distance.toFixed(0)}m`)
-    console.log(`   - Venue radius: ${venue.radius}m`)
+    console.log(`   - Check-in radius: ${CHECK_IN_RADIUS}m (2km)`)
     console.log(`   - GPS accuracy: ${gpsAccuracy || 'unknown'}m`)
-    console.log(`   - Effective radius (with grace): ${effectiveRadius}m`)
+    console.log(`   - Effective radius (with grace): ${effectiveRadius.toFixed(0)}m`)
     
     if (distance > effectiveRadius) {
-      console.log(`❌ Too far from venue! ${distance.toFixed(0)}m > ${effectiveRadius}m`)
-      throw new Error(`You must be within ${venue.radius}m of ${venue.name} to check in (you are ${Math.round(distance)}m away)`)
+      console.log(`❌ Too far from venue! ${distance.toFixed(0)}m > ${effectiveRadius.toFixed(0)}m`)
+      throw new Error(`You must be within 2km of ${venue.name} to check in (you are ${(distance/1000).toFixed(1)}km away)`)
     }
     
-    console.log(`✅ Distance OK: ${distance.toFixed(0)}m <= ${effectiveRadius}m`)
+    console.log(`✅ Distance OK: ${distance.toFixed(0)}m <= ${effectiveRadius.toFixed(0)}m`)
     
     // Create check-in data
     const now = Timestamp.now()
@@ -227,14 +231,15 @@ export async function validateVenueProximity(
       venue.location.longitude
     )
     
-    const valid = distance <= venue.radius
+    // ✅ FIXED: Use 2km radius
+    const valid = distance <= CHECK_IN_RADIUS
     
     return {
       valid,
       distance,
       message: valid 
         ? 'You are within check-in range' 
-        : `You must be within ${venue.radius}m to check in (currently ${Math.round(distance)}m away)`
+        : `You must be within 2km to check in (currently ${(distance/1000).toFixed(1)}km away)`
     }
   } catch (error) {
     console.error('❌ Error validating proximity:', error)

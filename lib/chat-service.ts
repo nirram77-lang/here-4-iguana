@@ -56,8 +56,9 @@ export async function sendMessage(
       const senderDoc = await getDoc(doc(db, 'users', senderId))
       if (senderDoc.exists()) {
         const senderData = senderDoc.data()
+        // ✅ FIX: Profile photo FIRST, Google photo as FALLBACK
         const senderName = senderData.name || senderData.displayName || 'Someone'
-        const senderPhoto = senderData.photoURL || senderData.photos?.[0]
+        const senderPhoto = senderData.photos?.[0] || senderData.photoURL || ''
         
         // Create notification
         const notificationsRef = collection(db, 'users', receiverId, 'notifications')

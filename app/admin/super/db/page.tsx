@@ -151,7 +151,13 @@ export default function DatabaseManager() {
           isAvailable: data.isAvailable ?? true,
           isPremium: data.isPremium || false,
           deleted: data.deleted || false,
-          isDummy: data.isDummy || false,
+          // ✅ FIX: Detect dummy users by multiple criteria
+          isDummy: data.isDummy === true || 
+                   (data.name && data.name.toLowerCase().includes('dummy')) ||
+                   (data.name && data.name.toLowerCase().includes('test')) ||
+                   (data.email && data.email.toLowerCase().includes('dummy')) ||
+                   (data.email && data.email.toLowerCase().includes('test@')) ||
+                   (!data.onboardingComplete && !data.photos?.length && !data.name),
           createdAt: data.createdAt,
           swipedRight: data.swipedRight || [],
           swipedLeft: data.swipedLeft || [],
@@ -551,11 +557,13 @@ export default function DatabaseManager() {
   })
 
   // Stats
+  // ✅ FIX: Real users = completed onboarding + have photos + not dummy + not deleted
   const stats = {
     totalUsers: users.length,
-    realUsers: users.filter(u => !u.isDummy && !u.deleted).length,
+    realUsers: users.filter(u => u.onboardingComplete && u.photos?.length > 0 && !u.isDummy && !u.deleted).length,
     dummyUsers: users.filter(u => u.isDummy).length,
     deletedUsers: users.filter(u => u.deleted).length,
+    incompleteUsers: users.filter(u => !u.onboardingComplete && !u.isDummy && !u.deleted).length,
     checkedIn: users.filter(u => u.checkedInVenue).length,
     premium: users.filter(u => u.isPremium).length,
     totalMatches: matches.length,
@@ -613,8 +621,8 @@ export default function DatabaseManager() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
           <StatCard icon={<Users />} label="Total" value={stats.totalUsers} />
-          <StatCard icon={<UserCheck />} label="Real" value={stats.realUsers} color="green" />
-          <StatCard icon={<UserX />} label="Dummy" value={stats.dummyUsers} color="yellow" />
+          <StatCard icon={<UserCheck />} label="Complete" value={stats.realUsers} color="green" />
+          <StatCard icon={<UserX />} label="Incomplete" value={stats.incompleteUsers} color="yellow" />
           <StatCard icon={<Trash2 />} label="Deleted" value={stats.deletedUsers} color="red" />
           <StatCard icon={<MapPin />} label="Checked In" value={stats.checkedIn} color="blue" />
           <StatCard icon={<Shield />} label="Premium" value={stats.premium} color="purple" />
