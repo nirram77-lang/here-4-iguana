@@ -1075,6 +1075,17 @@ export const markMatchAsSuccessful = async (
       completedAt: Timestamp.now()
     }, { merge: true })
     
+    // ✅ CRITICAL FIX: Also save to 'matches' collection for 12-hour cooldown!
+    // The getMatchesOnCooldown() function looks in 'matches' collection
+    await setDoc(doc(db, 'matches', matchId), {
+      users: [userId, matchedUserId].sort(),
+      status: 'successful',
+      timestamp: Timestamp.now(),
+      completedAt: Timestamp.now(),
+      meetingConfirmedBy: userId
+    }, { merge: true })
+    console.log(`✅ Match saved to 'matches' collection for 12h cooldown`)
+    
     // ✅ NEW: Send notification to the OTHER user!
     await sendWeAreMeetingNotification(userId, matchedUserId)
     

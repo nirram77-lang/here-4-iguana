@@ -47,7 +47,7 @@ import {
   recordSwipe
 } from "@/lib/firestore-service"
 import { getCurrentLocation } from "@/lib/location-service"
-import { CheckInData, performCheckOut, getUserCheckInStatus } from "@/lib/checkin-service"
+import { CheckInData, performCheckOut, getUserCheckInStatus, verifyUserStillAtVenue } from "@/lib/checkin-service"
 import { getUserPassData, usePass, recordMatch } from "@/lib/pass-system"
 import CouponModal from "@/components/coupon-modal"
 import { 
@@ -1053,6 +1053,41 @@ export default function Page() {
       const location = await getCurrentLocation()
       console.log('📍 User location:', location)
       
+      // ✅ NEW: Verify user is still at venue before searching
+      // Auto-checkout if user left the area (more than 2km away)
+      if (isCheckedIn && checkInData) {
+        console.log('🔍 Verifying user still at venue...')
+        const proximityCheck = await verifyUserStillAtVenue(
+          user.uid,
+          location.latitude,
+          location.longitude
+        )
+        
+        if (!proximityCheck.stillAtVenue) {
+          console.log(`🚪 User left ${proximityCheck.venueName} - auto-checked out`)
+          
+          // Update local state
+          setIsCheckedIn(false)
+          setCheckInData(null)
+          setShowCheckInBadge(false)
+          
+          // Show notification and redirect to scan screen
+          setInAppNotification({
+            isVisible: true,
+            message: `You left ${proximityCheck.venueName}. Scan a QR code at your new venue to continue matching!`,
+            type: 'info'
+          })
+          
+          // Show QR scan screen after a brief delay
+          setTimeout(() => {
+            setCurrentScreen("scan")
+          }, 2000)
+          
+          setLoading(false)
+          return  // Don't continue with search
+        }
+      }
+      
       // Update user's location in Firestore
       await updateUserLocation(user.uid, location.latitude, location.longitude, location.geohash)
       
@@ -1801,7 +1836,9 @@ export default function Page() {
           onNext={(data) => {
             setOnboardingData({ ...onboardingData, ...data })
             setCurrentScreen("onboarding-age")
-          }} 
+          }}
+          onBack={() => setCurrentScreen("onboarding-name")}
+          initialGender={onboardingData.gender}
         />
       )}
 
@@ -1814,6 +1851,9 @@ export default function Page() {
             setCurrentScreen("onboarding-hobbies")
           }}
           onBack={() => setCurrentScreen("onboarding-gender")}
+          initialAge={onboardingData.age}
+          initialAgeRange={onboardingData.ageRange}
+          initialMaxDistance={onboardingData.maxDistance}
         />
       )}
       
@@ -1824,6 +1864,7 @@ export default function Page() {
             setCurrentScreen("onboarding-lifestyle")
           }}
           onBack={() => setCurrentScreen("onboarding-age")}
+          initialHobbies={onboardingData.hobbies}
         />
       )}
       
@@ -1835,6 +1876,14 @@ export default function Page() {
             setCurrentScreen("onboarding-photos")
           }}
           onBack={() => setCurrentScreen("onboarding-hobbies")}
+          initialDrinking={onboardingData.drinking as 'never' | 'social' | 'regular'}
+          initialSmoking={onboardingData.smoking as 'no' | 'social' | 'yes'}
+          initialHeight={onboardingData.height}
+          initialRelationshipType={onboardingData.relationshipType as 'relationship' | 'casual' | 'friends'}
+          initialEducation={onboardingData.education}
+          initialCity={onboardingData.city}
+          initialOccupation={onboardingData.occupation}
+          initialLanguages={onboardingData.languages}
         />
       )}
       
@@ -1842,6 +1891,8 @@ export default function Page() {
         <OnboardingPhotos
           onComplete={handleOnboardingComplete}
           onBack={() => setCurrentScreen("onboarding-lifestyle")}
+          initialPhotos={onboardingData.photos}
+          initialBio={onboardingData.bio}
         />
       )}
       
@@ -2115,8 +2166,28 @@ export default function Page() {
       {/* ✅ NEW: "We're Meeting!" Modal - shown when partner clicks the button */}
       <WeAreMeetingModal
         isOpen={showWeAreMeeting}
-        onClose={() => {
+        onClose={async () => {
           setShowWeAreMeeting(false)
+          
+          // ✅ CRITICAL FIX: Use a pass when match is successful!
+          // This prevents the user from getting another free match immediately
+          if (user && userPhoneNumber && !isPremium && passesLeft > 0) {
+            console.log('🎫 Using pass after successful match...')
+            const newPassesLeft = await usePass(user.uid)
+            setPassesLeft(newPassesLeft)
+            console.log(`✅ Pass used after "We're Meeting!". Remaining: ${newPassesLeft}`)
+            
+            // ✅ Lock phone identity for 2 hours if out of passes
+            if (newPassesLeft === 0) {
+              await lockPhoneIdentity(userPhoneNumber, 2)
+              const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000)
+              setPhoneLockExpiresAt(expiresAt)
+              setPassResetTime(expiresAt)
+              setIsPhoneLocked(true)
+              console.log(`🔒 Phone locked until: ${expiresAt.toLocaleString()}`)
+            }
+          }
+          
           // Clear match state
           setIsLockedInMatch(false)
           setMatchedUser(null)

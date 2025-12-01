@@ -8,22 +8,31 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, Plus, Loader2, ImagePlus, Camera } from "lucide-react"
 
 interface OnboardingPhotosProps {
-  onComplete: (data: { photos: string[], bio: string }) => void  // ✅ Removed name - already saved!
+  onComplete: (data: { photos: string[], bio: string }) => void
   onBack: () => void
+  // ✅ NEW: Initial values to preserve on back navigation
+  initialPhotos?: string[]
+  initialBio?: string
 }
 
-export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhotosProps) {
-  const [photos, setPhotos] = useState<string[]>([])
-  const [bio, setBio] = useState("")  // ✅ Removed name state
+export default function OnboardingPhotos({ 
+  onComplete, 
+  onBack,
+  initialPhotos = [],  // ✅ FIX: Use initial values
+  initialBio = ''      // ✅ FIX: Use initial values
+}: OnboardingPhotosProps) {
+  // ✅ FIX: Initialize with existing data for back navigation
+  const [photos, setPhotos] = useState<string[]>(initialPhotos)
+  const [bio, setBio] = useState(initialBio)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  // ✅ NEW: Drag & Drop state
+  // Drag & Drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
-  // ✅ FIX: Process multiple photos at once
+  // Process multiple photos at once
   const processImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -57,7 +66,7 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
     })
   }
 
-  // ✅ FIX: Handle multiple photo uploads at once
+  // Handle multiple photo uploads at once
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
@@ -98,7 +107,7 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
     setPhotos(photos.filter((_, i) => i !== index))
   }
 
-  // ✅ NEW: Drag & Drop handlers
+  // Drag & Drop handlers
   const handleDragStart = (index: number) => {
     setDraggedIndex(index)
     console.log('🎯 Started dragging photo:', index + 1)
@@ -124,7 +133,7 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
 
     console.log(`📦 Dropping photo ${draggedIndex + 1} at position ${dropIndex + 1}`)
 
-    // ✅ Reorder photos array
+    // Reorder photos array
     const newPhotos = [...photos]
     const [draggedPhoto] = newPhotos.splice(draggedIndex, 1)
     newPhotos.splice(dropIndex, 0, draggedPhoto)
@@ -137,7 +146,6 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
   }
 
   const handleComplete = () => {
-    // ✅ Name already saved in Name Entry screen!
     if (photos.length >= 2 && bio.trim()) {
       onComplete({ photos, bio })
     }
@@ -169,7 +177,7 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
         ))}
       </div>
 
-      {/* ✅ FIX: Allow multiple file selection */}
+      {/* Allow multiple file selection */}
       <input
         ref={fileInputRef}
         type="file"
@@ -240,7 +248,7 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
             </motion.div>
           )}
 
-          {/* Photo Grid - ✅ NOW WITH DRAG & DROP! */}
+          {/* Photo Grid - WITH DRAG & DROP! */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <AnimatePresence>
               {photos.map((photo, index) => (
@@ -343,7 +351,7 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
             </motion.div>
           )}
           
-          {/* ✅ NEW: Hint for drag and drop */}
+          {/* Hint for drag and drop */}
           {photos.length >= 2 && !uploading && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -355,8 +363,6 @@ export default function OnboardingPhotos({ onComplete, onBack }: OnboardingPhoto
               </p>
             </motion.div>
           )}
-
-          {/* ✅ Name field removed - already entered in Name Entry screen! */}
 
           {/* Bio Input */}
           <div className="mb-6">

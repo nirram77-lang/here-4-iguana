@@ -279,3 +279,65 @@ export function formatTimeRemaining(seconds: number): string {
   
   return `${minutes}m remaining`
 }
+
+/**
+ * ✅ NEW: Verify user is still within venue proximity
+ * Called before each search to auto-checkout users who left the area
+ * Returns true if still at venue, false if auto-checked-out
+ */
+export async function verifyUserStillAtVenue(
+  userId: string,
+  userLat: number,
+  userLng: number
+): Promise<{
+  stillAtVenue: boolean
+  checkInData: CheckInData | null
+  distance?: number
+  venueName?: string
+}> {
+  try {
+    // Get user's current check-in
+    const { isCheckedIn, checkInData } = await getUserCheckInStatus(userId)
+    
+    if (!isCheckedIn || !checkInData) {
+      console.log('ℹ️ User not checked in - no verification needed')
+      return { stillAtVenue: false, checkInData: null }
+    }
+    
+    // Calculate distance from venue
+    const distance = calculateDistance(
+      userLat,
+      userLng,
+      checkInData.location.latitude,
+      checkInData.location.longitude
+    )
+    
+    console.log(`📍 Proximity check: ${distance.toFixed(0)}m from ${checkInData.venueDisplayName}`)
+    
+    // If user is more than 2km away, auto-checkout
+    if (distance > CHECK_IN_RADIUS) {
+      console.log(`🚪 User left venue area (${(distance/1000).toFixed(1)}km away) - auto-checking out...`)
+      
+      await performCheckOut(userId, checkInData.venueId)
+      
+      return { 
+        stillAtVenue: false, 
+        checkInData: null,
+        distance,
+        venueName: checkInData.venueDisplayName
+      }
+    }
+    
+    console.log(`✅ User still at venue: ${checkInData.venueDisplayName}`)
+    return { 
+      stillAtVenue: true, 
+      checkInData,
+      distance 
+    }
+    
+  } catch (error) {
+    console.error('❌ Error verifying venue proximity:', error)
+    // On error, assume still at venue (don't break the UX)
+    return { stillAtVenue: true, checkInData: null }
+  }
+}

@@ -7,6 +7,8 @@ import { motion } from "framer-motion"
 interface OnboardingHobbiesProps {
   onNext: (data: { hobbies: string[] }) => void
   onBack: () => void
+  // ✅ NEW: Initial hobbies to preserve on back navigation
+  initialHobbies?: string[]
 }
 
 const availableHobbies = [
@@ -19,8 +21,13 @@ const availableHobbies = [
   "😂 Stand-up Comedy", "🏖️ Beach Bars", "🍕 Food Tours", "🎬 Movies"
 ]
 
-export default function OnboardingHobbies({ onNext, onBack }: OnboardingHobbiesProps) {
-  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([])
+export default function OnboardingHobbies({ 
+  onNext, 
+  onBack,
+  initialHobbies = []  // ✅ FIX: Default to empty array, use initial if provided
+}: OnboardingHobbiesProps) {
+  // ✅ FIX: Use initialHobbies to preserve selections on back navigation
+  const [selectedHobbies, setSelectedHobbies] = useState<string[]>(initialHobbies)
 
   const toggleHobby = (hobby: string) => {
     if (selectedHobbies.includes(hobby)) {

@@ -3,14 +3,25 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
+import { ChevronLeft } from "lucide-react"
 
 interface OnboardingGenderProps {
   onNext: (data: { gender: 'male' | 'female', lookingFor: 'male' | 'female' | 'both' }) => void
+  onBack?: () => void  // ✅ NEW: Back button support
+  // ✅ NEW: Initial data to preserve selections on back navigation
+  initialGender?: 'male' | 'female' | null
+  initialLookingFor?: 'male' | 'female' | 'both' | null
 }
 
-export default function OnboardingGender({ onNext }: OnboardingGenderProps) {
-  const [myGender, setMyGender] = useState<'male' | 'female' | null>(null)
-  const [lookingFor, setLookingFor] = useState<'male' | 'female' | 'both' | null>(null)
+export default function OnboardingGender({ 
+  onNext, 
+  onBack,
+  initialGender = null,
+  initialLookingFor = null 
+}: OnboardingGenderProps) {
+  // ✅ FIX: Use initial values if provided (for back navigation)
+  const [myGender, setMyGender] = useState<'male' | 'female' | null>(initialGender)
+  const [lookingFor, setLookingFor] = useState<'male' | 'female' | 'both' | null>(initialLookingFor)
 
   const handleContinue = () => {
     if (myGender && lookingFor) {
@@ -41,6 +52,20 @@ export default function OnboardingGender({ onNext }: OnboardingGenderProps) {
           />
         ))}
       </div>
+
+      {/* ✅ NEW: Header with back button */}
+      {onBack && (
+        <div className="flex items-center p-4 relative z-10">
+          <Button
+            onClick={onBack}
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/10"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
         <div className="w-full max-w-md">

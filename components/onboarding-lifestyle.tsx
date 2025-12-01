@@ -105,33 +105,62 @@ interface OnboardingLifestyleProps {
     education: string
     city: string
     occupation: string
-    languages: string[]  // ✅ NEW: Languages array
+    languages: string[]
   }) => void
   onBack: () => void
+  // ✅ FIX: Initial values to preserve on back navigation
+  initialDrinking?: 'never' | 'social' | 'regular'
+  initialSmoking?: 'no' | 'social' | 'yes'
+  initialHeight?: string
+  initialRelationshipType?: 'relationship' | 'casual' | 'friends'
+  initialEducation?: string
+  initialCity?: string
+  initialOccupation?: string
+  initialLanguages?: string[]
 }
 
-export default function OnboardingLifestyle({ onNext, onBack }: OnboardingLifestyleProps) {
-  const [drinking, setDrinking] = useState<'never' | 'social' | 'regular'>('social')
-  const [smoking, setSmoking] = useState<'no' | 'social' | 'yes'>('no')
-  const [heightValue, setHeightValue] = useState(170)
-  const [heightUnit, setHeightUnit] = useState<'cm' | 'inch'>('cm')
-  const [relationshipType, setRelationshipType] = useState<'relationship' | 'casual' | 'friends'>('relationship')
+export default function OnboardingLifestyle({ 
+  onNext, 
+  onBack,
+  // ✅ FIX: Initial values for back navigation preservation
+  initialDrinking = 'social',
+  initialSmoking = 'no',
+  initialHeight = '',
+  initialRelationshipType = 'relationship',
+  initialEducation = '',
+  initialCity = '',
+  initialOccupation = '',
+  initialLanguages = ['he']
+}: OnboardingLifestyleProps) {
+  // ✅ FIX: Helper to parse height string to number
+  const parseHeightToNumber = (h: string): number => {
+    if (!h) return 170
+    const num = parseInt(h.replace(/[^\d]/g, ''))
+    return isNaN(num) ? 170 : num
+  }
+
+  // ✅ FIX: Use initial values for back navigation
+  const [drinking, setDrinking] = useState<'never' | 'social' | 'regular'>(initialDrinking)
+  const [smoking, setSmoking] = useState<'no' | 'social' | 'yes'>(initialSmoking)
+  const [heightValue, setHeightValue] = useState(parseHeightToNumber(initialHeight))
+  const [heightUnit, setHeightUnit] = useState<'cm' | 'inch'>(initialHeight?.includes('"') ? 'inch' : 'cm')
+  const [relationshipType, setRelationshipType] = useState<'relationship' | 'casual' | 'friends'>(initialRelationshipType)
   
-  // Education state
-  const [education, setEducation] = useState('')
-  const [educationSearch, setEducationSearch] = useState('')
+  // Education state - ✅ FIX: Use initial values
+  const [education, setEducation] = useState(initialEducation)
+  const [educationSearch, setEducationSearch] = useState(initialEducation)
   const [showEducationDropdown, setShowEducationDropdown] = useState(false)
   
-  // City state
-  const [city, setCity] = useState('')
-  const [citySearch, setCitySearch] = useState('')
+  // City state - ✅ FIX: Use initial values
+  const [city, setCity] = useState(initialCity)
+  const [citySearch, setCitySearch] = useState(initialCity)
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   
-  // Occupation state
-  const [occupation, setOccupation] = useState('')
+  // Occupation state - ✅ FIX: Use initial value
+  const [occupation, setOccupation] = useState(initialOccupation)
   
-  // ✅ NEW: Languages state - with Hebrew pre-selected
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['he'])
+  // Languages state - ✅ FIX: Use initial value
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(initialLanguages)
   
   // Filtered institutions for autocomplete
   const filteredInstitutions = useMemo(() => {

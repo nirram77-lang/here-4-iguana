@@ -9,9 +9,19 @@ import { ChevronLeft, Calendar } from "lucide-react"
 interface OnboardingAgeProps {
   onNext: (data: { age: number; ageRange: [number, number]; minDistance: number; maxDistance: number }) => void
   onBack: () => void
+  // ✅ NEW: Initial values to preserve on back navigation
+  initialAge?: number
+  initialAgeRange?: [number, number]
+  initialMaxDistance?: number
 }
 
-export default function OnboardingAge({ onNext, onBack }: OnboardingAgeProps) {
+export default function OnboardingAge({ 
+  onNext, 
+  onBack,
+  initialAge = 25,
+  initialAgeRange = [21, 35],
+  initialMaxDistance = 500
+}: OnboardingAgeProps) {
   // ✅ Calculate age from birth date
   const calculateAge = (birthDate: Date): number => {
     const today = new Date()
@@ -25,18 +35,19 @@ export default function OnboardingAge({ onNext, onBack }: OnboardingAgeProps) {
     return age
   }
 
-  // ✅ Set default date to 25 years ago
-  const getDefaultDate = (): string => {
+  // ✅ FIX: Set default date based on initialAge
+  const getDefaultDate = (ageToUse: number): string => {
     const date = new Date()
-    date.setFullYear(date.getFullYear() - 25)
+    date.setFullYear(date.getFullYear() - ageToUse)
     return date.toISOString().split('T')[0]
   }
 
-  const [birthDate, setBirthDate] = useState(getDefaultDate())
-  const [age, setAge] = useState(25)
-  const [minAge, setMinAge] = useState(21)
-  const [maxAge, setMaxAge] = useState(35)
-  const [maxDistance, setMaxDistance] = useState(500)
+  // ✅ FIX: Use initial values for back navigation preservation
+  const [birthDate, setBirthDate] = useState(getDefaultDate(initialAge))
+  const [age, setAge] = useState(initialAge)
+  const [minAge, setMinAge] = useState(initialAgeRange[0])
+  const [maxAge, setMaxAge] = useState(initialAgeRange[1])
+  const [maxDistance, setMaxDistance] = useState(initialMaxDistance)
   const [error, setError] = useState("")
 
   const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
