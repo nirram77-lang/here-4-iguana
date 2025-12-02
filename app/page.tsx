@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Crown, Sparkles, X, Clock } from "lucide-react"
+import { Crown, Sparkles, X, Clock, Rocket, Star, Zap } from "lucide-react"
 import { onSnapshot, doc, collection, query, where, getDoc } from "firebase/firestore"  // ✅ NEW
 import { db } from "@/lib/firebase"  // ✅ NEW
 import SplashScreen from "@/components/splash-screen"
@@ -675,8 +675,24 @@ export default function Page() {
           console.log('🎉 NEW MATCH DETECTED via real-time listener!', {
             matchId: change.doc.id,
             users: matchData.users,
-            expiresAt: matchData.expiresAt?.toDate()
+            expiresAt: matchData.expiresAt?.toDate(),
+            status: matchData.status
           })
+          
+          // ✅ CRITICAL FIX: Don't navigate to match if status is 'successful'
+          // This means "We're Meeting" was already clicked and match is done
+          if (matchData.status === 'successful') {
+            console.log('⏭️ Match already successful - skipping navigation to match screen')
+            return
+          }
+          
+          // ✅ CRITICAL FIX: Don't navigate if we're already on home and match is not new
+          // Check if this match was already shown by looking at session storage
+          const matchShownKey = `match_shown_${change.doc.id}`
+          if (sessionStorage.getItem(matchShownKey)) {
+            console.log('⏭️ Match already shown in this session - skipping navigation')
+            return
+          }
           
           // Get the OTHER user (the one who's not me)
           const otherUserId = matchData.users.find((id: string) => id !== user.uid)
@@ -688,6 +704,9 @@ export default function Page() {
               
               if (otherUserProfile) {
                 console.log('✅ Loading match screen for:', otherUserProfile.name)
+                
+                // ✅ Mark this match as shown
+                sessionStorage.setItem(matchShownKey, 'true')
                 
                 // Set match state
                 setMatchedUser(otherUserProfile)
@@ -1557,6 +1576,40 @@ export default function Page() {
     }
   }
 
+  // ✅ NEW: Real Stripe Checkout
+  const handleStripeCheckout = async (plan: 'weekly' | 'monthly' | 'skip-timer') => {
+    if (!user) return
+    
+    try {
+      console.log(`💳 Creating Stripe checkout for plan: ${plan}`)
+      setLoading(true)
+      
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          plan: plan
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.url) {
+        console.log('✅ Redirecting to Stripe checkout:', data.url)
+        window.location.href = data.url
+      } else {
+        console.error('❌ No checkout URL returned:', data)
+        alert('❌ Failed to create checkout. Please try again.')
+      }
+    } catch (error) {
+      console.error('❌ Stripe checkout error:', error)
+      alert('❌ Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleBuyOnePass = async () => {
     if (!user) return
     
@@ -2037,7 +2090,7 @@ export default function Page() {
               className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none"
             >
               <div 
-                className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-3xl p-8 max-w-md w-full border border-amber-500/30 shadow-2xl overflow-hidden pointer-events-auto"
+                className="relative bg-gradient-to-br from-[#1a4d3e] via-[#0d2920] to-[#051410] rounded-3xl p-6 max-w-md w-full border-2 border-[#4ade80]/30 shadow-2xl overflow-hidden pointer-events-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Close Button */}
@@ -2050,70 +2103,112 @@ export default function Page() {
                   <X size={24} />
                 </motion.button>
 
+                {/* 🚀 Launch Price Banner */}
+                <motion.div
+                  className="mb-4 -mx-6 -mt-6 bg-gradient-to-r from-[#f59e0b] via-[#eab308] to-[#f59e0b] p-3 text-center relative overflow-hidden"
+                  animate={{
+                    boxShadow: [
+                      "0 0 20px rgba(245,158,11,0.4)",
+                      "0 0 40px rgba(245,158,11,0.6)",
+                      "0 0 20px rgba(245,158,11,0.4)",
+                    ]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  {/* Shimmer effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    animate={{ x: ["-100%", "100%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  />
+                  <div className="relative flex items-center justify-center gap-2">
+                    <Rocket className="h-5 w-5 text-[#0d2920]" />
+                    <span className="font-bold text-[#0d2920] text-lg">
+                      🎉 Launch Price - Limited Time!
+                    </span>
+                    <Rocket className="h-5 w-5 text-[#0d2920]" />
+                  </div>
+                </motion.div>
+
                 <div className="relative z-10">
                   {/* Header */}
-                  <div className="text-center mb-6">
+                  <div className="text-center mb-4">
                     <motion.div
                       animate={{ rotate: [0, -10, 10, -10, 0] }}
                       transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
-                      className="inline-block text-7xl mb-4"
+                      className="inline-block text-6xl mb-3"
                     >
-                      👑
+                      🦎
                     </motion.div>
-                    <h2 className="text-3xl font-black text-white mb-2">
+                    <h2 className="text-2xl font-black text-white mb-1">
                       Out of Passes!
                     </h2>
-                    <p className="text-gray-300 text-base leading-relaxed">
-                      Get more passes to keep swiping
+                    <p className="text-white/70 text-sm">
+                      Get more passes to keep matching
                     </p>
                   </div>
 
                   {/* Timer - Next Free Pass */}
-                  <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-2xl p-6 mb-6 border border-amber-500/30">
-                    <div className="text-center">
-                      <p className="text-white/60 text-sm mb-2">Next free pass in:</p>
-                      <div className="text-5xl font-mono font-bold text-amber-400">
-                        <Clock className="inline-block mr-2 mb-1" size={40} />
-                        {outOfPassesTimerDisplay}
+                  <div className="bg-gradient-to-br from-[#4ade80]/10 to-[#22c55e]/10 rounded-xl p-4 mb-5 border border-[#4ade80]/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-[#4ade80]" />
+                        <span className="text-white/70 text-sm">Next free pass in:</span>
                       </div>
+                      <span className="text-2xl font-mono font-bold text-[#4ade80]">
+                        {outOfPassesTimerDisplay}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons - 3 Separate Buttons */}
                   <div className="space-y-3">
-                    {/* Premium Button */}
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
+                    {/* Weekly Premium Button */}
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button
                         onClick={() => {
                           setShowOutOfPasses(false)
-                          setShowCouponModal('premium')  // ✅ Open coupon modal
+                          handleStripeCheckout('weekly')
                         }}
-                        className="w-full h-16 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-500 hover:via-yellow-500 hover:to-amber-600 text-gray-900 font-bold text-xl rounded-xl shadow-2xl relative overflow-hidden group"
+                        className="w-full h-14 bg-gradient-to-r from-[#4ade80]/80 to-[#22c55e]/80 hover:from-[#4ade80] hover:to-[#22c55e] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                        <Crown className="mr-3 h-6 w-6" />
-                        Upgrade to Premium
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                        <Zap className="mr-2 h-5 w-5" />
+                        Weekly Premium - $4.90/week
                       </Button>
                     </motion.div>
 
-                    {/* Buy One Pass Button */}
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
+                    {/* Monthly Premium Button - BEST VALUE */}
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative">
+                      {/* Best Value Badge */}
+                      <div className="absolute -top-2 right-3 z-10 bg-gradient-to-r from-[#f59e0b] to-[#eab308] text-[#0d2920] text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Star className="h-3 w-3" fill="currentColor" />
+                        BEST VALUE
+                      </div>
                       <Button
                         onClick={() => {
                           setShowOutOfPasses(false)
-                          setShowCouponModal('pass')  // ✅ Open coupon modal
+                          handleStripeCheckout('monthly')
                         }}
-                        className="w-full h-16 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-xl rounded-xl shadow-2xl relative overflow-hidden group"
+                        className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden border-2 border-[#f59e0b]/50"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                        <Sparkles className="mr-3 h-6 w-6" />
-                        Get Bonus Pass
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                        <Crown className="mr-2 h-5 w-5" />
+                        Monthly Premium - $9.90/month
+                      </Button>
+                    </motion.div>
+
+                    {/* Get Bonus Pass Button */}
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <Button
+                        onClick={() => {
+                          setShowOutOfPasses(false)
+                          handleStripeCheckout('skip-timer')
+                        }}
+                        className="w-full h-14 bg-[#4ade80]/20 hover:bg-[#4ade80]/30 text-[#4ade80] font-bold text-lg rounded-xl border-2 border-[#4ade80]/50 relative overflow-hidden"
+                      >
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Get 1 Pass - $2.90
                       </Button>
                     </motion.div>
 
@@ -2121,14 +2216,14 @@ export default function Page() {
                     <Button
                       onClick={() => setShowOutOfPasses(false)}
                       variant="outline"
-                      className="w-full h-12 bg-transparent border-2 border-gray-600 text-gray-300 hover:bg-gray-800 rounded-xl"
+                      className="w-full h-11 bg-transparent border border-white/20 text-white/60 hover:bg-white/5 rounded-xl text-sm"
                     >
                       I'll Wait
                     </Button>
                   </div>
 
-                  <p className="text-center text-gray-500 text-xs mt-4">
-                    Or wait for your next free pass
+                  <p className="text-center text-white/40 text-xs mt-4">
+                    🔒 Secure payment via Stripe
                   </p>
                 </div>
               </div>
