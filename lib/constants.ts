@@ -24,34 +24,34 @@ export const PASS_CONFIG = {
   FREE_PASSES: 3,
 }
 
-// 💰 PRICING
+// 💰 PRICING - Launch Prices! 🚀
 export const PRICING = {
-  SKIP_TIMER: 2.99,      // $2.99 to skip 2-hour timer
-  PREMIUM_MONTHLY: 9.99, // $9.99/month for premium
-  ONE_PASS: 0.99,        // $0.99 for single pass
+  SKIP_TIMER: 2.90,       // $2.90 to skip 2-hour timer (1 Pass)
+  PREMIUM_WEEKLY: 4.90,   // $4.90/week for premium
+  PREMIUM_MONTHLY: 9.90,  // $9.90/month for premium
 }
 
-// 💰 PREMIUM_PRICING (for Stripe API and UI)
+// 💰 PREMIUM_PRICING (for Stripe API and UI) - Launch Prices! 🚀
 export const PREMIUM_PRICING = {
   WEEKLY: {
-    price: 4.99,
-    displayPrice: '$4.99',
+    price: 4.90,
+    displayPrice: '$4.90',
     currency: 'usd',
     duration: 7 * 24 * 60 * 60 * 1000, // 1 week in milliseconds
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_WEEKLY || '',
+    stripePriceId: 'price_1SOA29GgzDjUcfZ0mpJ03Rn9',
   },
   MONTHLY: {
-    price: 9.99,
-    displayPrice: '$9.99',
+    price: 9.90,
+    displayPrice: '$9.90',
     currency: 'usd',
     duration: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || '',
+    stripePriceId: 'price_1SOA5KGgzDjUcfZ0ck2C4RMO',
   },
   SKIP_TIMER: {
-    price: 2.99,
-    displayPrice: '$2.99',
+    price: 2.90,
+    displayPrice: '$2.90',
     currency: 'usd',
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_SKIP_TIMER || '',
+    stripePriceId: 'price_1SOA6qGgzDjUcfZ0hRZ7UtRS',
   },
 } as const
 

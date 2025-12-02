@@ -27,19 +27,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get price ID based on plan
+    // Get price ID based on plan - Using hardcoded Price IDs for reliability
     let priceId: string
     let mode: 'subscription' | 'payment'
 
     if (plan === 'weekly') {
-      priceId = process.env.NEXT_PUBLIC_STRIPE_WEEKLY_PRICE_ID || 'price_1SOA29GgzDjUcfZ0mpJ03Rn9'
+      priceId = 'price_1SOA29GgzDjUcfZ0mpJ03Rn9'  // Weekly Premium $4.90
       mode = 'subscription'
     } else if (plan === 'monthly') {
-      priceId = process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID || 'price_1SOA5KGgzDjUcfZ0ck2C4RMO'
+      priceId = 'price_1SOA5KGgzDjUcfZ0ck2C4RMO'  // Monthly Premium $9.90
       mode = 'subscription'
     } else {
-      // skip-timer
-      priceId = process.env.NEXT_PUBLIC_STRIPE_SKIP_TIMER_PRICE_ID || 'price_1SOA6qGgzDjUcfZ0hRZ7UtRS'
+      // skip-timer (1 Pass)
+      priceId = 'price_1SOA6qGgzDjUcfZ0hRZ7UtRS'  // Skip Timer $2.90
       mode = 'payment'
     }
 
