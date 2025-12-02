@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { X, Heart, MessageCircle, Bell, User as UserIcon, RefreshCw, Target } from "lucide-react"
@@ -8,6 +8,7 @@ import DatingCard from "./dating-card"
 import AvailableToggle from "./available-toggle"
 import HiddenState from "./hidden-state"
 import SearchSettingsModal from "./search-settings-modal"  // ✅ NEW
+import DebugPanel from "./debug-panel"  // ✅ NEW: Debug panel for pilot testing
 import { useAuth } from "@/lib/AuthContext"
 import { useAvailableStatus } from "@/lib/useAvailableStatus"
 import { getUserProfile, updateUserPreferences } from "@/lib/firestore-service"  // ✅ NEW
@@ -54,6 +55,11 @@ export default function HomeScreen({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [direction, setDirection] = useState<'left' | 'right' | null>(null)
   const [showSearchSettings, setShowSearchSettings] = useState(false)  // ✅ NEW: Renamed from showDistanceModal
+  const [showDebugPanel, setShowDebugPanel] = useState(false)  // ✅ NEW: Debug panel for pilot
+  
+  // ✅ NEW: Long press detection for debug panel (3 seconds)
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isLongPressingRef = useRef(false)
   
   // ✅ NEW: Load user preferences
   const [searchPreferences, setSearchPreferences] = useState({
@@ -155,6 +161,29 @@ export default function HomeScreen({
     setCurrentIndex(0)
     if (onRefresh) {
       onRefresh()
+    }
+  }
+
+  // ✅ NEW: Long press handlers for Debug Panel (3 seconds)
+  const handleLongPressStart = () => {
+    isLongPressingRef.current = true
+    longPressTimerRef.current = setTimeout(() => {
+      if (isLongPressingRef.current) {
+        console.log('🐛 Debug Panel activated via long press!')
+        setShowDebugPanel(true)
+        // Vibrate on devices that support it
+        if (navigator.vibrate) {
+          navigator.vibrate(100)
+        }
+      }
+    }, 3000) // 3 seconds long press
+  }
+
+  const handleLongPressEnd = () => {
+    isLongPressingRef.current = false
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
     }
   }
 
@@ -278,7 +307,18 @@ export default function HomeScreen({
         
         {/* Center: Title + Venue Badge */}
         <div className="flex items-center gap-2 flex-1 justify-center">
-          <h1 className="font-sans text-xl font-bold text-white">I4IGUANA</h1>
+          {/* ✅ Title with long press for Debug Panel */}
+          <h1 
+            className="font-sans text-xl font-bold text-white select-none cursor-pointer"
+            onTouchStart={handleLongPressStart}
+            onTouchEnd={handleLongPressEnd}
+            onTouchCancel={handleLongPressEnd}
+            onMouseDown={handleLongPressStart}
+            onMouseUp={handleLongPressEnd}
+            onMouseLeave={handleLongPressEnd}
+          >
+            I4IGUANA
+          </h1>
           
           {/* ✅ Venue Indicator - compact dot only when checked in */}
           {venueData && (
@@ -473,6 +513,12 @@ export default function HomeScreen({
         currentGender={searchPreferences.lookingFor}
         currentExpandSearch={searchPreferences.expandSearch}
         onSave={handleSaveSettings}
+      />
+
+      {/* ✅ NEW: Debug Panel - activated by 3-second long press on title */}
+      <DebugPanel
+        isOpen={showDebugPanel}
+        onClose={() => setShowDebugPanel(false)}
       />
     </div>
   )
