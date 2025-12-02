@@ -741,7 +741,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                   Birth Date
                 </label>
                 {profileData.age && !ageError && (
-                  <span className="text-[#4ade80] text-sm font-semibold">
+                  <span className="text-[#4ade80] text-xl font-bold">
                     {profileData.age} years old
                   </span>
                 )}
