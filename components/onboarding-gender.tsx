@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, User, Users } from "lucide-react"
 
 interface OnboardingGenderProps {
   onNext: (data: { gender: 'male' | 'female', lookingFor: 'male' | 'female' | 'both' }) => void
@@ -28,6 +28,23 @@ export default function OnboardingGender({
       onNext({ gender: myGender, lookingFor })
     }
   }
+
+  // ✅ FIX: SVG icons that work on ALL browsers including iOS Safari
+  const MaleIcon = ({ selected }: { selected: boolean }) => (
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={selected ? "#0d2920" : "#4ade80"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="14" r="5"/>
+      <path d="M19 5l-5.4 5.4"/>
+      <path d="M15 5h4v4"/>
+    </svg>
+  )
+
+  const FemaleIcon = ({ selected }: { selected: boolean }) => (
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={selected ? "#0d2920" : "#ec4899"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="5"/>
+      <path d="M12 13v8"/>
+      <path d="M9 18h6"/>
+    </svg>
+  )
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-hidden">
@@ -121,8 +138,8 @@ export default function OnboardingGender({
                 `}
               >
                 <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-5xl mb-2">♂️</span>
-                  <span className={`font-bold text-lg ${myGender === 'male' ? 'text-[#0d2920]' : 'text-white'}`}>
+                  <MaleIcon selected={myGender === 'male'} />
+                  <span className={`font-bold text-lg mt-2 ${myGender === 'male' ? 'text-[#0d2920]' : 'text-white'}`}>
                     Male
                   </span>
                 </div>
@@ -141,8 +158,8 @@ export default function OnboardingGender({
                 `}
               >
                 <div className="flex flex-col items-center justify-center h-full">
-                  <span className="text-5xl mb-2">♀️</span>
-                  <span className={`font-bold text-lg ${myGender === 'female' ? 'text-[#0d2920]' : 'text-white'}`}>
+                  <FemaleIcon selected={myGender === 'female'} />
+                  <span className={`font-bold text-lg mt-2 ${myGender === 'female' ? 'text-[#0d2920]' : 'text-white'}`}>
                     Female
                   </span>
                 </div>
@@ -170,8 +187,14 @@ export default function OnboardingGender({
                   }
                 `}
               >
-                <span className="text-3xl mr-4">♂️</span>
-                <span className={`font-bold text-base ${lookingFor === 'male' ? 'text-[#0d2920]' : 'text-white'}`}>
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={lookingFor === 'male' ? "#0d2920" : "#4ade80"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="10" cy="14" r="5"/>
+                    <path d="M19 5l-5.4 5.4"/>
+                    <path d="M15 5h4v4"/>
+                  </svg>
+                </div>
+                <span className={`font-bold text-base ml-3 ${lookingFor === 'male' ? 'text-[#0d2920]' : 'text-white'}`}>
                   Men
                 </span>
               </motion.button>
@@ -188,8 +211,14 @@ export default function OnboardingGender({
                   }
                 `}
               >
-                <span className="text-3xl mr-4">♀️</span>
-                <span className={`font-bold text-base ${lookingFor === 'female' ? 'text-[#0d2920]' : 'text-white'}`}>
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={lookingFor === 'female' ? "#0d2920" : "#ec4899"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="8" r="5"/>
+                    <path d="M12 13v8"/>
+                    <path d="M9 18h6"/>
+                  </svg>
+                </div>
+                <span className={`font-bold text-base ml-3 ${lookingFor === 'female' ? 'text-[#0d2920]' : 'text-white'}`}>
                   Women
                 </span>
               </motion.button>
@@ -206,8 +235,8 @@ export default function OnboardingGender({
                   }
                 `}
               >
-                <span className="text-3xl mr-4">👥</span>
-                <span className={`font-bold text-base ${lookingFor === 'both' ? 'text-[#0d2920]' : 'text-white'}`}>
+                <Users className={`w-7 h-7 ${lookingFor === 'both' ? 'text-[#0d2920]' : 'text-white/70'}`} />
+                <span className={`font-bold text-base ml-4 ${lookingFor === 'both' ? 'text-[#0d2920]' : 'text-white'}`}>
                   Everyone
                 </span>
               </motion.button>
