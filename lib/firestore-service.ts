@@ -1361,6 +1361,7 @@ export const getUsersByVenue = async (
 ): Promise<UserProfileWithDistance[]> => {
   try {
     console.log(`🏢 Getting users at venue: ${venueId}`)
+    console.log(`👤 Current user ID: ${currentUserId}`)
     
     // ✅ FIX: Load current user's full profile to get age and age preferences
     const currentUserProfile = await getUserProfile(currentUserId)
@@ -1379,8 +1380,16 @@ export const getUsersByVenue = async (
     // ✅ 12-hour match cooldown - load users on cooldown
     const matchesOnCooldown = await getMatchesOnCooldown(currentUserId)
     
-    console.log(`👤 Current user: age=${currentUserAge}, looking for ages ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`👤 CURRENT USER PROFILE:`)
+    console.log(`   Name: ${currentUserProfile.name}`)
+    console.log(`   Gender: ${currentUserGender}`)
+    console.log(`   Age: ${currentUserAge}`)
+    console.log(`   Looking for: ${lookingFor}`)
+    console.log(`   Age range: ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}`)
+    console.log(`   Onboarding complete: ${currentUserProfile.onboardingComplete}`)
     console.log(`⏰ Users on 12h match cooldown: ${matchesOnCooldown.size}`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
     
     // Query users checked in at this venue
     const usersRef = collection(db, 'users')
@@ -1390,45 +1399,54 @@ export const getUsersByVenue = async (
     )
     
     const snapshot = await getDocs(q)
+    console.log(`📊 Total users checked in at venue: ${snapshot.size}`)
+    
     const users: UserProfile[] = []
     
     snapshot.forEach(doc => {
       const userData = doc.data() as UserProfile
       
+      console.log(`\n🔍 Checking user: ${userData.name || 'Unknown'} (${userData.uid?.substring(0, 8)}...)`)
+      
       // ✅ FIX: Skip current user (prevent seeing yourself!)
       if (userData.uid === currentUserId) {
-        console.log(`⚠️ Skipping current user (self)`)
+        console.log(`   ⏭️ SKIP: This is the current user (self)`)
         return
       }
       
       // Skip if not onboarded
-      if (!userData.onboardingComplete) return
+      if (!userData.onboardingComplete) {
+        console.log(`   ⏭️ SKIP: Onboarding not complete`)
+        return
+      }
       
       // ✅ 12-hour cooldown: Skip users that matched within last 12 hours
       if (matchesOnCooldown.has(userData.uid)) {
-        console.log(`⏰ Skipping ${userData.name} - match cooldown (12h)`)
+        console.log(`   ⏭️ SKIP: Match cooldown (12h) - matched recently`)
         return
       }
       
       // ✅ "She Decides" - Simple opposite gender filtering
       if (userData.gender !== lookingFor) {
-        console.log(`⚠️ Skipping ${userData.name} - wrong gender for current user`)
+        console.log(`   ⏭️ SKIP: Wrong gender (${userData.gender}) - looking for ${lookingFor}`)
         return
       }
       
       // ✅ Check if other user accepts our gender (backwards compatibility)
       const otherUserLookingFor = userData.preferences?.lookingFor || 'both'
       if (otherUserLookingFor !== 'both' && currentUserGender !== otherUserLookingFor) {
-        console.log(`⚠️ Skipping ${userData.name} - not interested in current user's gender`)
+        console.log(`   ⏭️ SKIP: They're looking for ${otherUserLookingFor}, not ${currentUserGender}`)
         return
       }
       
       // ✅ CRITICAL FIX: Two-way age filtering!
       // 3. Check if current user is interested in this user's age
       const otherUserAge = userData.age
+      console.log(`   📊 Their age: ${otherUserAge}, Their age range: ${userData.preferences?.ageRange?.[0] || 18}-${userData.preferences?.ageRange?.[1] || 80}`)
+      
       if (otherUserAge) {
         if (otherUserAge < currentUserAgeRange[0] || otherUserAge > currentUserAgeRange[1]) {
-          console.log(`⚠️ Skipping ${userData.name} (age ${otherUserAge}) - outside current user's age range ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}`)
+          console.log(`   ⏭️ SKIP: Their age (${otherUserAge}) is outside YOUR age range (${currentUserAgeRange[0]}-${currentUserAgeRange[1]})`)
           return
         }
       }
@@ -1437,7 +1455,7 @@ export const getUsersByVenue = async (
       const otherUserAgeRange = userData.preferences?.ageRange || [18, 80]
       if (currentUserAge) {
         if (currentUserAge < otherUserAgeRange[0] || currentUserAge > otherUserAgeRange[1]) {
-          console.log(`⚠️ Skipping ${userData.name} - current user (age ${currentUserAge}) outside their age range ${otherUserAgeRange[0]}-${otherUserAgeRange[1]}`)
+          console.log(`   ⏭️ SKIP: YOUR age (${currentUserAge}) is outside THEIR age range (${otherUserAgeRange[0]}-${otherUserAgeRange[1]})`)
           return
         }
       }
@@ -1448,15 +1466,18 @@ export const getUsersByVenue = async (
         const expiresAt = userData.checkInData.expiresAt.toMillis()
         
         if (now > expiresAt) {
-          console.log(`⏰ User ${userData.name} check-in expired`)
+          console.log(`   ⏭️ SKIP: Check-in expired`)
           return
         }
       }
       
+      console.log(`   ✅ PASSED: Adding to results`)
       users.push(userData)
     })
     
-    console.log(`✅ Found ${users.length} users at venue`)
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`✅ FINAL RESULT: Found ${users.length} matching users at venue`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`)
     
     // Add distance (0 since they're at same venue)
     const usersWithDistance: UserProfileWithDistance[] = users.map(user => ({

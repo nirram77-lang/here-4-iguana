@@ -21,6 +21,28 @@ export default function ScanScreen({ onNavigate, onCheckInSuccess }: ScanScreenP
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // ✅ NEW: Retry getting location with better error handling for Safari/iOS
+  const getLocationWithRetry = async (retries: number = 3): Promise<{ latitude: number; longitude: number; accuracy?: number; geohash: string }> => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        console.log(`📍 Getting location (attempt ${i + 1}/${retries})...`)
+        const location = await getCurrentLocation()
+        return location
+      } catch (error: any) {
+        console.log(`⚠️ Location attempt ${i + 1} failed:`, error.message)
+        
+        if (i === retries - 1) {
+          // Last attempt failed
+          throw error
+        }
+        
+        // Wait before retry (Safari sometimes needs a moment after permission is granted)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+    throw new Error('Failed to get location after retries')
+  }
+
   const handleScanSuccess = async (qrData: QRData) => {
     try {
       setLoading(true)
@@ -32,11 +54,38 @@ export default function ScanScreen({ onNavigate, onCheckInSuccess }: ScanScreenP
         throw new Error('Please login first')
       }
 
-      // Get current location
+      // Get current location with retry for Safari/iOS
       console.log('📍 Getting current location...')
-      const location = await getCurrentLocation()
-      console.log('✅ Location obtained:', location)
-      console.log(`📍 GPS Accuracy: ${location.accuracy}m`)
+      let location
+      try {
+        location = await getLocationWithRetry(3)
+        console.log('✅ Location obtained:', location)
+        console.log(`📍 GPS Accuracy: ${location.accuracy}m`)
+      } catch (locationError: any) {
+        console.error('❌ Location error:', locationError)
+        
+        // ✅ Better error message for Safari/iOS users
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        
+        if (isSafari || isIOS) {
+          throw new Error(
+            '📍 Location Access Required\n\n' +
+            'Please follow these steps:\n' +
+            '1. Open Settings → Safari → Location\n' +
+            '2. Set to "Allow" or "Ask"\n' +
+            '3. Go back to this page\n' +
+            '4. Pull down to refresh the page\n' +
+            '5. Try scanning again\n\n' +
+            'Tip: Make sure Location Services is ON in Settings → Privacy → Location Services'
+          )
+        } else {
+          throw new Error(
+            '📍 Location Access Required\n\n' +
+            'Please enable location in your browser settings and try again.'
+          )
+        }
+      }
 
       // Perform check-in (with GPS accuracy for grace margin)
       console.log('✅ Checking in to venue...')
@@ -98,9 +147,22 @@ export default function ScanScreen({ onNavigate, onCheckInSuccess }: ScanScreenP
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-500/20 border border-red-500/50 rounded-2xl text-red-200 text-sm"
+              className="p-4 bg-red-500/20 border border-red-500/50 rounded-2xl"
             >
-              {error}
+              <p className="text-red-200 text-sm whitespace-pre-line">{error}</p>
+              
+              {/* ✅ NEW: Show retry button for location errors */}
+              {error.includes('Location') && (
+                <Button
+                  onClick={() => {
+                    setError(null)
+                    setShowScanner(true)
+                  }}
+                  className="mt-4 w-full bg-red-500/30 hover:bg-red-500/50 text-white rounded-xl"
+                >
+                  🔄 Try Again
+                </Button>
+              )}
             </motion.div>
           )}
 
