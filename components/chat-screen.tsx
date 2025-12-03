@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Send, MapPin, Clock, MoreVertical, CheckCheck } from "lucide-react"
+import { ArrowLeft, Send, MapPin, Clock, MoreVertical, CheckCheck, Heart } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   sendMessage, 
@@ -42,6 +42,7 @@ interface DisplayMessage {
   sender: "me" | "them"
   timestamp: Date
   status?: "sent" | "delivered" | "read"
+  likedBy?: string[]  // ✅ NEW: Array of user IDs who liked this message
 }
 
 export default function ChatScreen({ 
@@ -173,7 +174,8 @@ useEffect(() => {
         text: msg.text,
         sender: msg.senderId === currentUserId ? "me" : "them",
         timestamp: msg.timestamp?.toDate() || new Date(),
-        status: msg.status || "sent"
+        status: msg.status || "sent",
+        likedBy: msg.likedBy || []  // ✅ NEW: Load likes from Firestore
       }))
       
       setMessages(displayMessages)
@@ -242,6 +244,99 @@ useEffect(() => {
     const hours = date.getHours()
     const minutes = date.getMinutes()
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }
+
+  // ❤️ NEW: Toggle like on a message
+  const [likeAnimations, setLikeAnimations] = useState<{[key: string]: boolean}>({})
+  
+  const toggleMessageLike = async (messageId: string) => {
+    if (!matchId || !currentUserId) return
+    
+    try {
+      const { doc, updateDoc, arrayUnion, arrayRemove, addDoc, collection, serverTimestamp } = await import('firebase/firestore')
+      const { db } = await import('@/lib/firebase')
+      
+      const messageRef = doc(db, 'chats', matchId, 'messages', messageId)
+      
+      // Check if already liked
+      const message = messages.find(m => m.id === messageId)
+      const isLiked = message?.likedBy?.includes(currentUserId)
+      
+      if (isLiked) {
+        // Unlike
+        await updateDoc(messageRef, {
+          likedBy: arrayRemove(currentUserId)
+        })
+        console.log('💔 Message unliked:', messageId)
+      } else {
+        // Like - trigger animation!
+        setLikeAnimations(prev => ({ ...prev, [messageId]: true }))
+        setTimeout(() => {
+          setLikeAnimations(prev => ({ ...prev, [messageId]: false }))
+        }, 1000)
+        
+        await updateDoc(messageRef, {
+          likedBy: arrayUnion(currentUserId)
+        })
+        console.log('❤️ Message liked:', messageId)
+        
+        // ✅ Send notification to the other user (only if it's THEIR message)
+        if (message?.sender === 'them') {
+          try {
+            const notificationsRef = collection(db, 'users', otherUserId, 'notifications')
+            await addDoc(notificationsRef, {
+              type: 'message_liked',
+              fromUserId: currentUserId,
+              fromUserName: currentUser?.name || 'Someone',
+              fromUserPhoto: currentUser?.photo || '',
+              messageText: message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
+              matchId: matchId,
+              read: false,
+              createdAt: serverTimestamp()
+            })
+            console.log('🔔 Like notification sent to:', otherUserId)
+          } catch (notifError) {
+            console.error('Error sending like notification:', notifError)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling message like:', error)
+    }
+  }
+  
+  // ❤️ Heart burst animation component
+  const HeartBurst = ({ show }: { show: boolean }) => {
+    if (!show) return null
+    
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-visible">
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ 
+              scale: 0, 
+              opacity: 1,
+              x: 0,
+              y: 0
+            }}
+            animate={{ 
+              scale: [0, 1, 0.5],
+              opacity: [1, 1, 0],
+              x: Math.cos(i * 60 * Math.PI / 180) * 30,
+              y: Math.sin(i * 60 * Math.PI / 180) * 30 - 10
+            }}
+            transition={{ 
+              duration: 0.6,
+              ease: "easeOut"
+            }}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          >
+            <Heart className="h-3 w-3 text-red-500 fill-red-500" />
+          </motion.div>
+        ))}
+      </div>
+    )
   }
 
   // 🔊 PLAY SOUND - Try all methods!
@@ -659,7 +754,7 @@ useEffect(() => {
                   </div>
                 )}
                 
-                <div>
+                <div className="relative group">
                   <div className={`
                     px-4 py-3 rounded-2xl
                     ${message.sender === "me" 
@@ -669,6 +764,48 @@ useEffect(() => {
                   `}>
                     <p className="font-sans text-base">{message.text}</p>
                   </div>
+                  
+                  {/* ❤️ LIKE BUTTON - Shows on tap/hover */}
+                  <div className={`
+                    absolute -bottom-1 ${message.sender === "me" ? "-left-6" : "-right-6"}
+                    relative
+                  `}>
+                    <motion.button
+                      onClick={() => toggleMessageLike(message.id)}
+                      whileTap={{ scale: 1.4 }}
+                      animate={likeAnimations[message.id] ? { scale: [1, 1.3, 1] } : {}}
+                      className={`
+                        p-1 rounded-full transition-all duration-200
+                        ${message.likedBy?.length 
+                          ? "opacity-100" 
+                          : "opacity-40 group-hover:opacity-100"
+                        }
+                      `}
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      <Heart 
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          message.likedBy?.includes(currentUserId)
+                            ? "text-red-500 fill-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]"
+                            : "text-white/50 hover:text-red-400"
+                        }`}
+                      />
+                    </motion.button>
+                    {/* ❤️ HEART BURST ANIMATION */}
+                    <HeartBurst show={likeAnimations[message.id] || false} />
+                  </div>
+                  
+                  {/* ❤️ LIKE COUNT - Shows if liked */}
+                  {message.likedBy && message.likedBy.length > 0 && (
+                    <div className={`
+                      absolute -bottom-5 ${message.sender === "me" ? "left-0" : "right-0"}
+                      flex items-center gap-0.5 text-xs text-red-400
+                    `}>
+                      <Heart className="h-3 w-3 fill-red-500 text-red-500" />
+                      {message.likedBy.length > 1 && <span>{message.likedBy.length}</span>}
+                    </div>
+                  )}
+                  
                   <div className={`flex items-center gap-1 mt-1 px-2 ${message.sender === "me" ? "justify-end" : "justify-start"}`}>
                     <span className="text-xs text-white/40">
                       {formatMessageTime(message.timestamp)}

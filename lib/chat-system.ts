@@ -27,6 +27,7 @@ export interface ChatMessage {
   timestamp: Timestamp
   status: 'sent' | 'delivered' | 'read'
   createdAt: Timestamp
+  likedBy?: string[]  // ✅ NEW: Array of user IDs who liked this message
 }
 
 export interface ChatMetadata {

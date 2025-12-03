@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Loader2 } from "lucide-react"
+import { Loader2, Mail, Phone } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 
 interface LoginScreenProps {
@@ -187,6 +187,34 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
           <p className="text-sm text-[#4ade80] font-semibold px-4">
             No passwords. Just quick social login! 🚀
           </p>
+        </motion.div>
+        
+        {/* ✅ NEW: Contact Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="mt-8 pt-6 border-t border-white/10 text-center space-y-3"
+        >
+          <p className="text-xs text-white/40 uppercase tracking-wider">
+            Contact Us / הצטרפו אלינו
+          </p>
+          <div className="flex flex-col items-center gap-2">
+            <a 
+              href="mailto:nir.ram77@gmail.com"
+              className="flex items-center gap-2 text-sm text-[#a8d5ba] hover:text-[#4ade80] transition-colors"
+            >
+              <Mail className="h-4 w-4" />
+              nir.ram77@gmail.com
+            </a>
+            <a 
+              href="tel:+972522653170"
+              className="flex items-center gap-2 text-sm text-[#a8d5ba] hover:text-[#4ade80] transition-colors"
+            >
+              <Phone className="h-4 w-4" />
+              +972-52-265-3170
+            </a>
+          </div>
         </motion.div>
       </div>
     </div>
