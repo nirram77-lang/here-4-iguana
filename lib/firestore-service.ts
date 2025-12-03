@@ -1414,6 +1414,25 @@ export const getUsersByVenue = async (
         return
       }
       
+      // ✅ CRITICAL FIX: Skip users already swiped!
+      if (currentUserProfile.swipedRight?.includes(userData.uid)) {
+        console.log(`   ⏭️ SKIP: Already swiped RIGHT on this user`)
+        return
+      }
+      if (currentUserProfile.swipedLeft?.includes(userData.uid)) {
+        console.log(`   ⏭️ SKIP: Already swiped LEFT on this user`)
+        return
+      }
+      // Also skip if THEY already swiped on us (mutual likes handled separately)
+      if (userData.swipedRight?.includes(currentUserId)) {
+        console.log(`   ⏭️ SKIP: They already swiped RIGHT on us (pending match)`)
+        return
+      }
+      if (userData.swipedLeft?.includes(currentUserId)) {
+        console.log(`   ⏭️ SKIP: They already swiped LEFT on us`)
+        return
+      }
+      
       // Skip if not onboarded
       if (!userData.onboardingComplete) {
         console.log(`   ⏭️ SKIP: Onboarding not complete`)
