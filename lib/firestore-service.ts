@@ -1414,22 +1414,21 @@ export const getUsersByVenue = async (
         return
       }
       
-      // ✅ CRITICAL FIX: Skip users already swiped!
+      // ✅ Skip users already swiped in THIS SESSION
+      // swipedRight/swipedLeft reset on every check-in, so this only blocks same-session repeats
       if (currentUserProfile.swipedRight?.includes(userData.uid)) {
-        console.log(`   ⏭️ SKIP: Already swiped RIGHT on this user`)
+        console.log(`   ⏭️ SKIP: Already liked this user (this session)`)
         return
       }
       if (currentUserProfile.swipedLeft?.includes(userData.uid)) {
-        console.log(`   ⏭️ SKIP: Already swiped LEFT on this user`)
+        console.log(`   ⏭️ SKIP: Already skipped this user (this session)`)
         return
       }
-      // Also skip if THEY already swiped on us (mutual likes handled separately)
-      if (userData.swipedRight?.includes(currentUserId)) {
-        console.log(`   ⏭️ SKIP: They already swiped RIGHT on us (pending match)`)
-        return
-      }
-      if (userData.swipedLeft?.includes(currentUserId)) {
-        console.log(`   ⏭️ SKIP: They already swiped LEFT on us`)
+      
+      // ✅ 12-hour cooldown: Skip users that matched within last 12 hours
+      // This prevents re-matching too quickly after a successful match
+      if (matchesOnCooldown.has(userData.uid)) {
+        console.log(`   ⏭️ SKIP: Match cooldown (12h) - matched recently`)
         return
       }
       

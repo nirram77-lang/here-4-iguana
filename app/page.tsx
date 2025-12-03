@@ -622,7 +622,7 @@ export default function Page() {
         const hasBasicProfile = profile && profile.photos && profile.photos.length > 0 && (profile.name || profile.displayName)
         
         if (hasCompletedOnboarding || hasBasicProfile) {
-          console.log('✅ Existing user → HOME')
+          console.log('✅ Existing user detected')
           
           // ✅ CRITICAL FIX: Load gender from profile for "She Decides" logic!
           if (profile?.gender) {
@@ -630,6 +630,30 @@ export default function Page() {
             setOnboardingData(prev => ({ ...prev, gender: profile.gender }))
           }
           
+          // ✅ CRITICAL: Check for active match BEFORE going to home!
+          // This ensures seamless return to match after logout/login
+          console.log('🔍 Checking for active match before navigation...')
+          try {
+            const activeMatch = await getActiveMatchForUser(user.uid)
+            
+            if (activeMatch && activeMatch.matchedUser && activeMatch.expiresAt) {
+              console.log('🎯 ACTIVE MATCH FOUND! Going directly to match screen')
+              console.log(`   Partner: ${activeMatch.matchedUser.name}`)
+              console.log(`   Expires: ${activeMatch.expiresAt.toLocaleString()}`)
+              
+              setMatchedUser(activeMatch.matchedUser)
+              setMatchExpiresAt(activeMatch.expiresAt)
+              setIsLockedInMatch(true)
+              setIsNewMatch(false)  // Not a new match - don't play sound
+              setCurrentScreen("match")  // Go directly to match screen!
+              return  // Don't go to home
+            }
+          } catch (matchError) {
+            console.error('⚠️ Error checking for active match:', matchError)
+            // Continue to home if error
+          }
+          
+          console.log('📭 No active match → HOME')
           setCurrentScreen("home")
         } else {
           console.log('🆕 New user → WELCOME ONBOARDING')

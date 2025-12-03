@@ -93,8 +93,14 @@ export async function performCheckIn(
     await updateDoc(doc(db, 'users', userId), {
       checkedInVenue: venueId,
       checkInData,
-      lastCheckIn: now
+      lastCheckIn: now,
+      // ✅ CRITICAL: Reset swipes on check-in - "Every day is a new game!"
+      // This allows users to match again after 12-hour cooldown expires
+      swipedRight: [],
+      swipedLeft: []
     })
+    
+    console.log('🔄 Swipes reset for fresh matching!')
     
     // Add user to venue's checked-in list
     await checkInUser(venueId, userId)
