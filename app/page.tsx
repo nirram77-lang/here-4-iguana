@@ -230,6 +230,47 @@ export default function Page() {
     }
   }, [currentScreen])
 
+  // ✅ NEW: Handle Stripe payment success redirect
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const urlParams = new URLSearchParams(window.location.search)
+    const paymentSuccess = urlParams.get('payment_success')
+    const paymentPlan = urlParams.get('plan')
+    const paymentCancelled = urlParams.get('payment_cancelled')
+    
+    if (paymentSuccess === 'true' && paymentPlan) {
+      console.log(`🎉 Payment successful! Plan: ${paymentPlan}`)
+      
+      // Show success message
+      setTimeout(() => {
+        alert(`🎉 Payment Successful!\n\nYour ${paymentPlan === 'weekly' ? 'Weekly' : paymentPlan === 'monthly' ? 'Monthly' : ''} Premium subscription is now active!\n\nEnjoy unlimited matches!`)
+      }, 500)
+      
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname)
+      
+      // Reload user data to get updated premium status
+      if (user) {
+        console.log('🔄 Reloading user pass data after payment...')
+        getUserPassData(user.uid).then((passData) => {
+          setPassesLeft(passData.passesLeft)
+          setIsPremium(passData.isPremium)
+          setIsPhoneLocked(false)
+          setPhoneLockExpiresAt(null)
+          setPassResetTime(null)
+          console.log('✅ User data reloaded:', passData)
+        }).catch(console.error)
+      }
+    }
+    
+    if (paymentCancelled === 'true') {
+      console.log('❌ Payment was cancelled')
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [user])
+
   // ✅ GLOBAL: Keep Screen On (Wake Lock API) - loads from localStorage
   useEffect(() => {
     let wakeLock: any = null

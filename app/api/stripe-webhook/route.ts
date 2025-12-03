@@ -94,53 +94,78 @@ export async function POST(req: NextRequest) {
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (!db) return
 
-  const userId = session.metadata?.userId
+  const userId = session.client_reference_id || session.metadata?.userId
   const productType = session.metadata?.productType
   const plan = session.metadata?.plan as 'weekly' | 'monthly' | undefined
 
   if (!userId) {
-    console.error('No userId in session metadata')
+    console.error('No userId in session metadata or client_reference_id')
     return
   }
 
   console.log(`✅ Payment successful for user ${userId}`)
-  console.log(`Product type: ${productType}`)
+  console.log(`Product type: ${productType}, Plan: ${plan}`)
 
   const userRef = db.collection('users').doc(userId)
+  const userDoc = await userRef.get()
+  const userData = userDoc.data()
 
   if (productType === 'skip_timer') {
-    // Skip timer purchase - unlock user immediately
+    // Skip timer purchase - unlock user immediately and add 1 pass
     await userRef.update({
       isLocked: false,
       lockUntil: 0,
-      passesLeft: 1,
-      matchesCountToday: 0,
-      lastMatchTimestamp: 0,
+      passesLeft: FieldValue.increment(1),
       skipTimerPurchaseDate: FieldValue.serverTimestamp(),
       skipTimerPaymentId: session.payment_intent,
     })
+    
+    // ✅ Also update phoneIdentities if user has phone number
+    if (userData?.phoneNumber) {
+      const phoneRef = db.collection('phoneIdentities').doc(userData.phoneNumber)
+      await phoneRef.update({
+        passesLeft: FieldValue.increment(1),
+        lockedUntil: null,
+      })
+      console.log('📱 PhoneIdentity also updated with +1 pass')
+    }
+    
     console.log('⚡ User unlocked via skip timer purchase')
 
-  } else if (productType === 'premium' && plan) {
-    // Premium upgrade
+  } else if (productType === 'premium' || plan) {
+    // Premium upgrade (weekly or monthly)
+    const actualPlan = plan || 'weekly'
     const now = Date.now()
-    const duration = plan === 'weekly' 
-      ? PREMIUM_PRICING.WEEKLY.duration 
-      : PREMIUM_PRICING.MONTHLY.duration
+    const duration = actualPlan === 'weekly' 
+      ? 7 * 24 * 60 * 60 * 1000  // 1 week
+      : 30 * 24 * 60 * 60 * 1000 // 30 days
     const expiryDate = now + duration
 
     await userRef.update({
       isPremium: true,
-      premiumType: plan,
+      premiumType: actualPlan,
       premiumExpiryDate: expiryDate,
       premiumUpgradedAt: FieldValue.serverTimestamp(),
       premiumPaymentId: session.payment_intent,
       premiumSubscriptionId: session.subscription,
-      passesLeft: PASS_CONFIG.PREMIUM_PASSES,
+      passesLeft: 999, // Unlimited for premium
       isLocked: false,
       lockUntil: 0,
     })
-    console.log(`💎 User upgraded to ${plan} premium until ${new Date(expiryDate).toLocaleString()}`)
+    
+    // ✅ Also update phoneIdentities if user has phone number
+    if (userData?.phoneNumber) {
+      const phoneRef = db.collection('phoneIdentities').doc(userData.phoneNumber)
+      await phoneRef.update({
+        isPremium: true,
+        premiumExpiryDate: expiryDate,
+        passesLeft: 999,
+        lockedUntil: null,
+      })
+      console.log('📱 PhoneIdentity also upgraded to premium')
+    }
+    
+    console.log(`💎 User upgraded to ${actualPlan} premium until ${new Date(expiryDate).toLocaleString()}`)
   }
 }
 
