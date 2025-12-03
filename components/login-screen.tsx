@@ -189,15 +189,15 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
           </p>
         </motion.div>
         
-        {/* ✅ NEW: Contact Information */}
+        {/* ✅ Contact Information */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
           className="mt-8 pt-6 border-t border-white/10 text-center space-y-3"
         >
-          <p className="text-xs text-white/40 uppercase tracking-wider">
-            Contact Us / הצטרפו אלינו
+          <p className="text-xs text-white/50 uppercase tracking-wider font-medium">
+            Contact Info
           </p>
           <div className="flex flex-col items-center gap-2">
             <a 
