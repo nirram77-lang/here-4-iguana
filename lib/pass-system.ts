@@ -18,6 +18,7 @@ export interface PassData {
   passesUsedToday: number
   matchesCountToday: number  // ✅ For admin panel
   lastPassReset: Date
+  isLocked: boolean  // ✅ NEW: For payment success check
 }
 
 /**
@@ -65,7 +66,8 @@ export const getUserPassData = async (userId: string): Promise<PassData> => {
       passesLeft: updatedIdentity.passesLeft,
       isPremium: updatedIdentity.isPremium,
       passesUsedToday: updatedIdentity.passesUsedToday,
-      matchesCountToday: updatedIdentity.matchesCountToday
+      matchesCountToday: updatedIdentity.matchesCountToday,
+      isLocked: !!updatedIdentity.lockedUntil && updatedIdentity.lockedUntil.toMillis() > Date.now()
     })
     
     return {
@@ -73,7 +75,8 @@ export const getUserPassData = async (userId: string): Promise<PassData> => {
       isPremium: updatedIdentity.isPremium,
       passesUsedToday: updatedIdentity.passesUsedToday,
       matchesCountToday: updatedIdentity.matchesCountToday,  // ✅ Include matches count
-      lastPassReset: updatedIdentity.lastPassReset?.toDate?.() || new Date()  // ✅ FIXED: Safe toDate call
+      lastPassReset: updatedIdentity.lastPassReset?.toDate?.() || new Date(),  // ✅ FIXED: Safe toDate call
+      isLocked: !!updatedIdentity.lockedUntil && updatedIdentity.lockedUntil.toMillis() > Date.now()  // ✅ NEW
     }
   } catch (error) {
     console.error('❌ [getUserPassData] Error getting pass data:', error)
@@ -84,7 +87,8 @@ export const getUserPassData = async (userId: string): Promise<PassData> => {
       isPremium: false,
       passesUsedToday: 0,
       matchesCountToday: 0,  // ✅ Include matches count
-      lastPassReset: new Date()
+      lastPassReset: new Date(),
+      isLocked: false  // ✅ NEW
     }
   }
 }

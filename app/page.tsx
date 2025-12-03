@@ -242,26 +242,91 @@ export default function Page() {
     if (paymentSuccess === 'true' && paymentPlan) {
       console.log(`🎉 Payment successful! Plan: ${paymentPlan}`)
       
-      // Show success message
-      setTimeout(() => {
-        alert(`🎉 Payment Successful!\n\nYour ${paymentPlan === 'weekly' ? 'Weekly' : paymentPlan === 'monthly' ? 'Monthly' : ''} Premium subscription is now active!\n\nEnjoy unlimited matches!`)
-      }, 500)
-      
-      // Clear URL params
+      // Clear URL params immediately to prevent re-processing
       window.history.replaceState({}, '', window.location.pathname)
       
-      // Reload user data to get updated premium status
-      if (user) {
-        console.log('🔄 Reloading user pass data after payment...')
-        getUserPassData(user.uid).then((passData) => {
-          setPassesLeft(passData.passesLeft)
-          setIsPremium(passData.isPremium)
-          setIsPhoneLocked(false)
-          setPhoneLockExpiresAt(null)
-          setPassResetTime(null)
-          console.log('✅ User data reloaded:', passData)
-        }).catch(console.error)
+      // ✅ FIX: Show appropriate message based on plan
+      const getMessage = () => {
+        if (paymentPlan === 'weekly') {
+          return '🎉 Payment Successful!\n\nYour Weekly Premium subscription is now active!\n\nEnjoy unlimited matches!'
+        } else if (paymentPlan === 'monthly') {
+          return '🎉 Payment Successful!\n\nYour Monthly Premium subscription is now active!\n\nEnjoy unlimited matches!'
+        } else if (paymentPlan === 'skip-timer') {
+          return '🎉 Payment Successful!\n\n1 Pass has been added to your account!\n\nGo find your match!'
+        }
+        return '🎉 Payment Successful!'
       }
+      
+      // ✅ FIX: Wait for webhook to process before reloading data
+      // Webhook needs time to update Firestore
+      const reloadUserData = async () => {
+        if (!user) {
+          console.log('⏳ Waiting for user to be available...')
+          return
+        }
+        
+        console.log('🔄 Waiting for webhook to process...')
+        
+        // ✅ Poll for updated data (webhook may take a few seconds)
+        let attempts = 0
+        const maxAttempts = 10
+        const pollInterval = 1000 // 1 second
+        
+        const checkForUpdate = async (): Promise<boolean> => {
+          attempts++
+          console.log(`🔄 Checking for payment update (attempt ${attempts}/${maxAttempts})...`)
+          
+          const passData = await getUserPassData(user.uid)
+          console.log('📊 Current pass data:', passData)
+          
+          // Check if payment was processed
+          if (paymentPlan === 'skip-timer') {
+            // For 1 Pass, check if passes increased or user is unlocked
+            if (passData.passesLeft > 0 || !passData.isLocked) {
+              return true
+            }
+          } else {
+            // For premium, check isPremium flag
+            if (passData.isPremium) {
+              return true
+            }
+          }
+          
+          return false
+        }
+        
+        // Start polling
+        const poll = async () => {
+          const updated = await checkForUpdate()
+          
+          if (updated || attempts >= maxAttempts) {
+            // Final data reload
+            const passData = await getUserPassData(user.uid)
+            setPassesLeft(passData.passesLeft)
+            setIsPremium(passData.isPremium)
+            setIsPhoneLocked(false)
+            setPhoneLockExpiresAt(null)
+            setPassResetTime(null)
+            
+            console.log('✅ User data reloaded after payment:', passData)
+            
+            // Show success message
+            alert(getMessage())
+            
+            if (!updated && attempts >= maxAttempts) {
+              console.warn('⚠️ Payment may still be processing. Please refresh if needed.')
+            }
+          } else {
+            // Continue polling
+            setTimeout(poll, pollInterval)
+          }
+        }
+        
+        // Start polling after initial delay (give webhook time to start)
+        setTimeout(poll, 1500)
+      }
+      
+      reloadUserData()
     }
     
     if (paymentCancelled === 'true') {
@@ -1600,7 +1665,8 @@ export default function Page() {
   }
 
   const handleSkipTimer = () => {
-    alert('Skip Timer feature coming soon! ($2.99)')
+    // ✅ FIX: Use Stripe checkout for skip-timer (1 Pass)
+    handleStripeCheckout('skip-timer')
   }
 
   const handleUpgradePremium = async () => {
