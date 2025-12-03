@@ -2,12 +2,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20', // ✅ FIXED: Stable Stripe API version
+// Check if Stripe key exists
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+if (!stripeSecretKey) {
+  console.error('❌ STRIPE_SECRET_KEY is not set!')
+}
+
+const stripe = new Stripe(stripeSecretKey || '', {
+  apiVersion: '2025-10-29.clover',
 })
 
 export async function POST(req: NextRequest) {
   try {
+    // Log to verify key is loaded (first 20 chars only for security)
+    console.log('🔑 Stripe key loaded:', stripeSecretKey ? `${stripeSecretKey.substring(0, 20)}...` : 'NOT SET')
+    
     const body = await req.json()
     const { userId, plan } = body
 
