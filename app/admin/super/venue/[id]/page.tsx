@@ -748,8 +748,7 @@ Keep these credentials secure!
         <VenueQRTemplate
           venue={{
             id: venue.id,
-            displayName: venue.displayName,
-            qrCodeData: venue.qrCodeData
+            displayName: venue.displayName
           }}
           isOpen={showQRTemplate}
           onClose={() => setShowQRTemplate(false)}
