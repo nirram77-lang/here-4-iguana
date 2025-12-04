@@ -255,11 +255,11 @@ export default function VenueQRTemplate({ venue, isOpen, onClose }: VenueQRTempl
                 </a>
                 <span className="text-white/30">|</span>
                 <a 
-                  href="mailto:nirram76@gmail.com" 
+                  href="mailto:nir.ram77@gmail.com" 
                   className="flex items-center gap-2 text-white/80 hover:text-[#4ade80] transition-colors"
                 >
                   <span className="text-lg">✉️</span>
-                  <span className="text-sm font-medium">nirram76@gmail.com</span>
+                  <span className="text-sm font-medium">nir.ram77@gmail.com</span>
                 </a>
               </div>
             </div>
