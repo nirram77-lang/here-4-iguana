@@ -104,6 +104,37 @@ export const deleteUserAccount = async (userId: string): Promise<{
     
     console.log(`✅ ${matchesSnapshot.size} matches deleted`)
     
+    // 3b-2. ✅ CRITICAL FIX: Remove deleted user's UID from OTHER users' swipedRight/swipedLeft
+    // This prevents "ghost matches" when user re-registers with new account
+    console.log('🧹 Cleaning up deleted user UID from other users swipes...')
+    
+    // Find users who have swiped on this user
+    const usersWhoSwipedRightQuery = query(
+      collection(db, 'users'),
+      where('swipedRight', 'array-contains', userId)
+    )
+    const usersWhoSwipedRightSnapshot = await getDocs(usersWhoSwipedRightQuery)
+    
+    for (const userDoc of usersWhoSwipedRightSnapshot.docs) {
+      const userData = userDoc.data()
+      const updatedSwipedRight = (userData.swipedRight || []).filter((id: string) => id !== userId)
+      batch.update(userDoc.ref, { swipedRight: updatedSwipedRight })
+    }
+    console.log(`✅ Removed from ${usersWhoSwipedRightSnapshot.size} users' swipedRight`)
+    
+    const usersWhoSwipedLeftQuery = query(
+      collection(db, 'users'),
+      where('swipedLeft', 'array-contains', userId)
+    )
+    const usersWhoSwipedLeftSnapshot = await getDocs(usersWhoSwipedLeftQuery)
+    
+    for (const userDoc of usersWhoSwipedLeftSnapshot.docs) {
+      const userData = userDoc.data()
+      const updatedSwipedLeft = (userData.swipedLeft || []).filter((id: string) => id !== userId)
+      batch.update(userDoc.ref, { swipedLeft: updatedSwipedLeft })
+    }
+    console.log(`✅ Removed from ${usersWhoSwipedLeftSnapshot.size} users' swipedLeft`)
+    
     // 3c. ✅ CRITICAL: Handle active match cancellation BEFORE deleting
     // Check activeMatches collection (10-minute timer matches)
     const activeMatchesQuery = query(

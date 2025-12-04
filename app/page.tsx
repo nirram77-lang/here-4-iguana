@@ -28,6 +28,7 @@ import QRScanRequiredModal from "@/components/qr-scan-required-modal"
 import InAppNotification from "@/components/in-app-notification"
 import MatchEndedScreen from "@/components/match-ended-screen"
 import WeAreMeetingModal from "@/components/we-are-meeting-modal"
+import PhoneVerification from "@/components/phone-verification"
 import { useAuth } from "@/lib/AuthContext"
 import { saveOnboardingData } from "@/lib/onboarding-service"
 import { 
@@ -58,7 +59,7 @@ import {
   syncUserWithPhoneIdentity 
 } from "@/lib/phone-identity-service"
 
-type Screen = "splash" | "welcome" | "login" | "signup" | "onboarding-welcome" | "onboarding-name" | "onboarding-gender" | "onboarding-age" | "onboarding-hobbies" | "onboarding-lifestyle" | "onboarding-photos" | "home" | "match" | "notifications" | "profile" | "chat" | "scan"
+type Screen = "splash" | "welcome" | "login" | "signup" | "phone-verification" | "onboarding-welcome" | "onboarding-name" | "onboarding-gender" | "onboarding-age" | "onboarding-hobbies" | "onboarding-lifestyle" | "onboarding-photos" | "home" | "match" | "notifications" | "profile" | "chat" | "scan"
 
 // Helper function to create consistent match IDs
 const createMatchId = (userId1: string, userId2: string) => {
@@ -180,6 +181,7 @@ export default function Page() {
     'welcome': null,
     'login': 'welcome',
     'signup': 'welcome',
+    'phone-verification': null,  // Don't allow back from phone verification
     'onboarding-welcome': null,  // Don't allow back from welcome
     'onboarding-name': null,  // Don't allow back from name entry
     'onboarding-gender': 'onboarding-name',
@@ -629,8 +631,8 @@ export default function Page() {
       }
       
       // User exists → check if we need to navigate
-      // Skip if already on home/match/notifications/profile/chat/scan
-      const appScreens = ["home", "match", "notifications", "profile", "chat", "scan"]
+      // Skip if already on home/match/notifications/profile/chat/scan OR phone-verification
+      const appScreens = ["home", "match", "notifications", "profile", "chat", "scan", "phone-verification"]
       if (appScreens.includes(currentScreen)) {
         console.log('✅ Already in app, staying on:', currentScreen)
         return
@@ -645,10 +647,9 @@ export default function Page() {
         
         const profile = await Promise.race([profilePromise, timeoutPromise]) as any
         
-        // ⚡ FIX: Account was deleted - reset flag and go straight to ONBOARDING
-        // NO signOut needed - user just logged in, let them create new profile!
+        // ⚡ FIX: Account was deleted - reset flag and require phone verification
         if (profile?.deleted === true) {
-          console.log('🗑️ Account was deleted → Resetting flag, going to ONBOARDING')
+          console.log('🗑️ Account was deleted → Phone verification required')
           
           // Clear any localStorage flags
           localStorage.removeItem('hasScannedQR')
@@ -660,14 +661,27 @@ export default function Page() {
           const { db } = await import('@/lib/firebase')
           await updateDoc(doc(db, 'users', user.uid), { 
             deleted: false, 
-            onboardingComplete: false 
+            onboardingComplete: false,
+            phoneVerified: false  // Reset phone verification
           })
-          console.log('✅ Reset deleted flag to false')
+          console.log('✅ Reset deleted flag and phone verification')
           
-          // ✅ Go directly to WELCOME - start onboarding flow!
-          setCurrentScreen("onboarding-welcome")
+          // ✅ Go to phone verification first!
+          setCurrentScreen("phone-verification")
           return
         }
+        
+        // ✅ NEW: Check if phone is verified
+        // Skip verification if: phoneVerified === true AND phoneNumber exists
+        const hasVerifiedPhone = profile?.phoneVerified === true && profile?.phoneNumber
+        
+        if (!hasVerifiedPhone) {
+          console.log('📱 Phone not verified → Phone verification required')
+          setCurrentScreen("phone-verification")
+          return
+        }
+        
+        console.log('✅ Phone already verified:', profile.phoneNumber)
         
         const hasCompletedOnboarding = profile?.onboardingComplete === true
         const hasBasicProfile = profile && profile.photos && profile.photos.length > 0 && (profile.name || profile.displayName)
@@ -1985,6 +1999,70 @@ export default function Page() {
           onSuccess={() => {
             // Auth will handle navigation via useEffect
             console.log('✅ Login successful')
+          }}
+        />
+      )}
+      
+      {/* ✅ NEW: Phone Verification Screen */}
+      {currentScreen === "phone-verification" && user && (
+        <PhoneVerification
+          userId={user.uid}
+          userEmail={user.email || undefined}
+          showSkip={true}  // ✅ Show SKIP button for dev testing
+          onComplete={async (phoneNumber) => {
+            console.log('✅ Phone verified:', phoneNumber)
+            
+            // Check if user needs onboarding
+            try {
+              const profile = await getUserProfile(user.uid)
+              const hasCompletedOnboarding = profile?.onboardingComplete === true
+              
+              if (hasCompletedOnboarding) {
+                console.log('✅ Existing user → HOME')
+                setCurrentScreen("home")
+              } else {
+                console.log('🆕 New user → ONBOARDING')
+                setCurrentScreen("onboarding-welcome")
+              }
+            } catch (error) {
+              console.log('⚠️ Error checking profile → ONBOARDING')
+              setCurrentScreen("onboarding-welcome")
+            }
+          }}
+          onSkip={async () => {
+            console.log('🔧 DEV: Skipping phone verification')
+            
+            // In dev mode, use fake phone number based on userId
+            const devPhoneNumber = `+972DEV${user.uid.slice(-8)}`
+            
+            // Update user profile with dev phone
+            try {
+              const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+              const { db } = await import('@/lib/firebase')
+              
+              await updateDoc(doc(db, 'users', user.uid), {
+                phoneNumber: devPhoneNumber,
+                phoneVerified: true,
+                phoneVerifiedAt: Timestamp.now()
+              })
+              console.log('✅ Dev phone saved:', devPhoneNumber)
+            } catch (error) {
+              console.log('⚠️ Error saving dev phone:', error)
+            }
+            
+            // Check if user needs onboarding
+            try {
+              const profile = await getUserProfile(user.uid)
+              const hasCompletedOnboarding = profile?.onboardingComplete === true
+              
+              if (hasCompletedOnboarding) {
+                setCurrentScreen("home")
+              } else {
+                setCurrentScreen("onboarding-welcome")
+              }
+            } catch (error) {
+              setCurrentScreen("onboarding-welcome")
+            }
           }}
         />
       )}
