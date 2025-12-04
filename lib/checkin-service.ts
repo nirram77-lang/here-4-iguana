@@ -2,7 +2,12 @@ import {
   doc, 
   getDoc, 
   updateDoc, 
-  Timestamp 
+  Timestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+  writeBatch
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { checkInUser, checkOutUser, getVenue } from './venue-service'
@@ -196,18 +201,56 @@ export async function getUserCheckInStatus(userId: string): Promise<{
 
 /**
  * Auto-checkout expired check-ins
- * Should be called periodically (e.g., every hour)
+ * ✅ FIXED: Actually clears checkedInVenue for expired users
  */
-export async function autoCheckoutExpiredUsers(): Promise<void> {
+export async function autoCheckoutExpiredUsers(): Promise<number> {
   try {
     console.log('🧹 Running auto-checkout for expired check-ins...')
     
-    // This would typically be implemented as a Cloud Function
-    // For now, we rely on client-side checking when getUserCheckInStatus is called
+    const now = Date.now()
+    let checkoutCount = 0
     
-    console.log('✅ Auto-checkout complete')
+    // Query all users with checkedInVenue
+    const usersRef = collection(db, 'users')
+    const q = query(usersRef, where('checkedInVenue', '!=', null))
+    const snapshot = await getDocs(q)
+    
+    const batch = writeBatch(db)
+    
+    snapshot.forEach(docSnapshot => {
+      const userData = docSnapshot.data()
+      
+      // Check if check-in has expired
+      if (userData.checkInData?.expiresAt) {
+        const expiresAt = userData.checkInData.expiresAt.toMillis 
+          ? userData.checkInData.expiresAt.toMillis()
+          : userData.checkInData.expiresAt
+        
+        if (now > expiresAt) {
+          console.log(`⏰ Auto-checkout: ${userData.name || userData.uid} (expired)`)
+          
+          batch.update(docSnapshot.ref, {
+            checkedInVenue: null,
+            checkInData: null,
+            isAvailable: false
+          })
+          
+          checkoutCount++
+        }
+      }
+    })
+    
+    if (checkoutCount > 0) {
+      await batch.commit()
+      console.log(`✅ Auto-checkout complete: ${checkoutCount} users checked out`)
+    } else {
+      console.log('✅ Auto-checkout: No expired check-ins found')
+    }
+    
+    return checkoutCount
   } catch (error) {
     console.error('❌ Error in auto-checkout:', error)
+    return 0
   }
 }
 

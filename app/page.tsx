@@ -242,42 +242,78 @@ export default function Page() {
     const urlParams = new URLSearchParams(window.location.search)
     const paymentSuccess = urlParams.get('payment_success')
     const paymentPlan = urlParams.get('plan') as 'weekly' | 'monthly' | 'skip-timer' | null
+    const sessionId = urlParams.get('session_id')
     const paymentCancelled = urlParams.get('payment_cancelled')
     
     if (paymentSuccess === 'true' && paymentPlan) {
-      console.log(`🎉 Payment successful! Plan: ${paymentPlan}`)
+      console.log(`🎉 Payment successful! Plan: ${paymentPlan}, Session: ${sessionId}`)
       
       // Clear URL params immediately to prevent re-processing
       window.history.replaceState({}, '', window.location.pathname)
       
-      // ✅ Show Hollywood-style success modal!
+      // ✅ Show Hollywood-style success modal immediately!
       setShowPaymentSuccess({ isVisible: true, plan: paymentPlan })
       
-      // ✅ Force reload user data after delay (webhook needs time)
-      const forceReloadUserData = async () => {
-        if (!user) return
+      // ✅ CRITICAL: Call verify-payment API to update DB directly
+      // This doesn't rely on webhooks!
+      const verifyAndUpdatePayment = async () => {
+        if (!user) {
+          console.log('⏳ Waiting for user...')
+          return
+        }
         
-        console.log('🔄 Waiting 3 seconds for webhook to process...')
+        console.log('🔄 Calling verify-payment API...')
         
-        // Wait 3 seconds for webhook to definitely complete
-        await new Promise(resolve => setTimeout(resolve, 3000))
-        
-        // Force reload from Firestore
-        console.log('🔄 Force reloading user data...')
-        const passData = await getUserPassData(user.uid)
-        
-        console.log('📊 Reloaded pass data:', passData)
-        
-        setPassesLeft(passData.passesLeft)
-        setIsPremium(passData.isPremium)
-        setIsPhoneLocked(false)
-        setPhoneLockExpiresAt(null)
-        setPassResetTime(null)
-        
-        console.log('✅ User data updated after payment!')
+        try {
+          const response = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.uid,
+              sessionId: sessionId,
+              plan: paymentPlan
+            })
+          })
+          
+          const result = await response.json()
+          console.log('📋 Verify-payment response:', result)
+          
+          if (result.success) {
+            console.log('✅ Payment verified and DB updated!')
+            
+            // Reload user data to reflect changes
+            const passData = await getUserPassData(user.uid)
+            console.log('📊 Updated pass data:', passData)
+            
+            setPassesLeft(passData.passesLeft)
+            setIsPremium(passData.isPremium)
+            setIsPhoneLocked(false)
+            setPhoneLockExpiresAt(null)
+            setPassResetTime(null)
+            
+            console.log('✅ UI updated with new pass data!')
+          } else {
+            console.error('❌ Payment verification failed:', result.error)
+            // Still try to reload data in case webhook worked
+            const passData = await getUserPassData(user.uid)
+            setPassesLeft(passData.passesLeft)
+            setIsPremium(passData.isPremium)
+          }
+        } catch (error) {
+          console.error('❌ Error calling verify-payment:', error)
+          // Fallback: try to reload data anyway
+          try {
+            const passData = await getUserPassData(user.uid)
+            setPassesLeft(passData.passesLeft)
+            setIsPremium(passData.isPremium)
+          } catch (e) {
+            console.error('❌ Fallback reload also failed:', e)
+          }
+        }
       }
       
-      forceReloadUserData()
+      // Call immediately
+      verifyAndUpdatePayment()
     }
     
     if (paymentCancelled === 'true') {
@@ -1148,6 +1184,17 @@ export default function Page() {
     
     setLoading(true)
     try {
+      // ✅ NEW: Clean up expired check-ins before searching
+      try {
+        const { autoCheckoutExpiredUsers } = await import('@/lib/checkin-service')
+        const checkoutCount = await autoCheckoutExpiredUsers()
+        if (checkoutCount > 0) {
+          console.log(`🧹 Cleaned up ${checkoutCount} expired check-ins`)
+        }
+      } catch (cleanupError) {
+        console.log('⚠️ Auto-checkout cleanup skipped:', cleanupError)
+      }
+      
       // Get user's current location
       const location = await getCurrentLocation()
       console.log('📍 User location:', location)
