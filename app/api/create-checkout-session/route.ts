@@ -38,32 +38,38 @@ export async function POST(req: NextRequest) {
     // Get price ID based on plan - Using hardcoded Price IDs for reliability
     let priceId: string
     let mode: 'subscription' | 'payment'
+    let productType: string
 
     if (plan === 'weekly') {
       priceId = 'price_1SOA29GgzDjUcfZ0mpJ03Rn9'  // Weekly Premium $4.90
       mode = 'subscription'
+      productType = 'premium'
     } else if (plan === 'monthly') {
       priceId = 'price_1SOA5KGgzDjUcfZ0ck2C4RMO'  // Monthly Premium $9.90
       mode = 'subscription'
+      productType = 'premium'
     } else {
       // skip-timer (1 Pass)
       priceId = 'price_1SOA6qGgzDjUcfZ0hRZ7UtRS'  // Skip Timer $2.90
       mode = 'payment'
+      productType = 'skip_timer'
     }
 
-    const successUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}?session_id={CHECKOUT_SESSION_ID}`
-    const cancelUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}`
+    // ✅ FIXED: Add payment_success parameter to success URL
+    const successUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://i4iguana-app.vercel.app'}?payment_success=true&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://i4iguana-app.vercel.app'}?payment_cancelled=true`
 
     console.log('💳 Creating Stripe checkout session:', {
       userId,
       plan,
       priceId,
       mode,
+      productType,
     })
 
     const session = await stripe.checkout.sessions.create({
       mode,
-      payment_method_types: ['card'],
+      payment_method_types: ['card'],  // ✅ Only card - no Link!
       line_items: [
         {
           price: priceId,
@@ -73,10 +79,22 @@ export async function POST(req: NextRequest) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: userId,
+      // ✅ FIXED: Added productType to metadata for webhook
       metadata: {
         userId,
         plan,
+        productType,
       },
+      // ✅ NEW: Disable Stripe Link for faster checkout
+      payment_method_options: {
+        card: {
+          setup_future_usage: undefined,  // Don't save for future
+        },
+      },
+      // ✅ NEW: Disable Link completely
+      payment_method_collection: 'always',  // Always show payment form
+      // ✅ NEW: Simple checkout without account creation
+      customer_creation: 'if_required',
     })
 
     console.log('✅ Checkout session created:', session.id)
