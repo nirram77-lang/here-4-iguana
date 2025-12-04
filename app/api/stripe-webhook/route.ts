@@ -110,6 +110,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userDoc = await userRef.get()
   const userData = userDoc.data()
 
+  // ✅ FIX: Get phone number - support both real and dev mode
+  let phoneNumber = userData?.phoneNumber
+  
+  // If no real phone number, check for dev mode phone identity
+  if (!phoneNumber) {
+    // Dev mode format: +972DEV + last 12 chars of UID
+    const devPhone = `+972DEV${userId.slice(-12)}`
+    const devPhoneRef = db.collection('phoneIdentities').doc(devPhone)
+    const devPhoneDoc = await devPhoneRef.get()
+    if (devPhoneDoc.exists) {
+      phoneNumber = devPhone
+      console.log(`🔧 DEV MODE: Using dev phone: ${phoneNumber}`)
+    }
+  }
+
   if (productType === 'skip_timer') {
     // Skip timer purchase - unlock user immediately and add 1 pass
     await userRef.update({
@@ -120,14 +135,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       skipTimerPaymentId: session.payment_intent,
     })
     
-    // ✅ Also update phoneIdentities if user has phone number
-    if (userData?.phoneNumber) {
-      const phoneRef = db.collection('phoneIdentities').doc(userData.phoneNumber)
+    // ✅ Also update phoneIdentities
+    if (phoneNumber) {
+      const phoneRef = db.collection('phoneIdentities').doc(phoneNumber)
       await phoneRef.update({
         passesLeft: FieldValue.increment(1),
         lockedUntil: null,
       })
-      console.log('📱 PhoneIdentity also updated with +1 pass')
+      console.log(`📱 PhoneIdentity ${phoneNumber} updated with +1 pass`)
+    } else {
+      console.warn('⚠️ No phone number found - could not update phoneIdentities')
     }
     
     console.log('⚡ User unlocked via skip timer purchase')
@@ -153,16 +170,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       lockUntil: 0,
     })
     
-    // ✅ Also update phoneIdentities if user has phone number
-    if (userData?.phoneNumber) {
-      const phoneRef = db.collection('phoneIdentities').doc(userData.phoneNumber)
+    // ✅ Also update phoneIdentities
+    if (phoneNumber) {
+      const phoneRef = db.collection('phoneIdentities').doc(phoneNumber)
       await phoneRef.update({
         isPremium: true,
         premiumExpiryDate: expiryDate,
         passesLeft: 999,
         lockedUntil: null,
       })
-      console.log('📱 PhoneIdentity also upgraded to premium')
+      console.log(`📱 PhoneIdentity ${phoneNumber} upgraded to premium`)
+    } else {
+      console.warn('⚠️ No phone number found - could not update phoneIdentities')
     }
     
     console.log(`💎 User upgraded to ${actualPlan} premium until ${new Date(expiryDate).toLocaleString()}`)
