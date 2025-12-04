@@ -285,9 +285,13 @@ export const findNearbyUsers = async (
       throw new Error('Current user profile not found')
     }
 
-    // ✅ "She Decides" - Always look for opposite gender (straight dating)
-    const lookingFor = currentUserProfile.gender === 'male' ? 'female' : 'male'
+    // ✅ FIXED: Use user's actual preferences for lookingFor
     const currentUserGender = currentUserProfile.gender
+    const userLookingFor = currentUserProfile.preferences?.lookingFor
+    const lookingFor = userLookingFor && userLookingFor !== 'both' 
+      ? userLookingFor 
+      : (currentUserGender === 'male' ? 'female' : 'male')
+    
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]
     
@@ -719,8 +723,12 @@ export const findNearbyAvailableUsers = async (
 
     console.log('✅ You are AVAILABLE - searching for other available users')
     
-    // ✅ "She Decides" - Always look for opposite gender (straight dating)
-    const lookingFor = currentUserProfile.gender === 'male' ? 'female' : 'male'
+    // ✅ FIXED: Use user's actual preferences for lookingFor
+    const currentUserGender = currentUserProfile.gender
+    const userLookingFor = currentUserProfile.preferences?.lookingFor
+    const lookingFor = userLookingFor && userLookingFor !== 'both' 
+      ? userLookingFor 
+      : (currentUserGender === 'male' ? 'female' : 'male')
     
     // ✅ 12-hour match cooldown - load users on cooldown
     const matchesOnCooldown = await getMatchesOnCooldown(currentUserId)
@@ -1370,9 +1378,16 @@ export const getUsersByVenue = async (
       return []
     }
     
-    // ✅ "She Decides" - Always look for opposite gender (straight dating)
+    // ✅ FIXED: Use user's actual preferences for lookingFor
+    // Default to opposite gender (She Decides) but respect user preferences if set
     const currentUserGender = currentUserProfile.gender
-    const lookingFor = currentUserGender === 'male' ? 'female' : 'male'
+    const userLookingFor = currentUserProfile.preferences?.lookingFor
+    
+    // If user explicitly set lookingFor preference, use it
+    // Otherwise, default to opposite gender (She Decides for straight dating)
+    const lookingFor = userLookingFor && userLookingFor !== 'both' 
+      ? userLookingFor 
+      : (currentUserGender === 'male' ? 'female' : 'male')
     
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]
