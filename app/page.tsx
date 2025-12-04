@@ -2297,15 +2297,22 @@ export default function Page() {
                     {/* Weekly Premium Button */}
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button
-                        onClick={() => {
-                          setShowOutOfPasses(false)
-                          handleStripeCheckout('weekly')
-                        }}
-                        className="w-full h-14 bg-gradient-to-r from-[#4ade80]/80 to-[#22c55e]/80 hover:from-[#4ade80] hover:to-[#22c55e] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden"
+                        onClick={() => handleStripeCheckout('weekly')}
+                        disabled={loading}
+                        className="w-full h-14 bg-gradient-to-r from-[#4ade80]/80 to-[#22c55e]/80 hover:from-[#4ade80] hover:to-[#22c55e] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden disabled:opacity-50"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                        <Zap className="mr-2 h-5 w-5" />
-                        Weekly Premium - $4.90/week
+                        {loading ? (
+                          <span className="flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-[#0d2920] border-t-transparent rounded-full animate-spin" />
+                            Processing...
+                          </span>
+                        ) : (
+                          <>
+                            <Zap className="mr-2 h-5 w-5" />
+                            Weekly Premium - $4.90/week
+                          </>
+                        )}
                       </Button>
                     </motion.div>
 
@@ -2317,29 +2324,43 @@ export default function Page() {
                         BEST VALUE
                       </div>
                       <Button
-                        onClick={() => {
-                          setShowOutOfPasses(false)
-                          handleStripeCheckout('monthly')
-                        }}
-                        className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden border-2 border-[#f59e0b]/50"
+                        onClick={() => handleStripeCheckout('monthly')}
+                        disabled={loading}
+                        className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden border-2 border-[#f59e0b]/50 disabled:opacity-50"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                        <Crown className="mr-2 h-5 w-5" />
-                        Monthly Premium - $9.90/month
+                        {loading ? (
+                          <span className="flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-[#0d2920] border-t-transparent rounded-full animate-spin" />
+                            Processing...
+                          </span>
+                        ) : (
+                          <>
+                            <Crown className="mr-2 h-5 w-5" />
+                            Monthly Premium - $9.90/month
+                          </>
+                        )}
                       </Button>
                     </motion.div>
 
                     {/* Get Bonus Pass Button */}
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button
-                        onClick={() => {
-                          setShowOutOfPasses(false)
-                          handleStripeCheckout('skip-timer')
-                        }}
-                        className="w-full h-14 bg-[#4ade80]/20 hover:bg-[#4ade80]/30 text-[#4ade80] font-bold text-lg rounded-xl border-2 border-[#4ade80]/50 relative overflow-hidden"
+                        onClick={() => handleStripeCheckout('skip-timer')}
+                        disabled={loading}
+                        className="w-full h-14 bg-[#4ade80]/20 hover:bg-[#4ade80]/30 text-[#4ade80] font-bold text-lg rounded-xl border-2 border-[#4ade80]/50 relative overflow-hidden disabled:opacity-50"
                       >
-                        <Sparkles className="mr-2 h-5 w-5" />
-                        Get 1 Pass - $2.90
+                        {loading ? (
+                          <span className="flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-[#4ade80] border-t-transparent rounded-full animate-spin" />
+                            Processing...
+                          </span>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-5 w-5" />
+                            Get 1 Pass - $2.90
+                          </>
+                        )}
                       </Button>
                     </motion.div>
 
