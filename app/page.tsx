@@ -73,6 +73,7 @@ export default function Page() {
   const [currentMatchId, setCurrentMatchId] = useState<string>("")
   const [nearbyUsers, setNearbyUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState<'weekly' | 'monthly' | 'skip-timer' | null>(null)
   const [showOutOfPasses, setShowOutOfPasses] = useState(false)
   const [showCouponModal, setShowCouponModal] = useState<'premium' | 'pass' | null>(null)  // ✅ NEW: Coupon modal
 
@@ -1713,7 +1714,7 @@ export default function Page() {
     
     try {
       console.log(`💳 Creating Stripe checkout for plan: ${plan}`)
-      setLoading(true)
+      setPaymentLoading(plan)  // ✅ Set specific button loading
       
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -1732,12 +1733,12 @@ export default function Page() {
       } else {
         console.error('❌ No checkout URL returned:', data)
         alert('❌ Failed to create checkout. Please try again.')
+        setPaymentLoading(null)
       }
     } catch (error) {
       console.error('❌ Stripe checkout error:', error)
       alert('❌ Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
+      setPaymentLoading(null)
     }
   }
 
@@ -2298,11 +2299,11 @@ export default function Page() {
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button
                         onClick={() => handleStripeCheckout('weekly')}
-                        disabled={loading}
+                        disabled={paymentLoading !== null}
                         className="w-full h-14 bg-gradient-to-r from-[#4ade80]/80 to-[#22c55e]/80 hover:from-[#4ade80] hover:to-[#22c55e] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden disabled:opacity-50"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                        {loading ? (
+                        {paymentLoading === 'weekly' ? (
                           <span className="flex items-center gap-2">
                             <div className="w-5 h-5 border-2 border-[#0d2920] border-t-transparent rounded-full animate-spin" />
                             Processing...
@@ -2325,11 +2326,11 @@ export default function Page() {
                       </div>
                       <Button
                         onClick={() => handleStripeCheckout('monthly')}
-                        disabled={loading}
+                        disabled={paymentLoading !== null}
                         className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg relative overflow-hidden border-2 border-[#f59e0b]/50 disabled:opacity-50"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                        {loading ? (
+                        {paymentLoading === 'monthly' ? (
                           <span className="flex items-center gap-2">
                             <div className="w-5 h-5 border-2 border-[#0d2920] border-t-transparent rounded-full animate-spin" />
                             Processing...
@@ -2347,10 +2348,10 @@ export default function Page() {
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button
                         onClick={() => handleStripeCheckout('skip-timer')}
-                        disabled={loading}
+                        disabled={paymentLoading !== null}
                         className="w-full h-14 bg-[#4ade80]/20 hover:bg-[#4ade80]/30 text-[#4ade80] font-bold text-lg rounded-xl border-2 border-[#4ade80]/50 relative overflow-hidden disabled:opacity-50"
                       >
-                        {loading ? (
+                        {paymentLoading === 'skip-timer' ? (
                           <span className="flex items-center gap-2">
                             <div className="w-5 h-5 border-2 border-[#4ade80] border-t-transparent rounded-full animate-spin" />
                             Processing...

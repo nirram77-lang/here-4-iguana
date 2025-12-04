@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode,
-      payment_method_types: ['card'],  // ✅ Only card - no Link!
+      payment_method_types: ['card'],  // ✅ Only card - no Link (disabled in Dashboard)
       line_items: [
         {
           price: priceId,
@@ -84,11 +84,6 @@ export async function POST(req: NextRequest) {
         plan,
         productType,
       },
-      // ✅ FIX: Only add these options for one-time payments (not subscriptions)
-      ...(mode === 'payment' ? {
-        payment_method_collection: 'always',
-        customer_creation: 'if_required',
-      } : {}),
     })
 
     console.log('✅ Checkout session created:', session.id)
