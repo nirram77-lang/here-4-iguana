@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Crown, Sparkles, X, Clock, Rocket, Star, Zap } from "lucide-react"
+import { Crown, Sparkles, X, Clock, Rocket, Star, Zap, Check, Heart } from "lucide-react"
 import { onSnapshot, doc, collection, query, where, getDoc } from "firebase/firestore"  // ✅ NEW
 import { db } from "@/lib/firebase"  // ✅ NEW
 import SplashScreen from "@/components/splash-screen"
@@ -126,6 +126,10 @@ export default function Page() {
 
   // ✅ NEW: QR Scan Required modal - shown after onboarding if no check-in
   const [showQRScanRequired, setShowQRScanRequired] = useState(false)
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState<{
+    isVisible: boolean
+    plan: 'weekly' | 'monthly' | 'skip-timer' | null
+  }>({ isVisible: false, plan: null })
   
   // ✅ NEW: In-App Notification for messages
   const [inAppNotification, setInAppNotification] = useState<{
@@ -237,7 +241,7 @@ export default function Page() {
     
     const urlParams = new URLSearchParams(window.location.search)
     const paymentSuccess = urlParams.get('payment_success')
-    const paymentPlan = urlParams.get('plan')
+    const paymentPlan = urlParams.get('plan') as 'weekly' | 'monthly' | 'skip-timer' | null
     const paymentCancelled = urlParams.get('payment_cancelled')
     
     if (paymentSuccess === 'true' && paymentPlan) {
@@ -246,93 +250,38 @@ export default function Page() {
       // Clear URL params immediately to prevent re-processing
       window.history.replaceState({}, '', window.location.pathname)
       
-      // ✅ FIX: Show appropriate message based on plan
-      const getMessage = () => {
-        if (paymentPlan === 'weekly') {
-          return '🎉 Payment Successful!\n\nYour Weekly Premium subscription is now active!\n\nEnjoy unlimited matches!'
-        } else if (paymentPlan === 'monthly') {
-          return '🎉 Payment Successful!\n\nYour Monthly Premium subscription is now active!\n\nEnjoy unlimited matches!'
-        } else if (paymentPlan === 'skip-timer') {
-          return '🎉 Payment Successful!\n\n1 Pass has been added to your account!\n\nGo find your match!'
-        }
-        return '🎉 Payment Successful!'
+      // ✅ Show Hollywood-style success modal!
+      setShowPaymentSuccess({ isVisible: true, plan: paymentPlan })
+      
+      // ✅ Force reload user data after delay (webhook needs time)
+      const forceReloadUserData = async () => {
+        if (!user) return
+        
+        console.log('🔄 Waiting 3 seconds for webhook to process...')
+        
+        // Wait 3 seconds for webhook to definitely complete
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        
+        // Force reload from Firestore
+        console.log('🔄 Force reloading user data...')
+        const passData = await getUserPassData(user.uid)
+        
+        console.log('📊 Reloaded pass data:', passData)
+        
+        setPassesLeft(passData.passesLeft)
+        setIsPremium(passData.isPremium)
+        setIsPhoneLocked(false)
+        setPhoneLockExpiresAt(null)
+        setPassResetTime(null)
+        
+        console.log('✅ User data updated after payment!')
       }
       
-      // ✅ FIX: Wait for webhook to process before reloading data
-      // Webhook needs time to update Firestore
-      const reloadUserData = async () => {
-        if (!user) {
-          console.log('⏳ Waiting for user to be available...')
-          return
-        }
-        
-        console.log('🔄 Waiting for webhook to process...')
-        
-        // ✅ Poll for updated data (webhook may take a few seconds)
-        let attempts = 0
-        const maxAttempts = 10
-        const pollInterval = 1000 // 1 second
-        
-        const checkForUpdate = async (): Promise<boolean> => {
-          attempts++
-          console.log(`🔄 Checking for payment update (attempt ${attempts}/${maxAttempts})...`)
-          
-          const passData = await getUserPassData(user.uid)
-          console.log('📊 Current pass data:', passData)
-          
-          // Check if payment was processed
-          if (paymentPlan === 'skip-timer') {
-            // For 1 Pass, check if passes increased or user is unlocked
-            if (passData.passesLeft > 0 || !passData.isLocked) {
-              return true
-            }
-          } else {
-            // For premium, check isPremium flag
-            if (passData.isPremium) {
-              return true
-            }
-          }
-          
-          return false
-        }
-        
-        // Start polling
-        const poll = async () => {
-          const updated = await checkForUpdate()
-          
-          if (updated || attempts >= maxAttempts) {
-            // Final data reload
-            const passData = await getUserPassData(user.uid)
-            setPassesLeft(passData.passesLeft)
-            setIsPremium(passData.isPremium)
-            setIsPhoneLocked(false)
-            setPhoneLockExpiresAt(null)
-            setPassResetTime(null)
-            
-            console.log('✅ User data reloaded after payment:', passData)
-            
-            // Show success message
-            alert(getMessage())
-            
-            if (!updated && attempts >= maxAttempts) {
-              console.warn('⚠️ Payment may still be processing. Please refresh if needed.')
-            }
-          } else {
-            // Continue polling
-            setTimeout(poll, pollInterval)
-          }
-        }
-        
-        // Start polling after initial delay (give webhook time to start)
-        setTimeout(poll, 1500)
-      }
-      
-      reloadUserData()
+      forceReloadUserData()
     }
     
     if (paymentCancelled === 'true') {
       console.log('❌ Payment was cancelled')
-      // Clear URL params
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [user])
@@ -2379,6 +2328,157 @@ export default function Page() {
                     🔒 Secure payment via Stripe
                   </p>
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ✅ NEW: Payment Success Modal - Hollywood Style! */}
+      <AnimatePresence>
+        {showPaymentSuccess.isVisible && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100]"
+              onClick={() => setShowPaymentSuccess({ isVisible: false, plan: null })}
+            />
+            
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 50 }}
+              transition={{ type: "spring", bounce: 0.3 }}
+              className="fixed inset-0 flex items-center justify-center z-[101] p-4"
+            >
+              <div className="bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-[#4ade80]/30 relative overflow-hidden">
+                {/* Confetti Effect */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  {[...Array(20)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ 
+                        y: -20, 
+                        x: Math.random() * 300 - 150,
+                        rotate: 0,
+                        opacity: 1 
+                      }}
+                      animate={{ 
+                        y: 400, 
+                        rotate: Math.random() * 360,
+                        opacity: 0 
+                      }}
+                      transition={{ 
+                        duration: 2 + Math.random() * 2,
+                        delay: Math.random() * 0.5,
+                        repeat: Infinity,
+                        repeatDelay: Math.random() * 2
+                      }}
+                      className="absolute text-2xl"
+                      style={{ left: `${Math.random() * 100}%` }}
+                    >
+                      {['🎉', '✨', '💎', '🦎', '💚', '⭐'][Math.floor(Math.random() * 6)]}
+                    </motion.div>
+                  ))}
+                </div>
+                
+                {/* Success Icon */}
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", delay: 0.2, bounce: 0.5 }}
+                  className="flex justify-center mb-6"
+                >
+                  <div className="w-24 h-24 bg-gradient-to-br from-[#4ade80] to-[#22c55e] rounded-full flex items-center justify-center shadow-lg shadow-[#4ade80]/30">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <Check className="h-12 w-12 text-[#0d2920]" strokeWidth={3} />
+                    </motion.div>
+                  </div>
+                </motion.div>
+                
+                {/* Title */}
+                <motion.h2 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-3xl font-black text-white text-center mb-2"
+                >
+                  Payment Successful!
+                </motion.h2>
+                
+                {/* Subtitle based on plan */}
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-[#4ade80] text-center text-lg mb-6"
+                >
+                  {showPaymentSuccess.plan === 'weekly' && '🌟 Weekly Premium Activated!'}
+                  {showPaymentSuccess.plan === 'monthly' && '👑 Monthly Premium Activated!'}
+                  {showPaymentSuccess.plan === 'skip-timer' && '🎫 1 Pass Added!'}
+                </motion.p>
+                
+                {/* Benefits */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="bg-white/5 rounded-xl p-4 mb-6"
+                >
+                  {(showPaymentSuccess.plan === 'weekly' || showPaymentSuccess.plan === 'monthly') ? (
+                    <ul className="space-y-2 text-white/80">
+                      <li className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-[#4ade80]" />
+                        <span>Unlimited matches</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-[#4ade80]" />
+                        <span>No waiting time</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-[#4ade80]" />
+                        <span>Priority matching</span>
+                      </li>
+                    </ul>
+                  ) : (
+                    <p className="text-white/80 text-center">
+                      You now have <span className="text-[#4ade80] font-bold">1 extra pass</span> to find your match!
+                    </p>
+                  )}
+                </motion.div>
+                
+                {/* CTA Button */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <Button
+                    onClick={() => {
+                      setShowPaymentSuccess({ isVisible: false, plan: null })
+                      // Reload user data one more time
+                      if (user) {
+                        getUserPassData(user.uid).then(passData => {
+                          setPassesLeft(passData.passesLeft)
+                          setIsPremium(passData.isPremium)
+                          setIsPhoneLocked(false)
+                        })
+                      }
+                    }}
+                    className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg"
+                  >
+                    <Heart className="mr-2 h-5 w-5" />
+                    Start Matching!
+                  </Button>
+                </motion.div>
               </div>
             </motion.div>
           </>
