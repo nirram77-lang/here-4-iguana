@@ -79,22 +79,16 @@ export async function POST(req: NextRequest) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: userId,
-      // ✅ FIXED: Added productType to metadata for webhook
       metadata: {
         userId,
         plan,
         productType,
       },
-      // ✅ NEW: Disable Stripe Link for faster checkout
-      payment_method_options: {
-        card: {
-          setup_future_usage: undefined,  // Don't save for future
-        },
-      },
-      // ✅ NEW: Disable Link completely
-      payment_method_collection: 'always',  // Always show payment form
-      // ✅ NEW: Simple checkout without account creation
-      customer_creation: 'if_required',
+      // ✅ FIX: Only add these options for one-time payments (not subscriptions)
+      ...(mode === 'payment' ? {
+        payment_method_collection: 'always',
+        customer_creation: 'if_required',
+      } : {}),
     })
 
     console.log('✅ Checkout session created:', session.id)
