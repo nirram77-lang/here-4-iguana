@@ -15,7 +15,9 @@ import {
   Copy,
   Check,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  QrCode,
+  FileImage
 } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { 
@@ -27,6 +29,7 @@ import { auth } from '@/lib/firebase'
 import { getAdminData } from '@/lib/admin-auth'
 import { doc, updateDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import VenueQRTemplate from '@/components/venue-qr-template'
 
 export default function VenueEditPage() {
   const router = useRouter()
@@ -52,6 +55,9 @@ export default function VenueEditPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
   const [updatingPassword, setUpdatingPassword] = useState(false)
+  
+  // QR Template Modal
+  const [showQRTemplate, setShowQRTemplate] = useState(false)
 
   // Load venue data
   useEffect(() => {
@@ -616,6 +622,49 @@ Keep these credentials secure!
               )}
             </motion.div>
 
+            {/* 🦎 QR Template Generator */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.35 }}
+              className="bg-gradient-to-br from-[#4ade80]/20 to-[#1a4d3e]/60 backdrop-blur-md border-2 border-[#4ade80]/50 rounded-2xl p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="text-4xl">🦎</div>
+                <div>
+                  <h2 className="text-xl font-black text-white">
+                    QR Template
+                  </h2>
+                  <p className="text-[#4ade80] text-sm">
+                    תבנית מושלמת לשליחה למקום!
+                  </p>
+                </div>
+              </div>
+              
+              <p className="text-white/70 text-sm mb-4">
+                הפק תבנית יפה עם 2 QR codes:
+              </p>
+              
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-2 text-white/60 text-sm">
+                  <span className="bg-[#4ade80] text-[#0d2920] rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
+                  <span>QR להורדת האפליקציה</span>
+                </div>
+                <div className="flex items-center gap-2 text-white/60 text-sm">
+                  <span className="bg-[#4ade80] text-[#0d2920] rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2</span>
+                  <span>QR להתחברות למקום</span>
+                </div>
+              </div>
+              
+              <Button
+                onClick={() => setShowQRTemplate(true)}
+                className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] font-bold text-lg"
+              >
+                <FileImage className="mr-2 h-5 w-5" />
+                🦎 הפק תבנית QR
+              </Button>
+            </motion.div>
+
             {/* Venue Stats */}
             <motion.div
               initial={{ y: 20, opacity: 0 }}
@@ -693,6 +742,19 @@ Keep these credentials secure!
           </Button>
         </motion.div>
       </div>
+      
+      {/* QR Template Modal */}
+      {venue && (
+        <VenueQRTemplate
+          venue={{
+            id: venue.id,
+            displayName: venue.displayName,
+            qrCodeData: venue.qrCodeData
+          }}
+          isOpen={showQRTemplate}
+          onClose={() => setShowQRTemplate(false)}
+        />
+      )}
     </div>
   )
 }
