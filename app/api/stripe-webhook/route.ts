@@ -115,13 +115,15 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   
   // If no real phone number, check for dev mode phone identity
   if (!phoneNumber) {
-    // Dev mode format: +972DEV + last 12 chars of UID
-    const devPhone = `+972DEV${userId.slice(-12)}`
+    // Dev mode format: +972DEV + last 8 chars of UID (NOT 12!)
+    const devPhone = `+972DEV${userId.slice(-8)}`
     const devPhoneRef = db.collection('phoneIdentities').doc(devPhone)
     const devPhoneDoc = await devPhoneRef.get()
     if (devPhoneDoc.exists) {
       phoneNumber = devPhone
-      console.log(`🔧 DEV MODE: Using dev phone: ${phoneNumber}`)
+      console.log(`🔧 DEV MODE: Found dev phone: ${phoneNumber}`)
+    } else {
+      console.log(`⚠️ DEV MODE: Phone ${devPhone} not found in phoneIdentities`)
     }
   }
 
