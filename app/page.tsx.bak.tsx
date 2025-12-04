@@ -638,16 +638,6 @@ export default function Page() {
         return
       }
       
-      // ✅ CRITICAL: Skip navigation if returning from payment
-      // The payment success handler will handle navigation
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search)
-        if (urlParams.get('payment_success') === 'true') {
-          console.log('💳 Returning from payment - skipping auth navigation')
-          return
-        }
-      }
-      
       // ✅ Check profile with timeout (5 seconds max on mobile)
       try {
         const profilePromise = getUserProfile(user.uid)

@@ -1383,11 +1383,17 @@ export const getUsersByVenue = async (
     const currentUserGender = currentUserProfile.gender
     const userLookingFor = currentUserProfile.preferences?.lookingFor
     
+    console.log(`🔍 DEBUG lookingFor:`)
+    console.log(`   preferences object:`, currentUserProfile.preferences)
+    console.log(`   userLookingFor from preferences: "${userLookingFor}"`)
+    
     // If user explicitly set lookingFor preference, use it
     // Otherwise, default to opposite gender (She Decides for straight dating)
     const lookingFor = userLookingFor && userLookingFor !== 'both' 
       ? userLookingFor 
       : (currentUserGender === 'male' ? 'female' : 'male')
+    
+    console.log(`   FINAL lookingFor: "${lookingFor}"`)
     
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]

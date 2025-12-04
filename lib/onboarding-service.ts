@@ -4,7 +4,7 @@ import { getDevModePhoneNumber } from "./phone-identity-service"
 
 export interface OnboardingData {
   gender: 'male' | 'female'
-  // ✅ "She Decides" - lookingFor removed (automatic opposite gender)
+  lookingFor?: 'male' | 'female' | 'both'  // ✅ FIXED: Added lookingFor
   age: number
   ageRange: [number, number]
   minDistance?: number  // Optional - defaults to 50
@@ -66,8 +66,8 @@ export const saveOnboardingData = async (
     isAvailable: true,
     lastAvailableToggle: Timestamp.now(),
     preferences: {
-      // ✅ "She Decides" - lookingFor is automatic (opposite gender)
-      lookingFor: data.gender === 'male' ? 'female' : 'male',
+      // ✅ FIXED: Use user's actual lookingFor choice, default to opposite gender if not set
+      lookingFor: data.lookingFor || (data.gender === 'male' ? 'female' : 'male'),
       minDistance: data.minDistance || 50,
       maxDistance: data.maxDistance || 500,
       ageRange: data.ageRange,
