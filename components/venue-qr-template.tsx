@@ -231,10 +231,42 @@ export default function VenueQRTemplate({ venue, isOpen, onClose }: VenueQRTempl
             </div>
           </div>
           
-          {/* Footer */}
-          <div className="text-center mt-4">
-            <p className="text-white/40 text-[10px]">
-              © I4IGUANA • Dating Made Simple
+          {/* Footer with Contact & Teaser */}
+          <div className="mt-6 pt-4 border-t border-[#4ade80]/20">
+            {/* Teaser */}
+            <div className="text-center mb-4">
+              <p className="text-[#4ade80] text-sm font-bold mb-1">
+                🔥 רוצים גם במקום שלכם?
+              </p>
+              <p className="text-white/60 text-xs">
+                הצטרפו למהפכת ההיכרויות החדשה!
+              </p>
+            </div>
+            
+            {/* Contact Info */}
+            <div className="bg-[#0d2920]/50 rounded-xl p-3 border border-[#4ade80]/20">
+              <div className="flex items-center justify-center gap-4 flex-wrap">
+                <a 
+                  href="tel:+972522653170" 
+                  className="flex items-center gap-2 text-white/80 hover:text-[#4ade80] transition-colors"
+                >
+                  <span className="text-lg">📱</span>
+                  <span className="text-sm font-medium">052-265-3170</span>
+                </a>
+                <span className="text-white/30">|</span>
+                <a 
+                  href="mailto:nirram76@gmail.com" 
+                  className="flex items-center gap-2 text-white/80 hover:text-[#4ade80] transition-colors"
+                >
+                  <span className="text-lg">✉️</span>
+                  <span className="text-sm font-medium">nirram76@gmail.com</span>
+                </a>
+              </div>
+            </div>
+            
+            {/* Copyright */}
+            <p className="text-center text-white/30 text-[10px] mt-3">
+              © I4IGUANA • Dating Made Simple • 2025
             </p>
           </div>
         </div>
