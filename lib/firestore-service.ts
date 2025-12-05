@@ -116,6 +116,10 @@ export interface UserProfile {
   hobbies: string[]
   bio?: string
   onboardingComplete?: boolean
+  // ✅ Phone verification fields
+  phoneNumber?: string
+  phoneVerified?: boolean
+  phoneVerifiedAt?: Timestamp
   location: {
     latitude: number
     longitude: number
