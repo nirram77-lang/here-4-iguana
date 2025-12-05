@@ -12,6 +12,9 @@ const GA_MEASUREMENT_ID = 'G-5BZR9TWG9N'
 // OneSignal App ID
 const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7'
 
+// App Version - increment this to force cache clear on all users
+const APP_VERSION = '2.0.0'
+
 export const metadata: Metadata = {
   title: 'I4IGUANA - Meet Now',
   description: 'Proximity-based dating app - Meet people within 10-500 meters instantly',
@@ -46,6 +49,47 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Auto Cache Clear on Version Change */}
+        <Script id="cache-clear" strategy="beforeInteractive">
+          {`
+            (function() {
+              var APP_VERSION = "${APP_VERSION}";
+              var storedVersion = localStorage.getItem('app_version');
+              
+              if (storedVersion !== APP_VERSION) {
+                console.log('🔄 New version detected! Clearing cache...');
+                
+                // Clear all caches
+                if ('caches' in window) {
+                  caches.keys().then(function(names) {
+                    names.forEach(function(name) {
+                      caches.delete(name);
+                    });
+                  });
+                }
+                
+                // Clear service workers
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    registrations.forEach(function(registration) {
+                      registration.unregister();
+                    });
+                  });
+                }
+                
+                // Save new version
+                localStorage.setItem('app_version', APP_VERSION);
+                
+                // Reload if this isn't the first visit
+                if (storedVersion) {
+                  console.log('🔄 Reloading with fresh cache...');
+                  window.location.reload();
+                }
+              }
+            })();
+          `}
+        </Script>
+
         {/* Google Analytics */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
