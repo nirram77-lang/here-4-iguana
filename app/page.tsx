@@ -685,13 +685,22 @@ export default function Page() {
         // Skip verification if: phoneVerified === true AND phoneNumber exists
         const hasVerifiedPhone = profile?.phoneVerified === true && profile?.phoneNumber
         
-        if (!hasVerifiedPhone) {
+        // ✅ CRITICAL FIX: Also check localStorage cache for verified phone
+        // This prevents the bug where refresh sends user back to phone-verification
+        const cachedPhoneVerified = localStorage.getItem('i4iguana_phone_verified')
+        
+        if (!hasVerifiedPhone && cachedPhoneVerified !== 'true') {
           console.log('📱 Phone not verified → Phone verification required')
           setCurrentScreen("phone-verification")
           return
         }
         
-        console.log('✅ Phone already verified:', profile.phoneNumber)
+        // If we got here with cached verification, trust it
+        if (cachedPhoneVerified === 'true' && !hasVerifiedPhone) {
+          console.log('📱 Phone verified (cached) - continuing...')
+        } else {
+          console.log('✅ Phone already verified:', profile.phoneNumber)
+        }
         
         const hasCompletedOnboarding = profile?.onboardingComplete === true
         const hasBasicProfile = profile && profile.photos && profile.photos.length > 0 && (profile.name || profile.displayName)
@@ -2021,6 +2030,9 @@ export default function Page() {
           showSkip={false}  // ❌ Disabled for Production - real phone verification only
           onComplete={async (phoneNumber) => {
             console.log('✅ Phone verified:', phoneNumber)
+            
+            // ✅ CRITICAL: Cache phone verification to prevent refresh bug
+            localStorage.setItem('i4iguana_phone_verified', 'true')
             
             // Check if user needs onboarding
             try {

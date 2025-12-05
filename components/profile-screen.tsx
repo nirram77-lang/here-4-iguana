@@ -491,6 +491,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       // ✅ FIX: Clear localStorage and sessionStorage on logout
       localStorage.removeItem('hasScannedQR')
       localStorage.removeItem('pendingCheckIn')
+      localStorage.removeItem('i4iguana_phone_verified')  // ✅ Clear phone verification cache
       
       // ✅ NEW: Clear match sound timestamps for all users
       Object.keys(localStorage).forEach(key => {
