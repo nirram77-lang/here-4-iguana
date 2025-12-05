@@ -24,13 +24,16 @@ export default function PhoneVerification({
 }: PhoneVerificationProps) {
   // States
   const [step, setStep] = useState<'phone' | 'code' | 'success'>('phone')
-  const [phoneNumber, setPhoneNumber] = useState('+972')
+  const [localNumber, setLocalNumber] = useState('') // ✅ Only the local part (e.g., 522653170)
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', ''])
   const [confirmationResult, setConfirmationResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resendTimer, setResendTimer] = useState(0)
   const [isDemoMode, setIsDemoMode] = useState(false)
+  
+  // Full phone number with country code
+  const fullPhoneNumber = `+972${localNumber}`
   
   // Refs for code inputs
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -45,33 +48,37 @@ export default function PhoneVerification({
 
   // Check if demo mode
   useEffect(() => {
-    const isDemo = DEMO_PREFIXES.some(prefix => phoneNumber.startsWith(prefix))
+    const isDemo = localNumber.startsWith('50000') || localNumber.startsWith('500000')
     setIsDemoMode(isDemo)
-  }, [phoneNumber])
+  }, [localNumber])
 
   // Format phone number for display
   const formatPhoneDisplay = (phone: string) => {
-    if (phone.length <= 4) return phone
-    // Format: +972-52-XXX-XXXX
-    const digits = phone.slice(4)
-    if (digits.length <= 2) return `+972-${digits}`
-    if (digits.length <= 5) return `+972-${digits.slice(0,2)}-${digits.slice(2)}`
-    return `+972-${digits.slice(0,2)}-${digits.slice(2,5)}-${digits.slice(5)}`
+    // phone is the local number (e.g., 522653170)
+    if (phone.length <= 2) return `+972-${phone}`
+    if (phone.length <= 5) return `+972-${phone.slice(0,2)}-${phone.slice(2)}`
+    return `+972-${phone.slice(0,2)}-${phone.slice(2,5)}-${phone.slice(5)}`
   }
 
-  // Format phone number input
-  const handlePhoneChange = (value: string) => {
-    // Remove all non-digits except the leading +
-    const cleaned = value.replace(/[^\d+]/g, '')
+  // Format local number input (remove leading 0 if present)
+  const handleLocalNumberChange = (value: string) => {
+    // Remove all non-digits
+    let cleaned = value.replace(/\D/g, '')
     
-    // Ensure it starts with +972
-    if (!cleaned.startsWith('+972')) {
-      setPhoneNumber('+972')
-      return
+    // Remove leading 0 (Israeli numbers often typed as 052... but we need 52...)
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.slice(1)
     }
     
-    // Limit to Israeli format: +972XXXXXXXXX (max 13 chars)
-    setPhoneNumber(cleaned.slice(0, 13))
+    // Limit to 9 digits (Israeli mobile: 5X-XXX-XXXX = 9 digits)
+    setLocalNumber(cleaned.slice(0, 9))
+  }
+
+  // Format for display with dashes
+  const formatLocalDisplay = (num: string) => {
+    if (num.length <= 2) return num
+    if (num.length <= 5) return `${num.slice(0,2)}-${num.slice(2)}`
+    return `${num.slice(0,2)}-${num.slice(2,5)}-${num.slice(5)}`
   }
 
   // Handle code input
@@ -119,9 +126,15 @@ export default function PhoneVerification({
 
   // Send verification code via SMS
   const handleSendCode = async () => {
-    // Validation
-    if (phoneNumber.length < 13) {
-      setError('Please enter a valid phone number (10 digits)')
+    // Validation - Israeli mobile is 9 digits (5X-XXX-XXXX)
+    if (localNumber.length < 9) {
+      setError('נא להזין מספר טלפון מלא (9 ספרות)')
+      return
+    }
+    
+    // Validate starts with 5 (Israeli mobile)
+    if (!localNumber.startsWith('5')) {
+      setError('נא להזין מספר נייד ישראלי (מתחיל ב-05)')
       return
     }
 
@@ -129,7 +142,7 @@ export default function PhoneVerification({
     setError('')
 
     try {
-      console.log('📱 Sending SMS to:', phoneNumber)
+      console.log('📱 Sending SMS to:', fullPhoneNumber)
       
       // Check if demo mode
       if (isDemoMode) {
@@ -144,14 +157,14 @@ export default function PhoneVerification({
       
       // Real SMS verification
       const { sendPhoneVerification } = await import('@/lib/phone-verification-service')
-      const result = await sendPhoneVerification(phoneNumber)
+      const result = await sendPhoneVerification(fullPhoneNumber)
       setConfirmationResult(result)
       setStep('code')
       setResendTimer(60)
       console.log('✅ SMS sent successfully')
     } catch (err: any) {
       console.error('❌ Error sending SMS:', err)
-      setError(err.message || 'Error sending verification code')
+      setError(err.message || 'שגיאה בשליחת קוד אימות. אנא נסה שנית')
     } finally {
       setLoading(false)
     }
@@ -178,7 +191,7 @@ export default function PhoneVerification({
           console.log('✅ Demo code verified!')
           await linkPhoneToUser()
           setStep('success')
-          setTimeout(() => onComplete(phoneNumber), 1500)
+          setTimeout(() => onComplete(fullPhoneNumber), 1500)
         } else {
           setError('Invalid code. Demo code is: ' + DEMO_CODE)
         }
@@ -197,7 +210,7 @@ export default function PhoneVerification({
       console.log('✅ Code verified successfully!')
       
       // Wait for animation then complete
-      setTimeout(() => onComplete(phoneNumber), 1500)
+      setTimeout(() => onComplete(fullPhoneNumber), 1500)
     } catch (err: any) {
       console.error('❌ Error verifying code:', err)
       setError(err.message || 'Invalid code. Please try again')
@@ -217,14 +230,14 @@ export default function PhoneVerification({
       // 1. Update user document
       const userRef = doc(db, 'users', userId)
       await updateDoc(userRef, {
-        phoneNumber: phoneNumber,
+        phoneNumber: fullPhoneNumber,
         phoneVerified: true,
         phoneVerifiedAt: Timestamp.now()
       })
       console.log('✅ User document updated with phone')
       
       // 2. Update/create phoneIdentity and link Gmail
-      const phoneRef = doc(db, 'phoneIdentities', phoneNumber)
+      const phoneRef = doc(db, 'phoneIdentities', fullPhoneNumber)
       const phoneDoc = await getDoc(phoneRef)
       
       if (phoneDoc.exists()) {
@@ -253,7 +266,7 @@ export default function PhoneVerification({
       } else {
         // New phone - create phoneIdentity
         await setDoc(phoneRef, {
-          phoneNumber: phoneNumber,
+          phoneNumber: fullPhoneNumber,
           linkedUserIds: [userId],
           linkedGmailAccounts: userEmail ? [userEmail] : [],
           passesLeft: 1,
@@ -300,7 +313,7 @@ export default function PhoneVerification({
           </div>
           
           <h1 className="text-3xl font-bold text-white">Verified! ✅</h1>
-          <p className="text-green-300 text-lg">{formatPhoneDisplay(phoneNumber)}</p>
+          <p className="text-green-300 text-lg">{formatPhoneDisplay(localNumber)}</p>
           <p className="text-white/60">Setting up your account...</p>
         </div>
       </div>
@@ -350,21 +363,35 @@ export default function PhoneVerification({
             {/* Phone Input */}
             <div className="space-y-4">
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                <label className="block text-white/60 text-sm mb-2">
-                  Mobile Number
+                <label className="block text-white/60 text-sm mb-3">
+                  מספר נייד
                 </label>
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🇮🇱</span>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    placeholder="+972 52-XXX-XXXX"
-                    className="flex-1 bg-transparent text-white text-xl font-medium focus:outline-none placeholder-white/30"
-                    disabled={loading}
-                    maxLength={13}
-                  />
+                <div className="flex items-center gap-2">
+                  {/* Country Code - Fixed */}
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-3 border border-white/20">
+                    <span className="text-xl">🇮🇱</span>
+                    <span className="text-white text-lg font-bold">+972</span>
+                  </div>
+                  
+                  {/* Local Number Input */}
+                  <div className="flex-1 bg-white/5 rounded-xl px-4 py-3 border border-white/20 focus-within:border-green-400/50 transition-colors">
+                    <input
+                      type="tel"
+                      value={formatLocalDisplay(localNumber)}
+                      onChange={(e) => handleLocalNumberChange(e.target.value)}
+                      placeholder="52-265-3170"
+                      className="w-full bg-transparent text-white text-xl font-medium focus:outline-none placeholder-white/30 text-right"
+                      style={{ direction: 'ltr', textAlign: 'left' }}
+                      disabled={loading}
+                      autoComplete="tel-local"
+                    />
+                  </div>
                 </div>
+                
+                {/* Helper Text */}
+                <p className="text-white/40 text-xs mt-2 text-center">
+                  הקלד את המספר ללא 0 בהתחלה (למשל: 52-265-3170)
+                </p>
               </div>
 
               {/* Demo Mode Indicator */}
@@ -387,16 +414,16 @@ export default function PhoneVerification({
             {/* Send Button */}
             <button
               onClick={handleSendCode}
-              disabled={loading || phoneNumber.length < 13}
+              disabled={loading || localNumber.length < 9}
               className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-lg font-bold rounded-2xl shadow-lg shadow-green-500/30 hover:shadow-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  Sending...
+                  שולח...
                 </span>
               ) : (
-                'Send Verification Code'
+                'שלח קוד אימות'
               )}
             </button>
 
@@ -430,9 +457,9 @@ export default function PhoneVerification({
 
             {/* Title */}
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold text-white">Enter Code</h1>
+              <h1 className="text-3xl font-bold text-white">הזן קוד</h1>
               <p className="text-white/60">
-                Sent to {formatPhoneDisplay(phoneNumber)}
+                נשלח ל-{formatPhoneDisplay(localNumber)}
               </p>
             </div>
 
