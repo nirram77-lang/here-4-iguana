@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ['latin'] })
 // Google Analytics Measurement ID
 const GA_MEASUREMENT_ID = 'G-5BZR9TWG9N'
 
+// OneSignal App ID
+const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7'
+
 export const metadata: Metadata = {
   title: 'I4IGUANA - Meet Now',
   description: 'Proximity-based dating app - Meet people within 10-500 meters instantly',
@@ -54,6 +57,28 @@ export default function RootLayout({
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
+        
+        {/* OneSignal Push Notifications */}
+        <Script
+          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+          strategy="afterInteractive"
+        />
+        <Script id="onesignal-init" strategy="afterInteractive">
+          {`
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            OneSignalDeferred.push(async function(OneSignal) {
+              await OneSignal.init({
+                appId: "${ONESIGNAL_APP_ID}",
+                allowLocalhostAsSecureOrigin: true,
+                welcomeNotification: {
+                  title: "🦎 I4IGUANA",
+                  message: "You'll get notified about matches and messages!"
+                }
+              });
+              console.log('✅ OneSignal initialized!');
+            });
           `}
         </Script>
         
