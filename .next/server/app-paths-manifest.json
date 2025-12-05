@@ -1,5 +1,1 @@
-{
-  "/api/admin/update-password/route": "app/api/admin/update-password/route.js",
-  "/admin/super/venue/[id]/page": "app/admin/super/venue/[id]/page.js",
-  "/admin/login/page": "app/admin/login/page.js"
-}
+{}
