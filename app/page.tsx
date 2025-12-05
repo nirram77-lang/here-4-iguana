@@ -29,6 +29,8 @@ import InAppNotification from "@/components/in-app-notification"
 import MatchEndedScreen from "@/components/match-ended-screen"
 import WeAreMeetingModal from "@/components/we-are-meeting-modal"
 import PhoneVerification from "@/components/phone-verification"
+import NotificationPermissionModal from "@/components/notification-permission-modal"
+import { getNotificationPermissionStatus } from "@/lib/firebase-messaging"
 import { useAuth } from "@/lib/AuthContext"
 import { saveOnboardingData } from "@/lib/onboarding-service"
 import { 
@@ -131,6 +133,9 @@ export default function Page() {
     isVisible: boolean
     plan: 'weekly' | 'monthly' | 'skip-timer' | null
   }>({ isVisible: false, plan: null })
+  
+  // ✅ NEW: Push Notification Permission Modal
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
   
   // ✅ NEW: In-App Notification for messages
   const [inAppNotification, setInAppNotification] = useState<{
@@ -817,6 +822,34 @@ export default function Page() {
     
     loadCheckInStatus()
   }, [user, currentScreen])  // ✅ Added currentScreen dependency to detect when user returns to home
+
+  // ✅ NEW: Check notification permission and show modal if needed
+  useEffect(() => {
+    const checkNotificationPermission = async () => {
+      // Only check when user is logged in and on home screen
+      if (!user || currentScreen !== "home") return
+      
+      // Check if browser supports notifications
+      if (typeof window === 'undefined' || !('Notification' in window)) {
+        console.log('⚠️ Browser does not support notifications')
+        return
+      }
+      
+      const permission = getNotificationPermissionStatus()
+      console.log('🔔 Current notification permission:', permission)
+      
+      // If permission not yet requested, show the modal after a short delay
+      if (permission === 'default') {
+        // Wait a bit so user gets settled into the app first
+        setTimeout(() => {
+          console.log('📢 Showing notification permission modal')
+          setShowNotificationModal(true)
+        }, 3000) // Show after 3 seconds
+      }
+    }
+    
+    checkNotificationPermission()
+  }, [user, currentScreen])
 
   // ✅ NEW: Real-time listener for active matches - User B gets notified immediately!
   useEffect(() => {
@@ -2828,6 +2861,21 @@ export default function Page() {
             setPassesLeft(updatedPassData.passesLeft)
             setIsPremium(updatedPassData.isPremium)
           }
+        }}
+      />
+      
+      {/* ✅ NEW: Push Notification Permission Modal */}
+      <NotificationPermissionModal
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        userId={user?.uid || ''}
+        onPermissionGranted={() => {
+          console.log('✅ Notification permission granted!')
+          setShowNotificationModal(false)
+        }}
+        onPermissionDenied={() => {
+          console.log('❌ Notification permission denied')
+          setShowNotificationModal(false)
         }}
       />
       
