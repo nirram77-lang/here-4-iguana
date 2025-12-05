@@ -2018,7 +2018,7 @@ export default function Page() {
         <PhoneVerification
           userId={user.uid}
           userEmail={user.email || undefined}
-          showSkip={true}  // ✅ Show SKIP button for dev testing
+          showSkip={false}  // ❌ Disabled for Production - real phone verification only
           onComplete={async (phoneNumber) => {
             console.log('✅ Phone verified:', phoneNumber)
             
