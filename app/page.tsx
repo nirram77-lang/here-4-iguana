@@ -30,7 +30,7 @@ import MatchEndedScreen from "@/components/match-ended-screen"
 import WeAreMeetingModal from "@/components/we-are-meeting-modal"
 import PhoneVerification from "@/components/phone-verification"
 import NotificationPermissionModal from "@/components/notification-permission-modal"
-import { getNotificationPermissionStatus } from "@/lib/firebase-messaging"
+// Using native Notification API for permission check
 import { useAuth } from "@/lib/AuthContext"
 import { saveOnboardingData } from "@/lib/onboarding-service"
 import { 
@@ -835,7 +835,7 @@ export default function Page() {
         return
       }
       
-      const permission = getNotificationPermissionStatus()
+      const permission = Notification.permission
       console.log('🔔 Current notification permission:', permission)
       
       // If permission not yet requested, show the modal after a short delay

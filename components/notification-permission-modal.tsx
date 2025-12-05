@@ -4,19 +4,13 @@
  * 🦎 I4IGUANA - Push Notification Permission Modal
  * 
  * Beautiful modal to request notification permission from users.
- * Shows benefits and handles permission request.
+ * Uses OneSignal for push notifications.
  */
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, BellOff, X, MessageCircle, Heart, Sparkles } from 'lucide-react'
+import { Bell, X, MessageCircle, Heart, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { 
-  requestNotificationPermission, 
-  getFCMToken,
-  getNotificationPermissionStatus,
-  setupPushNotifications
-} from '@/lib/firebase-messaging'
 
 interface NotificationPermissionModalProps {
   isOpen: boolean
@@ -35,31 +29,43 @@ export default function NotificationPermissionModal({
 }: NotificationPermissionModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [currentStatus, setCurrentStatus] = useState<string>('default')
-
-  useEffect(() => {
-    if (isOpen) {
-      const status = getNotificationPermissionStatus()
-      setCurrentStatus(status)
-    }
-  }, [isOpen])
 
   const handleEnableNotifications = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const result = await setupPushNotifications(userId)
+      // Check if OneSignal is loaded
+      const OneSignal = (window as any).OneSignal
+      if (!OneSignal) {
+        setError('Notification service not ready. Please refresh the page.')
+        setLoading(false)
+        return
+      }
+
+      // Request permission through native browser API
+      const permission = await Notification.requestPermission()
       
-      if (result.success) {
+      if (permission === 'granted') {
+        console.log('✅ Browser permission granted')
+        
+        // Subscribe to OneSignal
+        await OneSignal.User.PushSubscription.optIn()
+        
+        // Set external user ID for targeting
+        if (userId) {
+          await OneSignal.login(userId)
+          console.log('✅ User linked to OneSignal:', userId)
+        }
+        
         console.log('✅ Notifications enabled successfully!')
         onPermissionGranted?.()
         onClose()
-      } else if (result.permission === 'denied') {
+      } else if (permission === 'denied') {
         setError('Notifications were blocked. Please enable them in your browser settings.')
         onPermissionDenied?.()
       } else {
-        setError('Could not enable notifications. Please try again.')
+        setError('Permission was dismissed. Please try again.')
       }
     } catch (err) {
       console.error('Error enabling notifications:', err)
@@ -72,11 +78,6 @@ export default function NotificationPermissionModal({
   const handleMaybeLater = () => {
     console.log('📌 User chose "Maybe Later" for notifications')
     onClose()
-  }
-
-  // Don't render if already granted
-  if (currentStatus === 'granted') {
-    return null
   }
 
   return (
@@ -263,53 +264,5 @@ export default function NotificationPermissionModal({
         </>
       )}
     </AnimatePresence>
-  )
-}
-
-/**
- * ✅ Small banner for notification prompt (less intrusive)
- */
-export function NotificationBanner({
-  onEnable,
-  onDismiss
-}: {
-  onEnable: () => void
-  onDismiss: () => void
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="fixed top-4 left-4 right-4 z-40"
-    >
-      <div className="bg-gradient-to-r from-[#1a4d3e] to-[#0d2920] rounded-2xl border border-[#4ade80]/30 shadow-lg p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#4ade80]/20 flex items-center justify-center flex-shrink-0">
-            <Bell className="h-5 w-5 text-[#4ade80]" />
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-medium text-sm">Enable notifications?</p>
-            <p className="text-white/50 text-xs truncate">Get notified about matches & messages</p>
-          </div>
-          
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={onDismiss}
-              className="p-2 text-white/40 hover:text-white transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <button
-              onClick={onEnable}
-              className="px-4 py-2 bg-[#4ade80] text-[#0d2920] rounded-lg font-medium text-sm hover:bg-[#3bc970] transition-colors"
-            >
-              Enable
-            </button>
-          </div>
-        </div>
-      </div>
-    </motion.div>
   )
 }

@@ -60,7 +60,7 @@ export default function RootLayout({
           `}
         </Script>
         
-        {/* OneSignal Push Notifications */}
+        {/* OneSignal Push Notifications - NO AUTO PROMPT */}
         <Script
           src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
           strategy="afterInteractive"
@@ -72,40 +72,12 @@ export default function RootLayout({
               await OneSignal.init({
                 appId: "${ONESIGNAL_APP_ID}",
                 allowLocalhostAsSecureOrigin: true,
-                promptOptions: {
-                  slidedown: {
-                    prompts: [
-                      {
-                        type: "push",
-                        autoPrompt: true,
-                        text: {
-                          actionMessage: "Get notified about new matches and messages!",
-                          acceptButton: "Subscribe",
-                          cancelButton: "Later"
-                        },
-                        delay: {
-                          pageViews: 1,
-                          timeDelay: 3
-                        }
-                      }
-                    ]
-                  }
-                },
-                welcomeNotification: {
-                  title: "🦎 I4IGUANA",
-                  message: "You'll get notified about matches and messages!"
+                autoResubscribe: true,
+                notifyButton: {
+                  enable: false
                 }
               });
-              console.log('✅ OneSignal initialized!');
-              
-              // Auto prompt after 3 seconds
-              setTimeout(async () => {
-                const permission = await OneSignal.Notifications.permission;
-                if (!permission) {
-                  console.log('📢 Showing notification prompt...');
-                  await OneSignal.Slidedown.promptPush();
-                }
-              }, 3000);
+              console.log('✅ OneSignal initialized (no auto-prompt)');
             });
           `}
         </Script>
