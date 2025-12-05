@@ -101,6 +101,7 @@ export default function DatabaseManager() {
   const [processing, setProcessing] = useState(false)
   const [showDeleted, setShowDeleted] = useState(false)
   const [showDummy, setShowDummy] = useState(true)
+  const [activeFilter, setActiveFilter] = useState<'all' | 'real' | 'dummy' | 'deleted' | 'checkedIn' | 'premium' | 'matches' | 'chats'>('all')
 
   // Load admin and data
   useEffect(() => {
@@ -543,10 +544,33 @@ export default function DatabaseManager() {
     }
   }
 
-  // Filter users
+  // Filter users based on activeFilter
   const filteredUsers = users.filter(u => {
-    if (!showDeleted && u.deleted) return false
-    if (!showDummy && u.isDummy) return false
+    // First apply active filter
+    switch (activeFilter) {
+      case 'real':
+        if (!u.onboardingComplete || !u.photos?.length || u.isDummy || u.deleted) return false
+        break
+      case 'dummy':
+        if (!u.isDummy) return false
+        break
+      case 'deleted':
+        if (!u.deleted) return false
+        break
+      case 'checkedIn':
+        if (!u.checkedInVenue) return false
+        break
+      case 'premium':
+        if (!u.isPremium) return false
+        break
+      case 'all':
+      default:
+        if (!showDeleted && u.deleted) return false
+        if (!showDummy && u.isDummy) return false
+        break
+    }
+    
+    // Then apply search
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
       return u.email.toLowerCase().includes(search) || 
@@ -617,17 +641,72 @@ export default function DatabaseManager() {
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats Bar - Clickable Cards */}
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          <StatCard icon={<Users />} label="Total" value={stats.totalUsers} />
-          <StatCard icon={<UserCheck />} label="Complete" value={stats.realUsers} color="green" />
-          <StatCard icon={<UserX />} label="Incomplete" value={stats.incompleteUsers} color="yellow" />
-          <StatCard icon={<Trash2 />} label="Deleted" value={stats.deletedUsers} color="red" />
-          <StatCard icon={<MapPin />} label="Checked In" value={stats.checkedIn} color="blue" />
-          <StatCard icon={<Shield />} label="Premium" value={stats.premium} color="purple" />
-          <StatCard icon={<Heart />} label="Matches" value={stats.totalMatches} color="pink" />
-          <StatCard icon={<MessageSquare />} label="Chats" value={stats.totalChats} color="cyan" />
+          <ClickableStatCard 
+            icon={<Users />} 
+            label="Total" 
+            value={stats.totalUsers} 
+            isActive={activeFilter === 'all'}
+            onClick={() => { setActiveFilter('all'); setActiveTab('users'); }}
+          />
+          <ClickableStatCard 
+            icon={<UserCheck />} 
+            label="Real" 
+            value={stats.realUsers} 
+            color="green"
+            isActive={activeFilter === 'real'}
+            onClick={() => { setActiveFilter('real'); setActiveTab('users'); }}
+          />
+          <ClickableStatCard 
+            icon={<UserX />} 
+            label="Dummy" 
+            value={stats.dummyUsers} 
+            color="yellow"
+            isActive={activeFilter === 'dummy'}
+            onClick={() => { setActiveFilter('dummy'); setActiveTab('users'); }}
+          />
+          <ClickableStatCard 
+            icon={<Trash2 />} 
+            label="Deleted" 
+            value={stats.deletedUsers} 
+            color="red"
+            isActive={activeFilter === 'deleted'}
+            onClick={() => { setActiveFilter('deleted'); setActiveTab('users'); }}
+          />
+          <ClickableStatCard 
+            icon={<MapPin />} 
+            label="Checked In" 
+            value={stats.checkedIn} 
+            color="blue"
+            isActive={activeFilter === 'checkedIn'}
+            onClick={() => { setActiveFilter('checkedIn'); setActiveTab('users'); }}
+          />
+          <ClickableStatCard 
+            icon={<Shield />} 
+            label="Premium" 
+            value={stats.premium} 
+            color="purple"
+            isActive={activeFilter === 'premium'}
+            onClick={() => { setActiveFilter('premium'); setActiveTab('users'); }}
+          />
+          <ClickableStatCard 
+            icon={<Heart />} 
+            label="Matches" 
+            value={stats.totalMatches} 
+            color="pink"
+            isActive={activeTab === 'matches'}
+            onClick={() => setActiveTab('matches')}
+          />
+          <ClickableStatCard 
+            icon={<MessageSquare />} 
+            label="Chats" 
+            value={stats.totalChats} 
+            color="cyan"
+            isActive={activeTab === 'chats'}
+            onClick={() => setActiveTab('chats')}
+          />
         </div>
       </div>
 
@@ -693,6 +772,27 @@ export default function DatabaseManager() {
 
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2">
+              {/* Active Filter Indicator */}
+              {activeFilter !== 'all' && (
+                <div className="flex items-center gap-2 bg-[#4ade80]/20 border border-[#4ade80]/50 rounded-lg px-3 py-2">
+                  <span className="text-[#4ade80] text-sm font-medium">
+                    🔍 מציג: {
+                      activeFilter === 'real' ? 'משתמשים אמיתיים' :
+                      activeFilter === 'dummy' ? 'משתמשי דמה' :
+                      activeFilter === 'deleted' ? 'משתמשים מחוקים' :
+                      activeFilter === 'checkedIn' ? 'מחוברים למקום' :
+                      activeFilter === 'premium' ? 'פרימיום' : activeFilter
+                    } ({filteredUsers.length})
+                  </span>
+                  <button 
+                    onClick={() => setActiveFilter('all')}
+                    className="text-white/60 hover:text-white text-lg"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              
               <Button
                 onClick={() => resetUsersByEmail(['niroram77@gmail.com', 'jango5432@gmail.com'])}
                 disabled={processing}
@@ -1129,7 +1229,7 @@ export default function DatabaseManager() {
   )
 }
 
-// Stat Card Component
+// Stat Card Component (legacy)
 function StatCard({ icon, label, value, color = 'default' }: { 
   icon: React.ReactNode
   label: string
@@ -1155,5 +1255,57 @@ function StatCard({ icon, label, value, color = 'default' }: {
       </div>
       <div className={`text-2xl font-bold ${colors[color]}`}>{value}</div>
     </div>
+  )
+}
+
+// ✅ NEW: Clickable Stat Card Component
+function ClickableStatCard({ icon, label, value, color = 'default', isActive, onClick }: { 
+  icon: React.ReactNode
+  label: string
+  value: number
+  color?: string
+  isActive?: boolean
+  onClick?: () => void
+}) {
+  const colors: Record<string, string> = {
+    default: 'text-white',
+    green: 'text-green-400',
+    yellow: 'text-yellow-400',
+    red: 'text-red-400',
+    blue: 'text-blue-400',
+    purple: 'text-purple-400',
+    pink: 'text-pink-400',
+    cyan: 'text-cyan-400'
+  }
+  
+  const borderColors: Record<string, string> = {
+    default: 'border-white/50',
+    green: 'border-green-400',
+    yellow: 'border-yellow-400',
+    red: 'border-red-400',
+    blue: 'border-blue-400',
+    purple: 'border-purple-400',
+    pink: 'border-pink-400',
+    cyan: 'border-cyan-400'
+  }
+  
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        bg-[#0d2920]/50 rounded-lg p-3 text-left transition-all duration-200
+        hover:bg-[#0d2920]/80 hover:scale-105 cursor-pointer
+        ${isActive 
+          ? `border-2 ${borderColors[color]} shadow-lg shadow-${color}-500/20` 
+          : 'border border-[#4ade80]/20 hover:border-[#4ade80]/40'
+        }
+      `}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <span className={`${colors[color]} ${isActive ? 'opacity-100' : 'opacity-60'}`}>{icon}</span>
+        <span className={`text-xs font-medium ${isActive ? 'text-white' : 'text-white/50'}`}>{label}</span>
+      </div>
+      <div className={`text-2xl font-bold ${colors[color]}`}>{value}</div>
+    </button>
   )
 }
