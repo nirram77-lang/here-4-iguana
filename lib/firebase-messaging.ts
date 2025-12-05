@@ -253,6 +253,11 @@ export const setupPushNotifications = async (
       return { success: false, token: null, permission };
     }
     
+    // ✅ NEW: Save token to localStorage for logout cleanup
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fcm_token', token);
+    }
+    
     // 4. Setup foreground handler if provided
     if (onForegroundMessage) {
       setupForegroundMessageHandler(onForegroundMessage);

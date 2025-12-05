@@ -499,6 +499,21 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
         }
       })
       
+      // ✅ NEW: Remove FCM token to stop receiving notifications
+      if (currentUser) {
+        try {
+          const { removeFCMToken, getFCMToken } = await import('@/lib/firebase-messaging')
+          const currentToken = localStorage.getItem('fcm_token')
+          if (currentToken) {
+            await removeFCMToken(currentUser.uid, currentToken)
+            localStorage.removeItem('fcm_token')
+            console.log('✅ FCM token removed on logout')
+          }
+        } catch (fcmError) {
+          console.log('⚠️ Could not remove FCM token:', fcmError)
+        }
+      }
+      
       sessionStorage.clear()
       
       await signOut(auth)
