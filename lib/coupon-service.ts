@@ -22,17 +22,32 @@ interface CouponConfig {
 
 // 🔥 ACTIVE COUPONS - Add/remove coupons here!
 const ACTIVE_COUPONS: CouponConfig[] = [
+  // ═══════════════════════════════════════════════════════════
+  // 🚀 PILOT 2026 MAIN COUPONS
+  // ═══════════════════════════════════════════════════════════
   {
-    code: 'PILOT2026',
+    code: 'PILOTW2026',
     type: 'premium',
     durationDays: 7,
-    description: '🎉 Pilot Premium - 7 Days Free!'
+    description: '🎉 Pilot Premium - שבוע חינם!'
+  },
+  {
+    code: 'PILOTM2026',
+    type: 'premium',
+    durationDays: 30,
+    description: '🎉 Pilot Premium - חודש חינם!'
   },
   {
     code: 'PASS2026',
     type: 'pass',
     passCount: 1,
-    description: '🎁 Bonus Pass - 1 Extra Swipe!'
+    description: '🎁 Bonus Pass - פאס חינמי!'
+  },
+  {
+    code: 'PILOT2026',
+    type: 'premium',
+    durationDays: 7,
+    description: '🎉 Pilot Premium - 7 Days Free!'
   },
   // ═══════════════════════════════════════════════════════════
   // 🎫 PILOT PASS COUPONS (1 Pass, 2 Days, Single Use)

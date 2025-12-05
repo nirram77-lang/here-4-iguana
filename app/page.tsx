@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Crown, Sparkles, X, Clock, Rocket, Star, Zap, Check, Heart } from "lucide-react"
+import { Crown, Sparkles, X, Clock, Rocket, Star, Zap, Check, Heart, Gift } from "lucide-react"
 import { onSnapshot, doc, collection, query, where, getDoc } from "firebase/firestore"  // ✅ NEW
 import { db } from "@/lib/firebase"  // ✅ NEW
 import SplashScreen from "@/components/splash-screen"
@@ -2379,6 +2379,24 @@ export default function Page() {
 
                   {/* Action Buttons - 3 Separate Buttons */}
                   <div className="space-y-3">
+                    {/* 🎟️ Coupon Code Button */}
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <Button
+                        onClick={() => setShowCouponModal('premium')}
+                        className="w-full h-12 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 text-white font-bold text-base rounded-xl border-2 border-purple-400/50 relative overflow-hidden"
+                      >
+                        <Gift className="mr-2 h-5 w-5 text-purple-400" />
+                        🎟️ יש לי קוד קופון
+                      </Button>
+                    </motion.div>
+                    
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="flex-1 h-px bg-white/20" />
+                      <span className="text-white/40 text-sm">או</span>
+                      <div className="flex-1 h-px bg-white/20" />
+                    </div>
+
                     {/* Weekly Premium Button */}
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button
