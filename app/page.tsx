@@ -681,7 +681,47 @@ export default function Page() {
           return
         }
         
-        // ✅ NEW: Check if phone is verified
+        // ✅ CRITICAL FIX: Check for active match FIRST - before phone verification!
+        // This prevents the phone-verification screen from flashing for 1 second
+        console.log('🔍 Checking for active match FIRST...')
+        try {
+          const activeMatch = await getActiveMatchForUser(user.uid)
+          
+          if (activeMatch && activeMatch.matchedUser && activeMatch.expiresAt) {
+            console.log('🎯 ACTIVE MATCH FOUND! Skipping phone verification check')
+            console.log(`   Partner: ${activeMatch.matchedUser.name}`)
+            console.log(`   Expires: ${activeMatch.expiresAt.toLocaleString()}`)
+            
+            // ✅ Load phone number for match
+            try {
+              const phoneNumber = profile?.phoneNumber || `+972DEV${user.uid.slice(-8)}`
+              setUserPhoneNumber(phoneNumber)
+              console.log('📱 Loaded phone number for match:', phoneNumber)
+            } catch (phoneError) {
+              console.error('⚠️ Error loading phone number:', phoneError)
+            }
+            
+            // ✅ Cache phone verified (user must have verified to get a match)
+            localStorage.setItem('i4iguana_phone_verified', 'true')
+            
+            // ✅ Load gender from profile
+            if (profile?.gender) {
+              setOnboardingData(prev => ({ ...prev, gender: profile.gender }))
+            }
+            
+            setMatchedUser(activeMatch.matchedUser)
+            setMatchExpiresAt(activeMatch.expiresAt)
+            setIsLockedInMatch(true)
+            setIsNewMatch(false)
+            setCurrentScreen("match")
+            return  // Go directly to match - skip all other checks!
+          }
+        } catch (matchError) {
+          console.error('⚠️ Error checking for active match:', matchError)
+          // Continue with normal flow
+        }
+        
+        // ✅ NEW: Check if phone is verified (only if no active match)
         // Skip verification if: phoneVerified === true AND phoneNumber exists
         const hasVerifiedPhone = profile?.phoneVerified === true && profile?.phoneNumber
         
@@ -712,29 +752,6 @@ export default function Page() {
           if (profile?.gender) {
             console.log(`👤 Loading gender from profile: ${profile.gender}`)
             setOnboardingData(prev => ({ ...prev, gender: profile.gender }))
-          }
-          
-          // ✅ CRITICAL: Check for active match BEFORE going to home!
-          // This ensures seamless return to match after logout/login
-          console.log('🔍 Checking for active match before navigation...')
-          try {
-            const activeMatch = await getActiveMatchForUser(user.uid)
-            
-            if (activeMatch && activeMatch.matchedUser && activeMatch.expiresAt) {
-              console.log('🎯 ACTIVE MATCH FOUND! Going directly to match screen')
-              console.log(`   Partner: ${activeMatch.matchedUser.name}`)
-              console.log(`   Expires: ${activeMatch.expiresAt.toLocaleString()}`)
-              
-              setMatchedUser(activeMatch.matchedUser)
-              setMatchExpiresAt(activeMatch.expiresAt)
-              setIsLockedInMatch(true)
-              setIsNewMatch(false)  // Not a new match - don't play sound
-              setCurrentScreen("match")  // Go directly to match screen!
-              return  // Don't go to home
-            }
-          } catch (matchError) {
-            console.error('⚠️ Error checking for active match:', matchError)
-            // Continue to home if error
           }
           
           console.log('📭 No active match → HOME')
@@ -1489,11 +1506,28 @@ export default function Page() {
   }
 
   const handleMeetNow = async () => {
-    if (!user || !userPhoneNumber) return
+    if (!user) return
+    
+    // ✅ CRITICAL FIX: Get phone number from state or load it
+    let phoneNumber = userPhoneNumber
+    if (!phoneNumber) {
+      console.log('⚠️ Phone number not in state, loading from profile...')
+      try {
+        const profile = await getUserProfile(user.uid)
+        phoneNumber = profile?.phoneNumber || `+972DEV${user.uid.slice(-8)}`
+        setUserPhoneNumber(phoneNumber)
+        console.log('📱 Loaded phone number:', phoneNumber)
+      } catch (error) {
+        console.error('❌ Error loading phone number:', error)
+        // Use fallback
+        phoneNumber = `+972DEV${user.uid.slice(-8)}`
+        setUserPhoneNumber(phoneNumber)
+      }
+    }
     
     try {
       // ✅ Lock phone identity for 2 hours
-      await lockPhoneIdentity(userPhoneNumber, 2)
+      await lockPhoneIdentity(phoneNumber, 2)
       console.log('🔒 Phone identity locked for 2 hours')
       
       setIsPhoneLocked(true)
