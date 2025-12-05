@@ -753,11 +753,19 @@ export default function Page() {
         if (hasCompletedOnboarding || hasBasicProfile) {
           console.log('✅ Existing user detected')
           
-          // ✅ CRITICAL FIX: Load gender from profile for "She Decides" logic!
-          if (profile?.gender) {
-            console.log(`👤 Loading gender from profile: ${profile.gender}`)
-            setOnboardingData(prev => ({ ...prev, gender: profile.gender }))
-          }
+          // ✅ CRITICAL FIX: Load ALL profile data for "She Decides" logic and notifications!
+          setOnboardingData(prev => ({ 
+            ...prev, 
+            gender: profile?.gender || prev.gender,
+            name: profile?.name || profile?.displayName || prev.name,
+            photos: profile?.photos || prev.photos,
+            age: profile?.age || prev.age,
+            bio: profile?.bio || prev.bio,
+            hobbies: profile?.hobbies || prev.hobbies,
+            city: profile?.city || prev.city,
+            occupation: profile?.occupation || prev.occupation,
+          }))
+          console.log(`👤 Loaded profile: ${profile?.name || profile?.displayName}, gender: ${profile?.gender}`)
           
           console.log('📭 No active match → HOME')
           setCurrentScreen("home")
@@ -837,6 +845,19 @@ export default function Page() {
       
       const permission = Notification.permission
       console.log('🔔 Current notification permission:', permission)
+      
+      // ✅ If already granted, make sure OneSignal knows the user ID
+      if (permission === 'granted') {
+        try {
+          const OneSignal = (window as any).OneSignal
+          if (OneSignal && user.uid) {
+            await OneSignal.login(user.uid)
+            console.log('✅ OneSignal auto-login for existing subscriber:', user.uid)
+          }
+        } catch (e) {
+          console.log('OneSignal auto-login skipped:', e)
+        }
+      }
       
       // If permission not yet requested, show the modal after a short delay
       if (permission === 'default') {

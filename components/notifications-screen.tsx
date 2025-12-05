@@ -71,9 +71,9 @@ export default function NotificationsScreen({
       } else {
         groups.set(groupKey, {
           id: groupKey,
-          senderId: notif.senderId || '',
-          senderName: notif.senderName || notif.title?.replace('💬 ', '').replace('💚 ', '') || 'Unknown',
-          senderPhoto: notif.senderPhoto,
+          senderId: notif.senderId || notif.fromUserId || '',
+          senderName: notif.senderName || notif.fromUserName || notif.title?.replace('💬 ', '').replace('💚 ', '') || 'Unknown',
+          senderPhoto: notif.senderPhoto || notif.fromUserPhoto,
           chatId: notif.chatId,
           type: notif.type as any || 'message',
           lastMessage: notif.body || notif.message || '',
