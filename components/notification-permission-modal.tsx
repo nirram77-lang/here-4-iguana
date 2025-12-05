@@ -49,13 +49,26 @@ export default function NotificationPermissionModal({
       if (permission === 'granted') {
         console.log('✅ Browser permission granted')
         
-        // Subscribe to OneSignal
-        await OneSignal.User.PushSubscription.optIn()
+        try {
+          // Subscribe to OneSignal
+          await OneSignal.User.PushSubscription.optIn()
+          console.log('✅ OneSignal optIn successful')
+        } catch (optInError) {
+          console.log('⚠️ OneSignal optIn error:', optInError)
+        }
         
         // Set external user ID for targeting
         if (userId) {
-          await OneSignal.login(userId)
-          console.log('✅ User linked to OneSignal:', userId)
+          try {
+            await OneSignal.login(userId)
+            console.log('✅ User linked to OneSignal:', userId)
+            
+            // Verify the login worked
+            const externalId = await OneSignal.User.externalId
+            console.log('✅ Verified external ID:', externalId)
+          } catch (loginError) {
+            console.log('⚠️ OneSignal login error:', loginError)
+          }
         }
         
         console.log('✅ Notifications enabled successfully!')

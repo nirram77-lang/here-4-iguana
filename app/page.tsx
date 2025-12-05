@@ -849,13 +849,26 @@ export default function Page() {
       // ✅ If already granted, make sure OneSignal knows the user ID
       if (permission === 'granted') {
         try {
-          const OneSignal = (window as any).OneSignal
-          if (OneSignal && user.uid) {
-            await OneSignal.login(user.uid)
-            console.log('✅ OneSignal auto-login for existing subscriber:', user.uid)
+          // Wait for OneSignal to be fully ready
+          const waitForOneSignal = async () => {
+            for (let i = 0; i < 10; i++) {
+              const OneSignal = (window as any).OneSignal
+              if (OneSignal && OneSignal.User) {
+                await OneSignal.login(user.uid)
+                console.log('✅ OneSignal auto-login successful:', user.uid)
+                return true
+              }
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+            return false
+          }
+          
+          const success = await waitForOneSignal()
+          if (!success) {
+            console.log('⚠️ OneSignal not ready after 5 seconds')
           }
         } catch (e) {
-          console.log('OneSignal auto-login skipped:', e)
+          console.log('OneSignal auto-login error:', e)
         }
       }
       

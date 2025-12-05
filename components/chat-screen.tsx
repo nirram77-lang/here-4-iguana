@@ -15,7 +15,8 @@ import {
   setTypingStatus, 
   subscribeToTypingStatus 
 } from "@/lib/chat-service"
-import { auth } from "@/lib/firebase"
+import { auth, db } from "@/lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
 
 interface ChatScreenProps {
   matchId: string
@@ -483,14 +484,29 @@ useEffect(() => {
       .catch(err => console.error('Error clearing typing status:', err))
 
     try {
-      // ✅ FIXED: Pass current user info for notification
+      // ✅ CRITICAL FIX: Load fresh profile from Firestore for correct name/photo
+      let senderName = currentUser?.name || 'Someone'
+      let senderPhoto = currentUser?.photo || ''
+      
+      try {
+        const profileDoc = await getDoc(doc(db, 'users', currentUserId))
+        if (profileDoc.exists()) {
+          const profile = profileDoc.data()
+          senderName = profile.name || profile.displayName || senderName
+          senderPhoto = profile.photos?.[0] || profile.photoURL || senderPhoto
+          console.log('📸 Using fresh profile:', senderName, senderPhoto ? '✅ has photo' : '❌ no photo')
+        }
+      } catch (profileError) {
+        console.log('⚠️ Could not load fresh profile, using cached:', profileError)
+      }
+      
       await sendMessage(
         matchId, 
         currentUserId, 
         otherUserId, 
         messageText,
-        currentUser?.name || 'Someone',
-        currentUser?.photo
+        senderName,
+        senderPhoto
       )
       console.log('✅ Message sent successfully')
       

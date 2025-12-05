@@ -1,6 +1,8 @@
 "use strict";
 /**
- * 🦎 I4IGUANA - Cloud Functions for Push Notifications
+ * 🦎 I4IGUANA - Firebase Cloud Functions with OneSignal
+ *
+ * Push notifications using OneSignal API
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -36,241 +38,165 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onNewLike = exports.onMeetingConfirmed = exports.onNewMessage = exports.onNewMatch = void 0;
+exports.onMeetingConfirmed = exports.onNewLike = exports.onNewMessage = exports.onNewMatch = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
 const db = admin.firestore();
-// 💚 MATCH NOTIFICATIONS
+// OneSignal Configuration
+const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7';
+const ONESIGNAL_API_KEY = 'os_v2_app_4aajaji6vrbuzorhgu6gbmh4675gd6p7p25eefexb44ruurql7jjhyyo2pxknixeu2mw5d5obdtge36kl2cgetwmjigxq6plv3rnuey';
+/**
+ * Send push notification via OneSignal
+ */
+async function sendOneSignalNotification(externalUserId, title, message, data, url) {
+    try {
+        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+            },
+            body: JSON.stringify({
+                app_id: ONESIGNAL_APP_ID,
+                include_external_user_ids: [externalUserId],
+                headings: { en: title },
+                contents: { en: message },
+                data: data || {},
+                url: url || 'https://i4iguana-app.vercel.app',
+                chrome_web_icon: 'https://i4iguana-app.vercel.app/icon-192.png',
+                chrome_web_badge: 'https://i4iguana-app.vercel.app/icon-monochrome.png',
+                firefox_icon: 'https://i4iguana-app.vercel.app/icon-192.png',
+                small_icon: 'https://i4iguana-app.vercel.app/icon-monochrome.png',
+            }),
+        });
+        const result = await response.json();
+        console.log('📤 OneSignal response:', result);
+        if (result.errors) {
+            console.error('❌ OneSignal error:', result.errors);
+            return false;
+        }
+        return true;
+    }
+    catch (error) {
+        console.error('❌ Error sending OneSignal notification:', error);
+        return false;
+    }
+}
+/**
+ * 🔔 Trigger: New Match Created
+ * Sends notification to User B when User A likes them back (mutual match)
+ */
 exports.onNewMatch = functions.firestore
     .document('activeMatches/{matchId}')
     .onCreate(async (snapshot, context) => {
     const matchData = snapshot.data();
-    const matchId = context.params.matchId;
-    console.log(`💚 New match created: ${matchId}`);
-    try {
-        const initiatorId = matchData.initiatedBy;
-        const recipientId = matchData.recipientId;
-        const initiatorDoc = await db.collection('users').doc(initiatorId).get();
-        const initiatorData = initiatorDoc.data();
-        const initiatorName = initiatorData?.name || initiatorData?.displayName || 'Someone';
-        const initiatorPhoto = initiatorData?.photos?.[0] || initiatorData?.photoURL || '';
-        const recipientDoc = await db.collection('users').doc(recipientId).get();
-        const recipientData = recipientDoc.data();
-        const fcmTokens = recipientData?.fcmTokens || [];
-        if (fcmTokens.length === 0) {
-            console.log(`⚠️ No FCM tokens for user ${recipientId}`);
-            return;
-        }
-        const payload = {
-            tokens: fcmTokens,
-            notification: {
-                title: '💚 New Match!',
-                body: `${initiatorName} wants to meet you!`,
-            },
-            data: {
-                type: 'match',
-                matchId: matchId,
-                fromUserId: initiatorId,
-                fromUserName: initiatorName,
-                fromUserPhoto: initiatorPhoto,
-                click_action: 'OPEN_MATCH',
-            },
-            webpush: {
-                fcmOptions: {
-                    link: 'https://i4iguana.app',
-                },
-            },
-        };
-        const response = await admin.messaging().sendEachForMulticast(payload);
-        console.log(`📤 Match notification sent: ${response.successCount} success, ${response.failureCount} failed`);
-        await cleanupInvalidTokens(recipientId, fcmTokens, response);
+    if (!matchData) {
+        console.log('❌ No match data found');
+        return null;
     }
-    catch (error) {
-        console.error('❌ Error sending match notification:', error);
+    const { odedUserId, sharonUserId, odedName, sharonName } = matchData;
+    console.log(`🎉 New match! ${odedName} ↔ ${sharonName}`);
+    // Send notification to both users
+    const notifications = [];
+    // Notify User A (Oded) about the match
+    if (odedUserId) {
+        notifications.push(sendOneSignalNotification(odedUserId, '💚 It\'s a Match!', `You and ${sharonName} liked each other! Start chatting now.`, { type: 'match', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app'));
     }
+    // Notify User B (Sharon) about the match
+    if (sharonUserId) {
+        notifications.push(sendOneSignalNotification(sharonUserId, '💚 It\'s a Match!', `You and ${odedName} liked each other! Start chatting now.`, { type: 'match', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app'));
+    }
+    await Promise.all(notifications);
+    console.log('✅ Match notifications sent');
+    return null;
 });
-// 💬 MESSAGE NOTIFICATIONS
+/**
+ * 💬 Trigger: New Message in Chat
+ * Sends notification to the recipient
+ */
 exports.onNewMessage = functions.firestore
     .document('chats/{chatId}/messages/{messageId}')
     .onCreate(async (snapshot, context) => {
     const messageData = snapshot.data();
-    const chatId = context.params.chatId;
-    if (messageData.isSystem)
-        return;
-    const senderId = messageData.senderId;
-    const text = messageData.text || 'Sent a message';
-    console.log(`💬 New message in chat: ${chatId}`);
-    try {
-        const senderDoc = await db.collection('users').doc(senderId).get();
-        const senderData = senderDoc.data();
-        const senderName = senderData?.name || senderData?.displayName || 'Someone';
-        const senderPhoto = senderData?.photos?.[0] || senderData?.photoURL || '';
-        const userIds = chatId.split('_');
-        const recipientId = userIds.find((id) => id !== senderId);
-        if (!recipientId) {
-            console.log('⚠️ Could not find recipient');
-            return;
-        }
-        const recipientDoc = await db.collection('users').doc(recipientId).get();
-        const recipientData = recipientDoc.data();
-        const fcmTokens = recipientData?.fcmTokens || [];
-        if (fcmTokens.length === 0) {
-            console.log(`⚠️ No FCM tokens for user ${recipientId}`);
-            return;
-        }
-        const truncatedText = text.length > 50 ? text.substring(0, 50) + '...' : text;
-        const payload = {
-            tokens: fcmTokens,
-            notification: {
-                title: `💬 ${senderName}`,
-                body: truncatedText,
-            },
-            data: {
-                type: 'message',
-                chatId: chatId,
-                senderId: senderId,
-                fromUserName: senderName,
-                fromUserPhoto: senderPhoto,
-                messagePreview: truncatedText,
-                click_action: 'OPEN_CHAT',
-            },
-            webpush: {
-                fcmOptions: {
-                    link: 'https://i4iguana.app',
-                },
-            },
-        };
-        const response = await admin.messaging().sendEachForMulticast(payload);
-        console.log(`📤 Message notification sent: ${response.successCount} success, ${response.failureCount} failed`);
-        await cleanupInvalidTokens(recipientId, fcmTokens, response);
+    const { chatId } = context.params;
+    if (!messageData) {
+        console.log('❌ No message data found');
+        return null;
     }
-    catch (error) {
-        console.error('❌ Error sending message notification:', error);
+    const { senderId, senderName, text } = messageData;
+    // Get chat document to find recipient
+    const chatDoc = await db.collection('chats').doc(chatId).get();
+    const chatData = chatDoc.data();
+    if (!chatData) {
+        console.log('❌ No chat data found');
+        return null;
     }
+    const { participants } = chatData;
+    // Find recipient (the other participant)
+    const recipientId = participants.find((id) => id !== senderId);
+    if (!recipientId) {
+        console.log('❌ No recipient found');
+        return null;
+    }
+    console.log(`💬 New message from ${senderName} to ${recipientId}`);
+    // Truncate message for notification
+    const truncatedText = text.length > 50 ? text.substring(0, 50) + '...' : text;
+    await sendOneSignalNotification(recipientId, `💬 ${senderName}`, truncatedText, { type: 'message', chatId }, 'https://i4iguana-app.vercel.app');
+    console.log('✅ Message notification sent');
+    return null;
 });
-// 💕 "WE'RE MEETING" NOTIFICATIONS
+/**
+ * ❤️ Trigger: New Like Received
+ * Notifies a user when someone likes them (before it's a match)
+ */
+exports.onNewLike = functions.firestore
+    .document('swipes/{swipeId}')
+    .onCreate(async (snapshot, context) => {
+    const swipeData = snapshot.data();
+    if (!swipeData || swipeData.action !== 'like') {
+        return null;
+    }
+    const { odedId, sharonId, odedName } = swipeData;
+    // Check if this creates a match (Sharon already liked Oded)
+    const reverseSwipe = await db.collection('swipes')
+        .where('odedId', '==', sharonId)
+        .where('sharonId', '==', odedId)
+        .where('action', '==', 'like')
+        .get();
+    // If it's going to be a match, don't send "like" notification
+    // The match notification will be sent instead
+    if (!reverseSwipe.empty) {
+        console.log('🎉 This will be a match - skipping like notification');
+        return null;
+    }
+    console.log(`❤️ ${odedName} liked user ${sharonId}`);
+    // Send subtle notification to Sharon
+    await sendOneSignalNotification(sharonId, '👀 Someone Likes You!', 'Open I4IGUANA to see who\'s interested in you.', { type: 'like' }, 'https://i4iguana-app.vercel.app');
+    console.log('✅ Like notification sent');
+    return null;
+});
+/**
+ * 🤝 Trigger: Meeting Confirmed
+ * Notifies when a user confirms "We Are Meeting"
+ */
 exports.onMeetingConfirmed = functions.firestore
     .document('activeMatches/{matchId}')
     .onUpdate(async (change, context) => {
-    const beforeData = change.before.data();
-    const afterData = change.after.data();
-    const matchId = context.params.matchId;
-    if (beforeData.status === afterData.status)
-        return;
-    if (afterData.status !== 'successful')
-        return;
-    console.log(`💕 Meeting confirmed for match: ${matchId}`);
-    try {
-        const confirmedBy = afterData.meetingConfirmedBy;
-        const userIds = matchId.split('_');
-        const otherUserId = userIds.find((id) => id !== confirmedBy);
-        if (!otherUserId)
-            return;
-        const confirmerDoc = await db.collection('users').doc(confirmedBy).get();
-        const confirmerData = confirmerDoc.data();
-        const confirmerName = confirmerData?.name || confirmerData?.displayName || 'Your match';
-        const confirmerPhoto = confirmerData?.photos?.[0] || confirmerData?.photoURL || '';
-        const otherUserDoc = await db.collection('users').doc(otherUserId).get();
-        const otherUserData = otherUserDoc.data();
-        const fcmTokens = otherUserData?.fcmTokens || [];
-        if (fcmTokens.length === 0) {
-            console.log(`⚠️ No FCM tokens for user ${otherUserId}`);
-            return;
-        }
-        const payload = {
-            tokens: fcmTokens,
-            notification: {
-                title: '🎉 We\'re Meeting!',
-                body: `${confirmerName} confirmed you're meeting! Have fun!`,
-            },
-            data: {
-                type: 'meeting',
-                matchId: matchId,
-                fromUserId: confirmedBy,
-                fromUserName: confirmerName,
-                fromUserPhoto: confirmerPhoto,
-                click_action: 'OPEN_MATCH',
-            },
-            webpush: {
-                fcmOptions: {
-                    link: 'https://i4iguana.app',
-                },
-            },
-        };
-        const response = await admin.messaging().sendEachForMulticast(payload);
-        console.log(`📤 Meeting notification sent: ${response.successCount} success, ${response.failureCount} failed`);
-        await cleanupInvalidTokens(otherUserId, fcmTokens, response);
+    const before = change.before.data();
+    const after = change.after.data();
+    if (!before || !after)
+        return null;
+    // Check if odedConfirmed changed from false to true
+    if (!before.odedConfirmed && after.odedConfirmed) {
+        console.log(`🤝 ${after.odedName} confirmed meeting!`);
+        await sendOneSignalNotification(after.sharonUserId, '🎉 Meeting Confirmed!', `${after.odedName} confirmed you're meeting! Have fun! 🦎`, { type: 'meeting_confirmed', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app');
     }
-    catch (error) {
-        console.error('❌ Error sending meeting notification:', error);
+    // Check if sharonConfirmed changed from false to true
+    if (!before.sharonConfirmed && after.sharonConfirmed) {
+        console.log(`🤝 ${after.sharonName} confirmed meeting!`);
+        await sendOneSignalNotification(after.odedUserId, '🎉 Meeting Confirmed!', `${after.sharonName} confirmed you're meeting! Have fun! 🦎`, { type: 'meeting_confirmed', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app');
     }
+    return null;
 });
-// ❤️ LIKE NOTIFICATIONS
-exports.onNewLike = functions.firestore
-    .document('users/{userId}/receivedLikes/{likeId}')
-    .onCreate(async (snapshot, context) => {
-    const likeData = snapshot.data();
-    const recipientId = context.params.userId;
-    const likerId = likeData.fromUserId;
-    console.log(`❤️ New like for user: ${recipientId}`);
-    try {
-        const likerDoc = await db.collection('users').doc(likerId).get();
-        const likerData = likerDoc.data();
-        const likerName = likerData?.name || likerData?.displayName || 'Someone';
-        const likerPhoto = likerData?.photos?.[0] || likerData?.photoURL || '';
-        const recipientDoc = await db.collection('users').doc(recipientId).get();
-        const recipientData = recipientDoc.data();
-        const fcmTokens = recipientData?.fcmTokens || [];
-        if (fcmTokens.length === 0) {
-            console.log(`⚠️ No FCM tokens for user ${recipientId}`);
-            return;
-        }
-        const payload = {
-            tokens: fcmTokens,
-            notification: {
-                title: '❤️ Someone likes you!',
-                body: `${likerName} is interested in meeting you!`,
-            },
-            data: {
-                type: 'like',
-                fromUserId: likerId,
-                fromUserName: likerName,
-                fromUserPhoto: likerPhoto,
-                click_action: 'OPEN_LIKES',
-            },
-            webpush: {
-                fcmOptions: {
-                    link: 'https://i4iguana.app',
-                },
-            },
-        };
-        const response = await admin.messaging().sendEachForMulticast(payload);
-        console.log(`📤 Like notification sent: ${response.successCount} success, ${response.failureCount} failed`);
-        await cleanupInvalidTokens(recipientId, fcmTokens, response);
-    }
-    catch (error) {
-        console.error('❌ Error sending like notification:', error);
-    }
-});
-// 🔧 HELPER FUNCTION
-async function cleanupInvalidTokens(userId, tokens, response) {
-    const invalidTokens = [];
-    response.responses.forEach((result, index) => {
-        if (!result.success) {
-            const error = result.error;
-            if (error?.code === 'messaging/invalid-registration-token' ||
-                error?.code === 'messaging/registration-token-not-registered') {
-                invalidTokens.push(tokens[index]);
-            }
-        }
-    });
-    if (invalidTokens.length > 0) {
-        console.log(`🧹 Removing ${invalidTokens.length} invalid tokens for user ${userId}`);
-        const userRef = db.collection('users').doc(userId);
-        await userRef.update({
-            fcmTokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens)
-        });
-    }
-}
 //# sourceMappingURL=index.js.map

@@ -33,7 +33,9 @@ async function sendOneSignalNotification(
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
-        include_external_user_ids: [externalUserId],
+        // ✅ Support both old and new OneSignal API
+        include_aliases: { external_id: [externalUserId] },
+        target_channel: 'push',
         headings: { en: title },
         contents: { en: message },
         data: data || {},
@@ -41,12 +43,11 @@ async function sendOneSignalNotification(
         chrome_web_icon: 'https://i4iguana-app.vercel.app/icon-192.png',
         chrome_web_badge: 'https://i4iguana-app.vercel.app/icon-monochrome.png',
         firefox_icon: 'https://i4iguana-app.vercel.app/icon-192.png',
-        small_icon: 'https://i4iguana-app.vercel.app/icon-monochrome.png',
       }),
     });
 
     const result = await response.json();
-    console.log('📤 OneSignal response:', result);
+    console.log('📤 OneSignal response:', JSON.stringify(result));
     
     if (result.errors) {
       console.error('❌ OneSignal error:', result.errors);
