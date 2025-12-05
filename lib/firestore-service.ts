@@ -1188,10 +1188,15 @@ export interface Notification {
   type: 'match' | 'message' | 'like' | 'event' | 'venue_announcement' | 'meeting'
   title: string
   subtitle: string
+  body?: string  // ✅ Message body
+  message?: string  // ✅ Alternative message field
   icon?: string  // Emoji or icon name
   fromUserId?: string  // Who triggered this notification (for matches/likes)
   fromUserName?: string
   fromUserPhoto?: string
+  senderId?: string  // ✅ Sender ID for grouping
+  senderName?: string  // ✅ Sender name for display
+  senderPhoto?: string  // ✅ Sender photo for display
   matchId?: string  // For navigation to match
   chatId?: string  // For navigation to chat
   venueId?: string  // For venue announcements
