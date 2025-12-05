@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ChevronRight, Bell, User, Trash2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -19,6 +19,21 @@ interface NotificationsScreenProps {
   onNotificationClick?: (notification: Notification) => void
 }
 
+// ✅ NEW: Grouped notification type
+interface GroupedNotification {
+  id: string
+  senderId: string
+  senderName: string
+  senderPhoto?: string
+  chatId?: string
+  type: 'message' | 'match' | 'like' | 'other'
+  lastMessage: string
+  count: number
+  isRead: boolean
+  timestamp: any
+  notifications: Notification[]
+}
+
 export default function NotificationsScreen({ 
   onNavigate, 
   hasActiveMatch = false,
@@ -29,6 +44,54 @@ export default function NotificationsScreen({
   const [loading, setLoading] = useState(true)
   const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null)
   const [viewingNotification, setViewingNotification] = useState<Notification | null>(null)  // ✅ NEW: For full view
+
+  // ✅ NEW: Group notifications by sender
+  const groupedNotifications = useMemo(() => {
+    const groups = new Map<string, GroupedNotification>()
+    
+    notifications.forEach(notif => {
+      // Group key: senderId + type (messages from same person grouped together)
+      const groupKey = `${notif.senderId || 'unknown'}_${notif.type || 'message'}`
+      
+      if (groups.has(groupKey)) {
+        const existing = groups.get(groupKey)!
+        existing.count++
+        existing.notifications.push(notif)
+        // Update to latest message
+        const existingTime = existing.timestamp?.toMillis?.() || 0
+        const newTime = notif.timestamp?.toMillis?.() || notif.createdAt?.toMillis?.() || 0
+        if (newTime > existingTime) {
+          existing.lastMessage = notif.body || notif.message || ''
+          existing.timestamp = notif.timestamp || notif.createdAt
+        }
+        // If any unread, mark group as unread
+        if (!notif.isRead) {
+          existing.isRead = false
+        }
+      } else {
+        groups.set(groupKey, {
+          id: groupKey,
+          senderId: notif.senderId || '',
+          senderName: notif.senderName || notif.title?.replace('💬 ', '').replace('💚 ', '') || 'Unknown',
+          senderPhoto: notif.senderPhoto,
+          chatId: notif.chatId,
+          type: notif.type as any || 'message',
+          lastMessage: notif.body || notif.message || '',
+          count: 1,
+          isRead: notif.isRead || false,
+          timestamp: notif.timestamp || notif.createdAt,
+          notifications: [notif]
+        })
+      }
+    })
+    
+    // Convert to array and sort by timestamp
+    return Array.from(groups.values()).sort((a, b) => {
+      const timeA = a.timestamp?.toMillis?.() || 0
+      const timeB = b.timestamp?.toMillis?.() || 0
+      return timeB - timeA
+    })
+  }, [notifications])
 
   // 🔄 Real-time notifications listener
   useEffect(() => {
@@ -234,7 +297,7 @@ export default function NotificationsScreen({
               </motion.div>
               <p className="text-white/60 mt-4">Loading notifications...</p>
             </div>
-          ) : notifications.length === 0 ? (
+          ) : groupedNotifications.length === 0 ? (
             // 🎬 HOLLYWOOD EMPTY STATE
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -256,112 +319,110 @@ export default function NotificationsScreen({
                 🦎
               </motion.div>
               <h2 className="text-2xl font-bold text-white mb-2">
-                All Caught Up!
+                You're all caught up!
               </h2>
               <p className="text-white/50 text-base">
                 No notifications yet. Start swiping to get matches!
               </p>
             </motion.div>
           ) : (
-            // 🎬 HOLLYWOOD NOTIFICATION CARDS
+            // 🎬 HOLLYWOOD GROUPED NOTIFICATION CARDS
             <AnimatePresence mode="popLayout">
-              {notifications.map((notification, index) => {
-                const style = getNotificationStyle(notification.type, notification.isRead)
+              {groupedNotifications.map((group, index) => {
+                const style = getNotificationStyle(group.type as any, group.isRead)
+                const isSelected = selectedNotificationId === group.id
                 
                 return (
                   <motion.div
-                    key={notification.id}
+                    key={group.id}
                     layout
                     initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 20, opacity: 0, height: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    onClick={() => handleNotificationClick(notification)}
+                    onClick={() => {
+                      // Click the first (most recent) notification in the group
+                      if (group.notifications.length > 0) {
+                        handleNotificationClick(group.notifications[0])
+                      }
+                    }}
                     className={`
                       relative group
                       flex items-center gap-4 p-5 rounded-2xl 
                       bg-gradient-to-br from-[#1a4d3e]/60 to-[#0d2920]/80
                       backdrop-blur-md
-                      border-2 ${selectedNotificationId === notification.id 
+                      border-2 ${isSelected 
                         ? 'border-[#4ade80] ring-2 ring-[#4ade80]/50 scale-[1.02]' 
                         : style.borderColor}
                       shadow-lg hover:shadow-2xl ${style.glowColor}
                       hover:scale-[1.02] hover:border-[#4ade80]
                       transition-all duration-300 cursor-pointer
-                      ${!notification.isRead && selectedNotificationId !== notification.id ? 'ring-2 ring-[#4ade80]/30' : ''}
+                      ${!group.isRead && !isSelected ? 'ring-2 ring-[#4ade80]/30' : ''}
                     `}
                   >
                     {/* ✅ Selection indicator */}
-                    {selectedNotificationId === notification.id && (
+                    {isSelected && (
                       <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-[#4ade80] rounded-full" />
                     )}
                     
-                    {/* Icon with glow */}
+                    {/* Photo/Icon with glow */}
                     <div className={`
-                      flex-shrink-0 h-16 w-16 rounded-full 
+                      relative flex-shrink-0 h-16 w-16 rounded-full 
                       ${style.bgColor} 
                       border-2 ${style.borderColor}
-                      flex items-center justify-center text-3xl
+                      flex items-center justify-center
                       shadow-lg group-hover:scale-110 transition-transform
+                      overflow-hidden
                     `}>
-                      {notification.icon}
+                      {group.senderPhoto ? (
+                        <img 
+                          src={group.senderPhoto} 
+                          alt={group.senderName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-8 h-8 text-white/60" />
+                      )}
+                      
+                      {/* Message count badge */}
+                      {group.count > 1 && (
+                        <div className="absolute -top-1 -right-1 bg-[#4ade80] text-[#0d2920] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                          {group.count > 9 ? '9+' : group.count}
+                        </div>
+                      )}
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-sans font-bold mb-1 text-lg ${
-                        !notification.isRead ? 'text-white' : 'text-white/80'
+                      <h3 className={`font-sans font-bold mb-1 text-lg flex items-center gap-2 ${
+                        !group.isRead ? 'text-white' : 'text-white/80'
                       }`}>
-                        {notification.title}
+                        {group.type === 'message' && <span className="text-white/80">💬</span>}
+                        {group.type === 'match' && <span className="text-white/80">💚</span>}
+                        {group.type === 'like' && <span className="text-white/80">❤️</span>}
+                        {group.senderName}
                       </h3>
                       <p className="font-sans text-sm text-white/70 truncate">
-                        {notification.subtitle}
+                        {group.count > 1 
+                          ? `${group.count} הודעות חדשות` 
+                          : group.lastMessage
+                        }
                       </p>
                     </div>
 
-                    {/* Time & Actions */}
+                    {/* Time & Unread indicator */}
                     <div className="flex-shrink-0 flex flex-col items-end gap-2">
                       <span className="font-sans text-xs text-white/50 font-medium">
-                        {formatTimeAgo(notification.timestamp || notification.createdAt)}
+                        {formatTimeAgo(group.timestamp)}
                       </span>
                       
-                      {/* Delete button - shows on hover OR when selected */}
-                      <button
-                        onClick={(e) => handleDelete(notification.id, e)}
-                        className={`
-                          ${selectedNotificationId === notification.id 
-                            ? 'opacity-100' 
-                            : 'opacity-0 group-hover:opacity-100'
-                          } 
-                          transition-opacity p-1.5 rounded-lg 
-                          hover:bg-red-500/20 text-red-400 hover:text-red-300
-                        `}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {/* Unread dot */}
+                      {!group.isRead && (
+                        <div className="w-3 h-3 rounded-full bg-[#4ade80] shadow-lg shadow-[#4ade80]/50" />
+                      )}
+                      
+                      <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-[#4ade80] transition-colors" />
                     </div>
-
-                    {/* Arrow indicator - shows tap again hint when selected */}
-                    {selectedNotificationId === notification.id ? (
-                      <span className="text-xs text-[#4ade80] animate-pulse">Tap again</span>
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-white/30 group-hover:text-[#4ade80] group-hover:translate-x-1 transition-all" />
-                    )}
-
-                    {/* Unread pulse indicator */}
-                    {!notification.isRead && (
-                      <motion.div
-                        animate={{ 
-                          scale: [1, 1.2, 1],
-                          opacity: [1, 0.7, 1]
-                        }}
-                        transition={{ 
-                          duration: 2,
-                          repeat: Infinity
-                        }}
-                        className="absolute top-5 right-5 h-3 w-3 rounded-full bg-[#4ade80] shadow-lg shadow-[#4ade80]/50"
-                      />
-                    )}
                   </motion.div>
                 )
               })}
@@ -369,7 +430,7 @@ export default function NotificationsScreen({
           )}
 
           {/* Iguana illustration at bottom (only if has notifications) */}
-          {notifications.length > 0 && (
+          {groupedNotifications.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

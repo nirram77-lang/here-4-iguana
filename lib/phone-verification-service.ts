@@ -14,13 +14,25 @@ let recaptchaVerifier: RecaptchaVerifier | null = null
  * This is called automatically before sending SMS
  */
 export function initializeRecaptcha(): RecaptchaVerifier {
-  // If already initialized, return existing instance
+  // Clear existing verifier if it exists (to avoid stale state)
   if (recaptchaVerifier) {
-    console.log('♻️ Reusing existing reCAPTCHA verifier')
-    return recaptchaVerifier
+    try {
+      recaptchaVerifier.clear()
+      console.log('🧹 Cleared existing reCAPTCHA verifier')
+    } catch (e) {
+      console.log('⚠️ Could not clear existing verifier:', e)
+    }
+    recaptchaVerifier = null
   }
 
-  console.log('🔐 Initializing reCAPTCHA verifier...')
+  console.log('🔐 Initializing new reCAPTCHA verifier...')
+
+  // Check if container exists
+  const container = document.getElementById('recaptcha-container')
+  if (!container) {
+    console.error('❌ recaptcha-container element not found!')
+    throw new Error('reCAPTCHA container not found')
+  }
 
   // Create new invisible reCAPTCHA
   recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -29,7 +41,7 @@ export function initializeRecaptcha(): RecaptchaVerifier {
       console.log('✅ reCAPTCHA verified successfully')
     },
     'expired-callback': () => {
-      console.log('⚠️ reCAPTCHA expired')
+      console.log('⚠️ reCAPTCHA expired - clearing')
       recaptchaVerifier = null
     }
   })
@@ -39,23 +51,44 @@ export function initializeRecaptcha(): RecaptchaVerifier {
 
 /**
  * Send phone verification code via SMS
- * @param phoneNumber - Phone number in international format (e.g., +972501234567)
+ * @param phoneNumber - Phone number in international format (e.g., +972521234567)
  * @returns ConfirmationResult for code verification
  */
 export async function sendPhoneVerification(phoneNumber: string): Promise<ConfirmationResult> {
   try {
     console.log('📱 Sending verification code to:', phoneNumber)
 
-    // Initialize reCAPTCHA if not already done
+    // Validate phone number format
+    if (!phoneNumber.startsWith('+972') || phoneNumber.length < 13) {
+      throw new Error('מספר טלפון לא תקין - נדרש מספר ישראלי מלא')
+    }
+
+    // Initialize reCAPTCHA (always fresh)
     const verifier = initializeRecaptcha()
+    
+    // Render the reCAPTCHA widget
+    console.log('🔄 Rendering reCAPTCHA...')
+    await verifier.render()
+    console.log('✅ reCAPTCHA rendered')
 
     // Send SMS code
+    console.log('📤 Calling signInWithPhoneNumber...')
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier)
     
     console.log('✅ Verification code sent successfully')
     return confirmationResult
   } catch (error: any) {
     console.error('❌ Error sending verification code:', error)
+    console.error('   Error code:', error.code)
+    console.error('   Error message:', error.message)
+    
+    // Clear the verifier on error
+    if (recaptchaVerifier) {
+      try {
+        recaptchaVerifier.clear()
+      } catch (e) {}
+      recaptchaVerifier = null
+    }
     
     // User-friendly error messages
     if (error.code === 'auth/invalid-phone-number') {
@@ -64,8 +97,16 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<Confir
       throw new Error('יותר מדי ניסיונות. אנא נסה שוב מאוחר יותר')
     } else if (error.code === 'auth/quota-exceeded') {
       throw new Error('הגעת למכסה היומית. אנא נסה מחר')
+    } else if (error.code === 'auth/operation-not-allowed') {
+      throw new Error('אימות טלפון לא מופעל. פנה לתמיכה')
+    } else if (error.code === 'auth/captcha-check-failed') {
+      throw new Error('בעיית אבטחה. רענן את הדף ונסה שנית')
+    } else if (error.code === 'auth/missing-phone-number') {
+      throw new Error('מספר טלפון חסר')
+    } else if (error.message?.includes('reCAPTCHA')) {
+      throw new Error('בעיית אבטחה. רענן את הדף ונסה שנית')
     } else {
-      throw new Error('שגיאה בשליחת קוד אימות. אנא נסה שנית')
+      throw new Error(`שגיאה בשליחת קוד אימות: ${error.code || error.message}`)
     }
   }
 }

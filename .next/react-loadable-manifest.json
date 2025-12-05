@@ -1,1 +1,40 @@
-{}
+{
+  "app\\admin\\page.tsx -> @/lib/pass-system": {
+    "id": "app\\admin\\page.tsx -> @/lib/pass-system",
+    "files": []
+  },
+  "components\\chat-screen.tsx -> @/lib/firebase": {
+    "id": "components\\chat-screen.tsx -> @/lib/firebase",
+    "files": []
+  },
+  "components\\chat-screen.tsx -> firebase/firestore": {
+    "id": "components\\chat-screen.tsx -> firebase/firestore",
+    "files": []
+  },
+  "components\\profile-screen.tsx -> @/lib/delete-account-service": {
+    "id": "components\\profile-screen.tsx -> @/lib/delete-account-service",
+    "files": [
+      "static/chunks/_app-pages-browser_lib_delete-account-service_ts.js"
+    ]
+  },
+  "components\\profile-screen.tsx -> @/lib/firebase-messaging": {
+    "id": "components\\profile-screen.tsx -> @/lib/firebase-messaging",
+    "files": [
+      "static/chunks/_app-pages-browser_lib_firebase-messaging_ts.js"
+    ]
+  },
+  "lib\\firebase-messaging.ts -> firebase/app": {
+    "id": "lib\\firebase-messaging.ts -> firebase/app",
+    "files": []
+  },
+  "lib\\firebase-messaging.ts -> firebase/firestore": {
+    "id": "lib\\firebase-messaging.ts -> firebase/firestore",
+    "files": []
+  },
+  "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
+    "id": "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
+    ]
+  }
+}
