@@ -50,15 +50,20 @@ export async function sendMessage(
   try {
     const messagesRef = collection(db, 'chats', matchId, 'messages')
     
+    // ✅ FIXED: Include senderName and senderPhoto in message for Cloud Functions
     const messageData = {
       matchId,
       senderId,
       recipientId,
       text,
+      senderName: senderName || 'Someone',
+      senderPhoto: senderPhoto || '',
       timestamp: serverTimestamp(),
       status: 'sent',
       createdAt: serverTimestamp()
     }
+    
+    console.log('📤 Sending message with:', { senderName, senderPhoto: senderPhoto ? '✅' : '❌' })
     
     const docRef = await addDoc(messagesRef, messageData)
     

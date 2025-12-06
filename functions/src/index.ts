@@ -129,41 +129,54 @@ export const onNewMessage = functions.firestore
       return null;
     }
 
-    const { senderId, senderName, text } = messageData;
-
-    // Get chat document to find recipient
-    const chatDoc = await db.collection('chats').doc(chatId).get();
-    const chatData = chatDoc.data();
-
-    if (!chatData) {
-      console.log('❌ No chat data found');
-      return null;
-    }
-
-    const { participants } = chatData;
+    // ✅ FIXED: Get recipientId directly from message data
+    const { senderId, recipientId, senderName, text } = messageData;
     
-    // Find recipient (the other participant)
-    const recipientId = participants.find((id: string) => id !== senderId);
+    console.log('📨 Message data:', { senderId, recipientId, senderName, text: text?.substring(0, 30) });
 
     if (!recipientId) {
-      console.log('❌ No recipient found');
+      console.log('❌ No recipientId in message data');
+      
+      // Fallback: Try to get from chat document
+      const chatDoc = await db.collection('chats').doc(chatId).get();
+      const chatData = chatDoc.data();
+      
+      if (chatData?.participants) {
+        const fallbackRecipientId = chatData.participants.find((id: string) => id !== senderId);
+        if (fallbackRecipientId) {
+          console.log('✅ Found recipient from chat participants:', fallbackRecipientId);
+          
+          const truncatedText = text?.length > 50 ? text.substring(0, 50) + '...' : text || '';
+          
+          await sendOneSignalNotification(
+            fallbackRecipientId,
+            `💬 ${senderName || 'Someone'}`,
+            truncatedText,
+            { type: 'message', chatId },
+            'https://i4iguana-app.vercel.app'
+          );
+          return null;
+        }
+      }
+      
+      console.log('❌ Could not find recipient');
       return null;
     }
 
     console.log(`💬 New message from ${senderName} to ${recipientId}`);
 
     // Truncate message for notification
-    const truncatedText = text.length > 50 ? text.substring(0, 50) + '...' : text;
+    const truncatedText = text?.length > 50 ? text.substring(0, 50) + '...' : text || '';
 
-    await sendOneSignalNotification(
+    const success = await sendOneSignalNotification(
       recipientId,
-      `💬 ${senderName}`,
+      `💬 ${senderName || 'Someone'}`,
       truncatedText,
       { type: 'message', chatId },
       'https://i4iguana-app.vercel.app'
     );
-
-    console.log('✅ Message notification sent');
+    
+    console.log('📤 OneSignal notification result:', success ? '✅ Success' : '❌ Failed');
     
     return null;
   });

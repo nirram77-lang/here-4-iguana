@@ -846,16 +846,28 @@ export default function Page() {
       const permission = Notification.permission
       console.log('🔔 Current notification permission:', permission)
       
-      // ✅ If already granted, make sure OneSignal knows the user ID
-      if (permission === 'granted') {
+      // ✅ CRITICAL: Always try to login to OneSignal when user is authenticated
+      if (permission === 'granted' && user.uid) {
         try {
           // Wait for OneSignal to be fully ready
           const waitForOneSignal = async () => {
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 20; i++) {
               const OneSignal = (window as any).OneSignal
               if (OneSignal && OneSignal.User) {
+                // Check if already logged in
+                const currentExternalId = await OneSignal.User.externalId
+                if (currentExternalId === user.uid) {
+                  console.log('✅ OneSignal already logged in:', user.uid)
+                  return true
+                }
+                
+                // Login with user ID
                 await OneSignal.login(user.uid)
-                console.log('✅ OneSignal auto-login successful:', user.uid)
+                console.log('✅ OneSignal login successful:', user.uid)
+                
+                // Verify
+                const externalId = await OneSignal.User.externalId
+                console.log('✅ OneSignal verified external ID:', externalId)
                 return true
               }
               await new Promise(resolve => setTimeout(resolve, 500))
@@ -865,7 +877,7 @@ export default function Page() {
           
           const success = await waitForOneSignal()
           if (!success) {
-            console.log('⚠️ OneSignal not ready after 5 seconds')
+            console.log('⚠️ OneSignal not ready after 10 seconds')
           }
         } catch (e) {
           console.log('OneSignal auto-login error:', e)
