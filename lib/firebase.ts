@@ -5,8 +5,8 @@ import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6laY3N84Pe_Fl1769bIoP4NbCxjmqP_o",
-  // ✅ CRITICAL: Use Vercel domain as authDomain for mobile compatibility
-  authDomain: "i4iguana-app.vercel.app",
+  // ✅ Use Firebase default authDomain - always works, no www issues
+  authDomain: "i4iguana-89ed1.firebaseapp.com",
   projectId: "i4iguana-89ed1",
   storageBucket: "i4iguana-89ed1.firebasestorage.app",
   messagingSenderId: "143460198551",

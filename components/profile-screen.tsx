@@ -57,6 +57,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(true)  // ✅ NEW: Loading state
   const { toast } = useToast()
   const [showHobbyModal, setShowHobbyModal] = useState(false)
   const [newHobby, setNewHobby] = useState('')
@@ -134,8 +135,22 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
 
 
   useEffect(() => {
+    // ✅ FIX: Load profile immediately if user is already authenticated
+    const loadInitialProfile = async () => {
+      const user = auth.currentUser
+      if (user) {
+        console.log('📸 Loading profile for already authenticated user:', user.uid)
+        setCurrentUser(user)
+        await loadProfileData(user.uid)
+      }
+    }
+    
+    loadInitialProfile()
+    
+    // Also listen for auth state changes (for login/logout)
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
+        console.log('📸 Auth state changed - loading profile for:', user.uid)
         setCurrentUser(user)
         await loadProfileData(user.uid)
       }
@@ -180,6 +195,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
   }, [profileData.height])
 
   const loadProfileData = async (uid: string) => {
+    setLoadingProfile(true)  // ✅ Start loading
     try {
       console.log('📸 Loading profile data for:', uid)
       const userDoc = await getDoc(doc(db, 'users', uid))
@@ -212,9 +228,13 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
           lookingFor: data.lookingFor || 'relationship'
         })
         console.log('📸 Total photos loaded:', photos.length)
+      } else {
+        console.log('⚠️ No profile document found for user:', uid)
       }
     } catch (error) {
       console.error('❌ Error loading profile:', error)
+    } finally {
+      setLoadingProfile(false)  // ✅ Stop loading
     }
   }
 
@@ -574,6 +594,18 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
   }
 
   const allPhotos = profileData.photos.length > 0 ? profileData.photos : (profileData.photoURL ? [profileData.photoURL] : [])
+
+  // ✅ Loading screen while profile is loading
+  if (loadingProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ade80] mx-auto mb-4"></div>
+          <p className="text-white/60">Loading profile...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] pb-24 custom-scrollbar mobile-scrollbar">
@@ -1054,6 +1086,28 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             <Trash2 className="mr-2 h-5 w-5" />
             Delete Account
           </Button>
+        </motion.div>
+
+        {/* Terms & Privacy Links */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="pt-6 pb-4 flex justify-center gap-4 text-sm"
+        >
+          <a 
+            href="/terms" 
+            className="text-white/50 hover:text-[#4ade80] underline transition-colors"
+          >
+            Terms of Service
+          </a>
+          <span className="text-white/30">|</span>
+          <a 
+            href="/privacy" 
+            className="text-white/50 hover:text-[#4ade80] underline transition-colors"
+          >
+            Privacy Policy
+          </a>
         </motion.div>
       </div>
 

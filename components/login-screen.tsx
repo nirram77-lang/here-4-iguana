@@ -181,7 +181,7 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
         >
           <p className="text-sm text-[#a8d5ba] px-4">
             {isSignUp 
-              ? "By signing up, you agree to our Terms & Privacy Policy" 
+              ? <>By signing up, you agree to our <a href="/terms" className="underline text-[#4ade80] hover:text-white">Terms</a> & <a href="/privacy" className="underline text-[#4ade80] hover:text-white">Privacy Policy</a></>
               : "We use GPS/WiFi for live matching only"}
           </p>
           <p className="text-sm text-[#4ade80] font-semibold px-4">
@@ -201,11 +201,11 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
           </p>
           <div className="flex flex-col items-center gap-2">
             <a 
-              href="mailto:nir.ram77@gmail.com"
+              href="mailto:nir@i4iguana.com"
               className="flex items-center gap-2 text-sm text-[#a8d5ba] hover:text-[#4ade80] transition-colors"
             >
               <Mail className="h-4 w-4" />
-              nir.ram77@gmail.com
+              nir@i4iguana.com
             </a>
             <a 
               href="tel:+972522653170"

@@ -2,7 +2,7 @@
   "name": "I4IGUANA - Meet Now",
   "short_name": "I4IGUANA",
   "description": "Proximity-based dating app - Meet people within 10-500 meters instantly",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#0d2920",
   "theme_color": "#4ade80",

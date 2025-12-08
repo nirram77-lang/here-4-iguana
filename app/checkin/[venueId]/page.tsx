@@ -65,8 +65,8 @@ export default function CheckInLandingPage() {
     // Store venue ID in localStorage for after app opens
     localStorage.setItem('pendingCheckIn', venueId)
     
-    // Navigate to home (which will handle the check-in)
-    router.push(`/?checkin=${venueId}`)
+    // Navigate to app (which will handle the check-in)
+    router.push(`/app?checkin=${venueId}`)
   }
 
   const handleDownloadApp = () => {
@@ -80,8 +80,8 @@ export default function CheckInLandingPage() {
       // iOS
       window.location.href = 'https://apps.apple.com/app/i4iguana/id123456789'
     } else {
-      // Desktop - redirect to home
-      router.push('/')
+      // Desktop - redirect to app
+      router.push('/app')
     }
   }
 

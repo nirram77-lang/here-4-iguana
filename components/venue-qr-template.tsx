@@ -22,8 +22,8 @@ export default function VenueQRTemplate({ venue, isOpen, onClose }: VenueQRTempl
   const templateRef = useRef<HTMLDivElement>(null)
   
   // URLs
-  const appDownloadUrl = 'https://i4iguana-app.vercel.app'
-  const venueCheckInUrl = venue.qrCodeData || `https://i4iguana-app.vercel.app/checkin/${venue.id}`
+  const appDownloadUrl = 'https://i4iguana.com/app'
+  const venueCheckInUrl = venue.qrCodeData || `https://i4iguana.com/checkin/${venue.id}`
   
   // Copy venue link
   const copyVenueLink = async () => {

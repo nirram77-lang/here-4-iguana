@@ -28,6 +28,7 @@ interface MatchScreenProps {
   passResetTime?: Date
   isNewMatch?: boolean
   currentUserGender?: 'male' | 'female'  // ✅ "She Decides" - Only women can click "We're Meeting!"
+  matchedUserGender?: 'male' | 'female'  // ✅ NEW: For same-sex matching logic
 }
 
 interface UserProfile {
@@ -57,7 +58,8 @@ export default function MatchScreen({
   onBuyOnePass,
   passResetTime,
   isNewMatch = false,
-  currentUserGender = 'male'  // ✅ "She Decides" - Default to male (button disabled)
+  currentUserGender = 'male',  // ✅ "She Decides" - Default to male (button disabled)
+  matchedUserGender  // ✅ NEW: For same-sex matching logic
 }: MatchScreenProps) {
   const [showPremiumOffer, setShowPremiumOffer] = useState(false)
   const [premiumOfferShownAt, setPremiumOfferShownAt] = useState<number | null>(null)
@@ -69,14 +71,21 @@ export default function MatchScreen({
   const [hasActiveChat, setHasActiveChat] = useState(false)
   const [showWeAreMeetingModal, setShowWeAreMeetingModal] = useState(false)
   
-  // ✅ "She Decides" - Only women can initiate meeting
-  const canInitiateMeeting = currentUserGender === 'female'
+  // ✅ "She Decides" - BUT also support same-sex couples!
+  // Logic:
+  // - Hetero couples (male + female): Only the woman can click
+  // - Same-sex couples (male + male OR female + female): BOTH can click
+  const isSameSexCouple = currentUserGender === matchedUserGender
+  const canInitiateMeeting = isSameSexCouple || currentUserGender === 'female'
   
   // ✅ NEW: Track time until next pass
   const [timeUntilNextPass, setTimeUntilNextPass] = useState<number>(0)
 
   // 🔊 SOUND: Match celebration sound effect
   const matchSoundRef = useRef<HTMLAudioElement | null>(null)
+  
+  // 🔊 SOUND: "We're Meeting!" celebration sound effect
+  const meetingSoundRef = useRef<HTMLAudioElement | null>(null)
   
   // 🔒 SCREEN WAKE LOCK: Keep screen on during match (10 minutes)
   const wakeLockRef = useRef<any>(null)
@@ -290,28 +299,39 @@ useEffect(() => {
   
   // ✅ CRITICAL FIX: If this is a NEW match, always show "Send Message" not "Continue Chatting"
   // This ensures fresh start for new matches even if there was previous chat history
+  // ⚠️ BUT: Only clear messages if this is TRULY a new match (no existing messages)
   if (isNewMatch) {
-    console.log('🆕 New match detected - showing Send Message (not Continue Chatting)')
-    setHasActiveChat(false)
+    console.log('🆕 New match detected - checking if should clear chat...')
     
-    // ✅ CRITICAL: Clear old chat messages for fresh start
-    const clearOldChat = async () => {
+    const checkAndMaybeClearChat = async () => {
       const currentUserId = auth.currentUser?.uid
       const matchedUserId = user?.uid || user?.id
       
       if (currentUserId && matchedUserId) {
         const matchId = [currentUserId, matchedUserId].sort().join('_')
+        
+        // ✅ SAFETY CHECK: Only clear if there are NO messages (truly new match)
         try {
+          const hasMessages = await chatHasMessages(matchId)
+          
+          if (hasMessages) {
+            console.log('⚠️ Chat has existing messages - NOT clearing (this is a restored match)')
+            setHasActiveChat(true)  // Show "Continue Chatting" button
+            return  // Don't clear!
+          }
+          
+          // No messages - safe to clear (truly new match)
           await clearChatMessages(matchId)
           console.log('🧹 Old chat messages cleared for new match')
+          setHasActiveChat(false)
         } catch (error) {
-          console.error('⚠️ Error clearing old messages:', error)
+          console.error('⚠️ Error checking/clearing old messages:', error)
           // Don't fail - just continue
         }
       }
     }
     
-    clearOldChat()
+    checkAndMaybeClearChat()
     return
   }
   
@@ -462,6 +482,14 @@ useEffect(() => {
       <audio
         ref={matchSoundRef}
         src="/sounds/match-celebration.mp3"
+        preload="auto"
+        style={{ display: 'none' }}
+      />
+      
+      {/* 🔊 "We're Meeting!" Celebration Sound - Hidden */}
+      <audio
+        ref={meetingSoundRef}
+        src="/sounds/meeting-celebration.wav"
         preload="auto"
         style={{ display: 'none' }}
       />
@@ -643,14 +671,22 @@ useEffect(() => {
                   console.log('💕 She clicked We\'re Meeting! Sending notification immediately...')
                   onMarkMatchSuccessful()  // ← Sends notification to HIM right now!
                   
-                  // Play celebration sound! 🔔
+                  // 🔊 Play "We're Meeting" celebration sound!
                   try {
-                    const audio = new Audio('/match-sound.mp3')
-                    audio.volume = 0.8
-                    await audio.play()
-                    console.log('🔊 Celebration sound played!')
+                    if (meetingSoundRef.current) {
+                      meetingSoundRef.current.currentTime = 0
+                      meetingSoundRef.current.volume = 0.8
+                      await meetingSoundRef.current.play()
+                      console.log('🔊 Meeting celebration sound played!')
+                    } else {
+                      // Fallback: create new audio
+                      const audio = new Audio('/sounds/meeting-celebration.wav')
+                      audio.volume = 0.8
+                      await audio.play()
+                      console.log('🔊 Meeting sound played (fallback)!')
+                    }
                   } catch (err) {
-                    console.warn('Could not play sound:', err)
+                    console.warn('Could not play meeting sound:', err)
                   }
                   
                   // Show celebration modal for HER

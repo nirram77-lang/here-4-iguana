@@ -8,7 +8,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-comp
 // ✅ I4IGUANA Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA6laY3N84Pe_Fl1769bIoP4NbCxjmqP_o",
-  authDomain: "i4iguana-app.vercel.app",
+  authDomain: "i4iguana-89ed1.firebaseapp.com",
   projectId: "i4iguana-89ed1",
   storageBucket: "i4iguana-89ed1.firebasestorage.app",
   messagingSenderId: "143460198551",
@@ -85,16 +85,16 @@ self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data || {};
   
   // Build the URL to open based on notification type
-  let urlToOpen = '/';
+  let urlToOpen = '/app';
   
   if (data.type === 'match' && data.matchId) {
-    urlToOpen = `/?screen=match&matchId=${data.matchId}`;
+    urlToOpen = `/app?screen=match&matchId=${data.matchId}`;
   } else if (data.type === 'message' && data.chatId) {
-    urlToOpen = `/?screen=chat&chatId=${data.chatId}`;
+    urlToOpen = `/app?screen=chat&chatId=${data.chatId}`;
   } else if (data.type === 'meeting') {
-    urlToOpen = `/?screen=match`;
+    urlToOpen = `/app?screen=match`;
   } else if (data.type === 'venue_announcement' && data.venueId) {
-    urlToOpen = `/?screen=home&venue=${data.venueId}`;
+    urlToOpen = `/app?screen=home&venue=${data.venueId}`;
   }
   
   // Handle dismiss action

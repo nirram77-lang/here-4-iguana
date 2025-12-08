@@ -34,56 +34,126 @@ export default function NotificationPermissionModal({
     setLoading(true)
     setError(null)
 
+    // Safety timeout - close modal after 15 seconds no matter what
+    const safetyTimeout = setTimeout(() => {
+      console.log('⏱️ Safety timeout - closing modal')
+      setLoading(false)
+      onClose()
+    }, 15000)
+
     try {
-      // Check if OneSignal is loaded
-      const OneSignal = (window as any).OneSignal
-      if (!OneSignal) {
-        setError('Notification service not ready. Please refresh the page.')
+      // ✅ STEP 1: Request browser permission FIRST (this shows the native browser prompt)
+      console.log('🔔 Step 1: Requesting browser notification permission...')
+      
+      // Check if Notification API is supported
+      if (!('Notification' in window)) {
+        console.log('❌ Notifications not supported in this browser')
+        setError('Notifications are not supported in this browser. Please use Chrome or Firefox.')
+        clearTimeout(safetyTimeout)
         setLoading(false)
         return
       }
-
-      // Request permission through native browser API
+      
+      // Request permission - this triggers the native browser popup
       const permission = await Notification.requestPermission()
+      console.log('🔔 Browser permission result:', permission)
       
       if (permission === 'granted') {
-        console.log('✅ Browser permission granted')
+        console.log('✅ Browser permission granted!')
         
+        // ✅ STEP 2: Setup OneSignal (with fallback for older devices)
         try {
-          // Subscribe to OneSignal
-          await OneSignal.User.PushSubscription.optIn()
-          console.log('✅ OneSignal optIn successful')
-        } catch (optInError) {
-          console.log('⚠️ OneSignal optIn error:', optInError)
-        }
-        
-        // Set external user ID for targeting
-        if (userId) {
-          try {
-            await OneSignal.login(userId)
-            console.log('✅ User linked to OneSignal:', userId)
+          // Wait for OneSignal to be ready
+          await new Promise(resolve => setTimeout(resolve, 1500))
+          
+          const OneSignal = (window as any).OneSignal
+          
+          if (OneSignal) {
+            console.log('🔔 Step 2: Setting up OneSignal...')
             
-            // Verify the login worked
-            const externalId = await OneSignal.User.externalId
-            console.log('✅ Verified external ID:', externalId)
-          } catch (loginError) {
-            console.log('⚠️ OneSignal login error:', loginError)
+            // Helper function with timeout
+            const withTimeout = (promise: Promise<any>, ms: number) => {
+              return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+              ])
+            }
+            
+            // Check if OneSignal User API is available (v16)
+            if (OneSignal.User && OneSignal.User.PushSubscription) {
+              // Opt in to push notifications
+              try {
+                await withTimeout(OneSignal.User.PushSubscription.optIn(), 5000)
+                console.log('✅ OneSignal optIn successful')
+              } catch (optInError: any) {
+                console.log('⚠️ OneSignal optIn error:', optInError.message)
+                // Try alternative method
+                try {
+                  await withTimeout(OneSignal.Notifications.requestPermission(), 5000)
+                  console.log('✅ OneSignal requestPermission successful (fallback)')
+                } catch (e) {
+                  console.log('⚠️ OneSignal fallback also failed:', e)
+                }
+              }
+              
+              // Link user ID for targeting
+              if (userId) {
+                try {
+                  await withTimeout(OneSignal.login(userId), 5000)
+                  console.log('✅ OneSignal user linked:', userId)
+                } catch (loginError: any) {
+                  console.log('⚠️ OneSignal login error:', loginError.message)
+                  // Try setExternalUserId as fallback (older API)
+                  try {
+                    if (OneSignal.setExternalUserId) {
+                      await OneSignal.setExternalUserId(userId)
+                      console.log('✅ OneSignal setExternalUserId successful (fallback)')
+                    }
+                  } catch (e) {
+                    console.log('⚠️ setExternalUserId fallback failed:', e)
+                  }
+                }
+              }
+            } else {
+              // Older OneSignal API fallback
+              console.log('⚠️ Using older OneSignal API...')
+              if (OneSignal.registerForPushNotifications) {
+                await OneSignal.registerForPushNotifications()
+              }
+              if (userId && OneSignal.setExternalUserId) {
+                await OneSignal.setExternalUserId(userId)
+              }
+            }
+            
+            console.log('✅ OneSignal setup complete')
+          } else {
+            console.log('⚠️ OneSignal not available - browser notifications still enabled')
           }
+        } catch (oneSignalError) {
+          console.log('⚠️ OneSignal error (notifications may still work):', oneSignalError)
         }
         
+        // ✅ STEP 3: Show success message
         console.log('✅ Notifications enabled successfully!')
+        clearTimeout(safetyTimeout)
         onPermissionGranted?.()
         onClose()
+        
       } else if (permission === 'denied') {
-        setError('Notifications were blocked. Please enable them in your browser settings.')
+        clearTimeout(safetyTimeout)
+        setError('Notifications were blocked. To enable them, go to your browser settings → Site Settings → Notifications → Allow for i4iguana.com')
         onPermissionDenied?.()
+        setLoading(false)
       } else {
-        setError('Permission was dismissed. Please try again.')
+        // Permission dismissed
+        console.log('ℹ️ Permission dismissed by user')
+        clearTimeout(safetyTimeout)
+        onClose()
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error enabling notifications:', err)
-      setError('Something went wrong. Please try again.')
-    } finally {
+      setError(`Error: ${err.message || 'Unknown error'}`)
+      clearTimeout(safetyTimeout)
       setLoading(false)
     }
   }

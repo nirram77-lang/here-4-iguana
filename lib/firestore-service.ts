@@ -116,6 +116,7 @@ export interface UserProfile {
   hobbies: string[]
   bio?: string
   onboardingComplete?: boolean
+  deleted?: boolean  // ✅ NEW: Track deleted accounts
   // ✅ Phone verification fields
   phoneNumber?: string
   phoneVerified?: boolean
@@ -1465,6 +1466,12 @@ export const getUsersByVenue = async (
       // Skip if not onboarded
       if (!userData.onboardingComplete) {
         console.log(`   ⏭️ SKIP: Onboarding not complete`)
+        return
+      }
+      
+      // ✅ NEW: Skip deleted users
+      if (userData.deleted === true) {
+        console.log(`   ⏭️ SKIP: User account was deleted`)
         return
       }
       

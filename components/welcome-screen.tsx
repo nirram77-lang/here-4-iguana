@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Mail, Phone } from "lucide-react"
 
 interface WelcomeScreenProps {
   onLogin: () => void
@@ -142,36 +141,11 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
 
           {/* Terms */}
           <p className="text-center text-sm text-white/50 px-4 pt-2">
-            By continuing, you agree to our Terms of Service and Privacy Policy
+            By continuing, you agree to our{' '}
+            <a href="/terms" className="underline text-[#4ade80] hover:text-white">Terms of Service</a>
+            {' '}and{' '}
+            <a href="/privacy" className="underline text-[#4ade80] hover:text-white">Privacy Policy</a>
           </p>
-          
-          {/* ✅ Contact Info - Hollywood Style */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="pt-4 border-t border-white/10 text-center"
-          >
-            <p className="text-sm text-[#4ade80] font-semibold mb-3">
-              To join the application, contact us:
-            </p>
-            <div className="flex flex-col items-center gap-2">
-              <a 
-                href="mailto:nir.ram77@gmail.com"
-                className="flex items-center gap-2 text-base text-white hover:text-[#4ade80] transition-colors font-medium"
-              >
-                <Mail className="h-5 w-5 text-[#4ade80]" />
-                nir.ram77@gmail.com
-              </a>
-              <a 
-                href="tel:+972522653170"
-                className="flex items-center gap-2 text-base text-white hover:text-[#4ade80] transition-colors font-medium"
-              >
-                <Phone className="h-5 w-5 text-[#4ade80]" />
-                +972-52-265-3170
-              </a>
-            </div>
-          </motion.div>
         </motion.div>
       </div>
     </div>

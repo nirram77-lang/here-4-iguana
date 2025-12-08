@@ -22,7 +22,8 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  RotateCcw
+  RotateCcw,
+  QrCode
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { auth, db } from '@/lib/firebase'
@@ -628,15 +629,25 @@ export default function DatabaseManager() {
               </div>
             </div>
 
-            <Button
-              onClick={loadAllData}
-              disabled={processing}
-              variant="outline"
-              className="border-[#4ade80]/50 text-[#4ade80] hover:bg-[#4ade80]/20"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${processing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => router.push('/admin/super/stickers')}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+              >
+                <QrCode className="mr-2 h-4 w-4" />
+                🖨️ Sticker Generator
+              </Button>
+              
+              <Button
+                onClick={loadAllData}
+                disabled={processing}
+                variant="outline"
+                className="border-[#4ade80]/50 text-[#4ade80] hover:bg-[#4ade80]/20"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${processing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
       </div>

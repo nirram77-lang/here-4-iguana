@@ -120,8 +120,20 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
+  /* ✅ CRITICAL: Disable browser's native pull-to-refresh */
+  /* This prevents the page from refreshing when pulling down */
+  html {
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+  }
+  
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    /* Prevent iOS bounce effect */
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -406,4 +418,41 @@ html, body {
 
 /* ========================================
    END OF CUSTOM SCROLLBAR STYLES
+   ======================================== */
+
+/* ========================================
+   PWA SAFE AREA STYLES
+   ======================================== */
+
+/* PWA Safe Area Insets for iPhone notch and home indicator */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pwa-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .pwa-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  
+  /* Add extra padding for bottom navigation */
+  .bottom-nav-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+}
+
+/* Standalone mode specific styles (when installed as PWA) */
+@media (display-mode: standalone) {
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overscroll-behavior-y: none;
+  }
+}
+
+/* ========================================
+   END OF PWA SAFE AREA STYLES
    ======================================== */

@@ -5,13 +5,13 @@ import { Phone, Shield, ArrowLeft, RefreshCw, CheckCircle, Sparkles } from 'luci
 
 interface PhoneVerificationProps {
   onComplete: (phoneNumber: string) => void
-  onSkip?: () => void  // ✅ For dev mode
+  onSkip?: () => void
   userId: string
   userEmail?: string
-  showSkip?: boolean   // ✅ Show skip button (dev only)
+  showSkip?: boolean
 }
 
-// ✅ Demo mode: These numbers don't send real SMS
+// Demo mode: These numbers don't send real SMS
 const DEMO_PREFIXES = ['+97250000', '+972500000']
 const DEMO_CODE = '123456'
 
@@ -24,7 +24,7 @@ export default function PhoneVerification({
 }: PhoneVerificationProps) {
   // States
   const [step, setStep] = useState<'phone' | 'code' | 'success'>('phone')
-  const [localNumber, setLocalNumber] = useState('') // ✅ Only the local part (e.g., 522653170)
+  const [localNumber, setLocalNumber] = useState('')
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', ''])
   const [confirmationResult, setConfirmationResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -54,7 +54,6 @@ export default function PhoneVerification({
 
   // Format phone number for display
   const formatPhoneDisplay = (phone: string) => {
-    // phone is the local number (e.g., 522653170)
     if (phone.length <= 2) return `+972-${phone}`
     if (phone.length <= 5) return `+972-${phone.slice(0,2)}-${phone.slice(2)}`
     return `+972-${phone.slice(0,2)}-${phone.slice(2,5)}-${phone.slice(5)}`
@@ -62,15 +61,10 @@ export default function PhoneVerification({
 
   // Format local number input (remove leading 0 if present)
   const handleLocalNumberChange = (value: string) => {
-    // Remove all non-digits
     let cleaned = value.replace(/\D/g, '')
-    
-    // Remove leading 0 (Israeli numbers often typed as 052... but we need 52...)
     if (cleaned.startsWith('0')) {
       cleaned = cleaned.slice(1)
     }
-    
-    // Limit to 9 digits (Israeli mobile: 5X-XXX-XXXX = 9 digits)
     setLocalNumber(cleaned.slice(0, 9))
   }
 
@@ -83,7 +77,6 @@ export default function PhoneVerification({
 
   // Handle code input
   const handleCodeChange = (index: number, value: string) => {
-    // Only allow digits
     const digit = value.replace(/\D/g, '').slice(-1)
     
     const newCode = [...verificationCode]
@@ -126,15 +119,15 @@ export default function PhoneVerification({
 
   // Send verification code via SMS
   const handleSendCode = async () => {
-    // Validation - Israeli mobile is 9 digits (5X-XXX-XXXX)
+    // Validation - Israeli mobile is 9 digits
     if (localNumber.length < 9) {
-      setError('נא להזין מספר טלפון מלא (9 ספרות)')
+      setError('Please enter a valid phone number (9 digits)')
       return
     }
     
     // Validate starts with 5 (Israeli mobile)
     if (!localNumber.startsWith('5')) {
-      setError('נא להזין מספר נייד ישראלי (מתחיל ב-05)')
+      setError('Please enter a valid Israeli mobile number (starts with 05)')
       return
     }
 
@@ -164,7 +157,7 @@ export default function PhoneVerification({
       console.log('✅ SMS sent successfully')
     } catch (err: any) {
       console.error('❌ Error sending SMS:', err)
-      setError(err.message || 'שגיאה בשליחת קוד אימות. אנא נסה שנית')
+      setError(err.message || 'Failed to send verification code. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -183,7 +176,7 @@ export default function PhoneVerification({
     setError('')
 
     try {
-      console.log('🔐 Verifying code...')
+      console.log('🔐 Verifying code:', codeToVerify)
       
       // Demo mode check
       if (confirmationResult?.isDemoMode) {
@@ -200,6 +193,7 @@ export default function PhoneVerification({
       }
       
       // Real verification
+      console.log('🔐 Calling verifyPhoneCode with confirmationResult:', confirmationResult)
       const { verifyPhoneCode } = await import('@/lib/phone-verification-service')
       await verifyPhoneCode(confirmationResult, codeToVerify)
       
@@ -213,135 +207,130 @@ export default function PhoneVerification({
       setTimeout(() => onComplete(fullPhoneNumber), 1500)
     } catch (err: any) {
       console.error('❌ Error verifying code:', err)
-      setError(err.message || 'Invalid code. Please try again')
-      setVerificationCode(['', '', '', '', '', ''])
-      codeInputRefs.current[0]?.focus()
+      
+      // User-friendly error messages
+      let errorMessage = 'Invalid code. Please try again.'
+      
+      if (err.code === 'auth/invalid-verification-code') {
+        errorMessage = 'Invalid code. Please check and try again.'
+      } else if (err.code === 'auth/code-expired') {
+        errorMessage = 'Code expired. Please request a new one.'
+        setResendTimer(0) // Allow immediate resend
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = '⏳ Too many attempts. Please wait 1 hour before trying again, or use a different phone number.'
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
-  // Link phone number to user and phoneIdentities
-  const linkPhoneToUser = async () => {
+  // Resend verification code
+  const handleResendCode = async () => {
+    setVerificationCode(['', '', '', '', '', ''])
+    setError('')
+    setLoading(true)
+
     try {
-      const { doc, updateDoc, setDoc, getDoc, arrayUnion, Timestamp } = await import('firebase/firestore')
-      const { db } = await import('@/lib/firebase')
+      console.log('🔄 Resending SMS to:', fullPhoneNumber)
       
-      // 1. Update user document
-      const userRef = doc(db, 'users', userId)
-      await updateDoc(userRef, {
-        phoneNumber: fullPhoneNumber,
-        phoneVerified: true,
-        phoneVerifiedAt: Timestamp.now()
-      })
-      console.log('✅ User document updated with phone')
-      
-      // 2. Update/create phoneIdentity and link Gmail
-      const phoneRef = doc(db, 'phoneIdentities', fullPhoneNumber)
-      const phoneDoc = await getDoc(phoneRef)
-      
-      if (phoneDoc.exists()) {
-        // Phone exists - add this Gmail to linked accounts
-        const phoneData = phoneDoc.data()
-        const oldUserIds = phoneData.linkedUserIds || []
-        
-        // ✅ CRITICAL FIX: Clean up old UIDs from all users' swipedRight/swipedLeft
-        // This prevents "ghost matches" when user deletes account and re-registers
-        if (oldUserIds.length > 0 && !oldUserIds.includes(userId)) {
-          console.log('🧹 Cleaning up old UIDs from swipedRight/swipedLeft...')
-          console.log('   Old UIDs:', oldUserIds)
-          console.log('   New UID:', userId)
-          
-          // Note: Full cleanup would require scanning all users
-          // For now, we just log this for debugging
-          // The real fix is to NOT check swipedRight for match detection
-        }
-        
-        await updateDoc(phoneRef, {
-          linkedUserIds: arrayUnion(userId),
-          linkedGmailAccounts: userEmail ? arrayUnion(userEmail) : arrayUnion(),
-          lastVerification: Timestamp.now()
-        })
-        console.log('✅ Phone identity updated with new Gmail link')
-      } else {
-        // New phone - create phoneIdentity
-        await setDoc(phoneRef, {
-          phoneNumber: fullPhoneNumber,
-          linkedUserIds: [userId],
-          linkedGmailAccounts: userEmail ? [userEmail] : [],
-          passesLeft: 1,
-          isPremium: false,
-          passesUsedToday: 0,
-          matchesCountToday: 0,
-          lockedUntil: null,
-          createdAt: Timestamp.now(),
-          lastVerification: Timestamp.now()
-        })
-        console.log('✅ New phone identity created')
+      if (isDemoMode) {
+        console.log('🧪 DEMO MODE - Resend')
+        setResendTimer(60)
+        setLoading(false)
+        return
       }
-    } catch (error) {
-      console.error('❌ Error linking phone to user:', error)
-      // Don't throw - verification succeeded, linking is secondary
+      
+      const { sendPhoneVerification } = await import('@/lib/phone-verification-service')
+      const result = await sendPhoneVerification(fullPhoneNumber)
+      setConfirmationResult(result)
+      setResendTimer(60)
+      console.log('✅ SMS resent successfully')
+    } catch (err: any) {
+      console.error('❌ Error resending SMS:', err)
+      setError(err.message || 'Failed to resend code. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
-  // Resend code
-  const handleResendCode = async () => {
-    setVerificationCode(['', '', '', '', '', ''])
-    await handleSendCode()
+  // Link phone to user profile in Firestore
+  const linkPhoneToUser = async () => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore')
+      const { db } = await import('@/lib/firebase')
+      
+      await updateDoc(doc(db, 'users', userId), {
+        phoneNumber: fullPhoneNumber,
+        phoneVerified: true,
+        phoneVerifiedAt: new Date().toISOString()
+      })
+      
+      // Cache verification status
+      localStorage.setItem('i4iguana_phone_verified', 'true')
+      
+      console.log('✅ Phone linked to user profile')
+    } catch (err) {
+      console.error('❌ Error linking phone:', err)
+    }
   }
 
   // Go back to phone input
-  const handleBackToPhone = () => {
+  const handleBack = () => {
     setStep('phone')
     setVerificationCode(['', '', '', '', '', ''])
     setError('')
+    setConfirmationResult(null)
   }
 
-  // ✅ Success screen
+  // ═══════════════════════════════════════════════════════════════════
+  // SUCCESS SCREEN
+  // ═══════════════════════════════════════════════════════════════════
   if (step === 'success') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] p-4">
+      <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] flex flex-col items-center justify-center p-6">
         <div className="text-center space-y-6 animate-fadeIn">
-          {/* Success Icon */}
-          <div className="relative">
-            <div className="w-32 h-32 bg-green-500/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
-              <CheckCircle className="w-20 h-20 text-green-400" />
-            </div>
-            <Sparkles className="w-8 h-8 text-yellow-400 absolute -top-2 -right-2 animate-bounce" />
-            <Sparkles className="w-6 h-6 text-yellow-400 absolute -bottom-1 -left-4 animate-bounce delay-200" />
+          <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/50">
+            <CheckCircle className="w-14 h-14 text-white" />
           </div>
-          
-          <h1 className="text-3xl font-bold text-white">Verified! ✅</h1>
-          <p className="text-green-300 text-lg">{formatPhoneDisplay(localNumber)}</p>
-          <p className="text-white/60">Setting up your account...</p>
+          <h1 className="text-3xl font-bold text-white">Verified!</h1>
+          <p className="text-white/60">Your phone has been verified successfully</p>
+          <div className="flex items-center justify-center gap-2">
+            <Sparkles className="w-5 h-5 text-yellow-400" />
+            <span className="text-green-400 font-medium">Setting up your profile...</span>
+          </div>
         </div>
       </div>
     )
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // PHONE INPUT & CODE VERIFICATION SCREENS
+  // ═══════════════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] p-4">
+    <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] flex flex-col">
       {/* Header */}
-      <div className="pt-8 pb-4">
+      <div className="p-4 flex items-center">
         {step === 'code' && (
           <button
-            onClick={handleBackToPhone}
-            className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            onClick={handleBack}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Change Number</span>
+            <ArrowLeft className="w-6 h-6 text-white" />
           </button>
         )}
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
+      {/* Content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
         {step === 'phone' ? (
           // ═══════════════════════════════════════════
           // STEP 1: Phone Number Input
           // ═══════════════════════════════════════════
-          <div className="w-full space-y-8 animate-fadeIn">
+          <div className="w-full max-w-sm space-y-8 animate-fadeIn">
             {/* Icon */}
             <div className="text-center">
               <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/30">
@@ -353,18 +342,15 @@ export default function PhoneVerification({
             <div className="text-center space-y-2">
               <h1 className="text-3xl font-bold text-white">Verify Your Phone</h1>
               <p className="text-white/60">
-                One phone = One identity 📱
-              </p>
-              <p className="text-white/40 text-sm">
-                This keeps our community safe & authentic
+                We'll send you a verification code via SMS
               </p>
             </div>
 
             {/* Phone Input */}
             <div className="space-y-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+              <div>
                 <label className="block text-white/60 text-sm mb-3">
-                  מספר נייד
+                  Mobile Number
                 </label>
                 <div className="flex items-center gap-2">
                   {/* Country Code - Fixed */}
@@ -380,7 +366,7 @@ export default function PhoneVerification({
                       value={formatLocalDisplay(localNumber)}
                       onChange={(e) => handleLocalNumberChange(e.target.value)}
                       placeholder="52-265-3170"
-                      className="w-full bg-transparent text-white text-xl font-medium focus:outline-none placeholder-white/30 text-right"
+                      className="w-full bg-transparent text-white text-xl font-medium focus:outline-none placeholder-white/30"
                       style={{ direction: 'ltr', textAlign: 'left' }}
                       disabled={loading}
                       autoComplete="tel-local"
@@ -390,7 +376,7 @@ export default function PhoneVerification({
                 
                 {/* Helper Text */}
                 <p className="text-white/40 text-xs mt-2 text-center">
-                  הקלד את המספר ללא 0 בהתחלה (למשל: 52-265-3170)
+                  Enter without leading 0 (e.g., 52-265-3170)
                 </p>
               </div>
 
@@ -420,10 +406,10 @@ export default function PhoneVerification({
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  שולח...
+                  Sending...
                 </span>
               ) : (
-                'שלח קוד אימות'
+                'Send Verification Code'
               )}
             </button>
 
@@ -447,7 +433,7 @@ export default function PhoneVerification({
           // ═══════════════════════════════════════════
           // STEP 2: Verification Code Input
           // ═══════════════════════════════════════════
-          <div className="w-full space-y-8 animate-fadeIn">
+          <div className="w-full max-w-sm space-y-8 animate-fadeIn">
             {/* Icon */}
             <div className="text-center">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
@@ -457,9 +443,9 @@ export default function PhoneVerification({
 
             {/* Title */}
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold text-white">הזן קוד</h1>
+              <h1 className="text-3xl font-bold text-white">Enter Code</h1>
               <p className="text-white/60">
-                נשלח ל-{formatPhoneDisplay(localNumber)}
+                Sent to {formatPhoneDisplay(localNumber)}
               </p>
             </div>
 
@@ -517,21 +503,29 @@ export default function PhoneVerification({
               )}
             </button>
 
-            {/* Resend */}
-            <div className="text-center">
+            {/* Resend Section - ALWAYS VISIBLE */}
+            <div className="text-center space-y-3">
               {resendTimer > 0 ? (
                 <p className="text-white/40">
-                  Resend code in <span className="text-white">{resendTimer}s</span>
+                  Resend code in <span className="text-white font-bold">{resendTimer}s</span>
                 </p>
               ) : (
                 <button
                   onClick={handleResendCode}
                   disabled={loading}
-                  className="text-green-400 hover:text-green-300 font-medium disabled:opacity-50"
+                  className="w-full py-3 bg-white/10 text-white font-medium rounded-xl hover:bg-white/20 transition-colors disabled:opacity-50"
                 >
-                  Didn't receive? Resend Code
+                  🔄 Resend Code
                 </button>
               )}
+              
+              {/* Change number option */}
+              <button
+                onClick={handleBack}
+                className="text-white/40 hover:text-white/60 text-sm underline"
+              >
+                Change phone number
+              </button>
             </div>
 
             {/* Skip Button (Dev Only) */}

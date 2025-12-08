@@ -13,7 +13,7 @@ const GA_MEASUREMENT_ID = 'G-5BZR9TWG9N'
 const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7'
 
 // App Version - increment this to force cache clear on all users
-const APP_VERSION = '2.0.0'
+const APP_VERSION = '2.1.0'
 
 export const metadata: Metadata = {
   title: 'I4IGUANA - Meet Now',
@@ -39,6 +39,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: '#4ade80',
+  viewportFit: 'cover',  // ✅ FIX: Enable safe area insets
 }
 
 export default function RootLayout({
@@ -114,15 +115,99 @@ export default function RootLayout({
             window.OneSignalDeferred = window.OneSignalDeferred || [];
             OneSignalDeferred.push(async function(OneSignal) {
               await OneSignal.init({
-                appId: "${ONESIGNAL_APP_ID}",
+                appId: "e0009025-1eac-434c-ba27-353c60b0fcf7",
                 allowLocalhostAsSecureOrigin: true,
                 autoResubscribe: true,
                 notifyButton: {
                   enable: false
+                },
+                serviceWorkerParam: {
+                  scope: '/'
+                },
+                serviceWorkerPath: '/OneSignalSDKWorker.js',
+                notificationClickHandlerMatch: 'origin',
+                notificationClickHandlerAction: 'focus',
+                // ✅ FIX: Set default launch URL to app
+                path: '/app',
+                welcomeNotification: {
+                  title: "🦎 I4IGUANA",
+                  message: "You'll now receive match notifications!",
+                  url: "/app"
                 }
               });
+              
+              // ✅ Handle notification clicks - navigate to app
+              OneSignal.Notifications.addEventListener('click', function(event) {
+                console.log('🔔 Notification clicked:', event);
+                // Navigate to app
+                window.location.href = '/app';
+              });
+              
               console.log('✅ OneSignal initialized (no auto-prompt)');
             });
+          `}
+        </Script>
+        
+        {/* ✅ PWA Install + Notification Permission Handler */}
+        <Script id="pwa-install-handler" strategy="afterInteractive">
+          {`
+            // Store the install prompt for later
+            let deferredPrompt = null;
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+              console.log('📱 PWA install prompt available');
+              deferredPrompt = e;
+            });
+            
+            // ✅ When PWA is installed, also request notification permission
+            window.addEventListener('appinstalled', async () => {
+              console.log('📱 PWA installed! Requesting notification permission...');
+              deferredPrompt = null;
+              
+              // Request notification permission after install
+              if ('Notification' in window && Notification.permission === 'default') {
+                try {
+                  const permission = await Notification.requestPermission();
+                  console.log('🔔 Notification permission after PWA install:', permission);
+                  
+                  if (permission === 'granted') {
+                    // Setup OneSignal
+                    const OneSignal = window.OneSignal;
+                    if (OneSignal && OneSignal.User) {
+                      await OneSignal.User.PushSubscription.optIn();
+                      console.log('✅ OneSignal subscribed after PWA install');
+                    }
+                  }
+                } catch (err) {
+                  console.log('⚠️ Notification permission error:', err);
+                }
+              }
+            });
+            
+            // ✅ CRITICAL: Prevent browser's native pull-to-refresh
+            // This prevents the page from reloading when user pulls down
+            let touchStartY = 0;
+            document.addEventListener('touchstart', (e) => {
+              touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+            
+            document.addEventListener('touchmove', (e) => {
+              const touchY = e.touches[0].clientY;
+              const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+              
+              // If at top of page and pulling down, prevent default
+              if (scrollTop <= 0 && touchY > touchStartY) {
+                // Check if any scrollable element is at top
+                const target = e.target;
+                if (target && target.closest) {
+                  const scrollableParent = target.closest('[data-scrollable]');
+                  if (scrollableParent && scrollableParent.scrollTop <= 0) {
+                    // Allow internal pull-to-refresh, block browser's
+                    return;
+                  }
+                }
+              }
+            }, { passive: true });
           `}
         </Script>
         
@@ -133,7 +218,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="I4IGUANA" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} style={{ overscrollBehavior: 'none', overscrollBehaviorY: 'none' }}>
         <AuthProvider>
           {children}
         </AuthProvider>

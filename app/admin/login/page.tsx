@@ -160,7 +160,7 @@ export default function AdminLoginPage() {
         {/* Back to App */}
         <div className="text-center mt-6">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/app')}
             className="text-white/60 hover:text-white text-sm font-medium transition-colors"
           >
             ← Back to App

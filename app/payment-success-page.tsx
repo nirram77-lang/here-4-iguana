@@ -221,7 +221,7 @@ export default function PaymentSuccessPage() {
             whileTap={{ scale: 0.95 }}
           >
             <Button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/app')}
               className="w-full h-14 rounded-xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg shadow-lg hover:shadow-[0_0_30px_rgba(74,222,128,0.5)]"
             >
               Continue to App

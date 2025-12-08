@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ✅ FIXED: Add payment_success parameter to success URL
-    const successUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://i4iguana-app.vercel.app'}?payment_success=true&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`
-    const cancelUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://i4iguana-app.vercel.app'}?payment_cancelled=true`
+    const successUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://i4iguana.com'}/app?payment_success=true&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://i4iguana.com'}/app?payment_cancelled=true`
 
     console.log('💳 Creating Stripe checkout session:', {
       userId,

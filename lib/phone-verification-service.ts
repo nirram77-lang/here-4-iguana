@@ -25,13 +25,18 @@ export function initializeRecaptcha(): RecaptchaVerifier {
     recaptchaVerifier = null
   }
 
+  // Also clear any existing reCAPTCHA widgets from the DOM
+  const container = document.getElementById('recaptcha-container')
+  if (container) {
+    container.innerHTML = ''
+  }
+
   console.log('🔐 Initializing new reCAPTCHA verifier...')
 
   // Check if container exists
-  const container = document.getElementById('recaptcha-container')
   if (!container) {
     console.error('❌ recaptcha-container element not found!')
-    throw new Error('reCAPTCHA container not found')
+    throw new Error('reCAPTCHA container not found. Please refresh the page.')
   }
 
   // Create new invisible reCAPTCHA
@@ -42,7 +47,12 @@ export function initializeRecaptcha(): RecaptchaVerifier {
     },
     'expired-callback': () => {
       console.log('⚠️ reCAPTCHA expired - clearing')
-      recaptchaVerifier = null
+      if (recaptchaVerifier) {
+        try {
+          recaptchaVerifier.clear()
+        } catch (e) {}
+        recaptchaVerifier = null
+      }
     }
   })
 
@@ -60,7 +70,7 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<Confir
 
     // Validate phone number format
     if (!phoneNumber.startsWith('+972') || phoneNumber.length < 13) {
-      throw new Error('מספר טלפון לא תקין - נדרש מספר ישראלי מלא')
+      throw new Error('Invalid phone number. Please enter a valid Israeli mobile number.')
     }
 
     // Initialize reCAPTCHA (always fresh)
@@ -76,6 +86,8 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<Confir
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier)
     
     console.log('✅ Verification code sent successfully')
+    console.log('📋 ConfirmationResult verificationId:', confirmationResult.verificationId)
+    
     return confirmationResult
   } catch (error: any) {
     console.error('❌ Error sending verification code:', error)
@@ -90,23 +102,29 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<Confir
       recaptchaVerifier = null
     }
     
-    // User-friendly error messages
+    // Also clear the container
+    const container = document.getElementById('recaptcha-container')
+    if (container) {
+      container.innerHTML = ''
+    }
+    
+    // User-friendly error messages in English
     if (error.code === 'auth/invalid-phone-number') {
-      throw new Error('מספר טלפון לא תקין')
+      throw new Error('Invalid phone number format.')
     } else if (error.code === 'auth/too-many-requests') {
-      throw new Error('יותר מדי ניסיונות. אנא נסה שוב מאוחר יותר')
+      throw new Error('Too many attempts. Please try again later.')
     } else if (error.code === 'auth/quota-exceeded') {
-      throw new Error('הגעת למכסה היומית. אנא נסה מחר')
+      throw new Error('Daily limit reached. Please try again tomorrow.')
     } else if (error.code === 'auth/operation-not-allowed') {
-      throw new Error('אימות טלפון לא מופעל. פנה לתמיכה')
+      throw new Error('Phone verification is not enabled. Please contact support.')
     } else if (error.code === 'auth/captcha-check-failed') {
-      throw new Error('בעיית אבטחה. רענן את הדף ונסה שנית')
+      throw new Error('Security check failed. Please refresh the page and try again.')
     } else if (error.code === 'auth/missing-phone-number') {
-      throw new Error('מספר טלפון חסר')
+      throw new Error('Phone number is required.')
     } else if (error.message?.includes('reCAPTCHA')) {
-      throw new Error('בעיית אבטחה. רענן את הדף ונסה שנית')
+      throw new Error('Security check failed. Please refresh the page and try again.')
     } else {
-      throw new Error(`שגיאה בשליחת קוד אימות: ${error.code || error.message}`)
+      throw new Error(`Failed to send verification code: ${error.code || error.message}`)
     }
   }
 }
@@ -122,6 +140,12 @@ export async function verifyPhoneCode(
 ): Promise<void> {
   try {
     console.log('🔐 Verifying code:', code)
+    console.log('📋 ConfirmationResult exists:', !!confirmationResult)
+    console.log('📋 ConfirmationResult.confirm exists:', typeof confirmationResult?.confirm)
+
+    if (!confirmationResult || typeof confirmationResult.confirm !== 'function') {
+      throw new Error('Invalid verification session. Please request a new code.')
+    }
 
     // Verify the code
     const result = await confirmationResult.confirm(code)
@@ -129,24 +153,38 @@ export async function verifyPhoneCode(
     console.log('✅ Phone number verified successfully:', result.user.phoneNumber)
 
     // Update user document in Firestore
-    const userRef = doc(db, 'users', result.user.uid)
-    await updateDoc(userRef, {
-      phoneNumber: result.user.phoneNumber,
-      phoneVerified: true,
-      phoneVerifiedAt: serverTimestamp()
-    })
-
-    console.log('✅ User document updated with phone verification')
+    if (result.user.uid) {
+      try {
+        const userRef = doc(db, 'users', result.user.uid)
+        await updateDoc(userRef, {
+          phoneNumber: result.user.phoneNumber,
+          phoneVerified: true,
+          phoneVerifiedAt: serverTimestamp()
+        })
+        console.log('✅ User document updated with phone verification')
+      } catch (updateError) {
+        console.log('⚠️ Could not update user document (might be handled elsewhere):', updateError)
+        // Don't throw - the phone verification itself succeeded
+      }
+    }
   } catch (error: any) {
     console.error('❌ Error verifying code:', error)
+    console.error('   Error code:', error.code)
+    console.error('   Error message:', error.message)
     
-    // User-friendly error messages
+    // User-friendly error messages in English
     if (error.code === 'auth/invalid-verification-code') {
-      throw new Error('קוד שגוי. אנא נסה שנית')
+      throw new Error('Invalid code. Please check and try again.')
     } else if (error.code === 'auth/code-expired') {
-      throw new Error('הקוד פג תוקף. אנא בקש קוד חדש')
+      throw new Error('Code expired. Please request a new one.')
+    } else if (error.code === 'auth/session-expired') {
+      throw new Error('Session expired. Please request a new code.')
+    } else if (error.code === 'auth/invalid-verification-id') {
+      throw new Error('Verification session invalid. Please request a new code.')
+    } else if (error.message?.includes('Invalid verification session')) {
+      throw error // Re-throw our custom error
     } else {
-      throw new Error('שגיאה באימות הקוד. אנא נסה שנית')
+      throw new Error('Verification failed. Please try again.')
     }
   }
 }
@@ -162,5 +200,11 @@ export function clearRecaptcha(): void {
       console.error('Error clearing reCAPTCHA:', error)
     }
     recaptchaVerifier = null
+  }
+  
+  // Also clear the container
+  const container = document.getElementById('recaptcha-container')
+  if (container) {
+    container.innerHTML = ''
   }
 }

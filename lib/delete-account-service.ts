@@ -71,11 +71,14 @@ export const deleteUserAccount = async (userId: string): Promise<{
       // Clear sensitive data
       email: null,
       displayName: null,
+      name: null,  // ✅ FIX: Also clear name!
       photoURL: null,
       photos: [],
       bio: '',
       hobbies: [],
       phoneNumber: null,  // ✅ Clear phone link from user profile
+      phoneVerified: false,  // ✅ FIX: Reset phone verification!
+      phoneVerifiedAt: null,  // ✅ FIX: Clear verification timestamp
       // ✅ Clear location & preferences
       location: null,
       preferences: null,
@@ -192,18 +195,53 @@ export const deleteUserAccount = async (userId: string): Promise<{
     console.log(`✅ ${notificationsSnapshot.size} notifications deleted`)
     
     // 3e. Delete all user's chat messages (in all chats they participated in)
-    // Note: This is simplified - in production you'd want to delete entire chat rooms
+    // ✅ CRITICAL FIX: Must delete messages subcollection BEFORE deleting chat document
     const chatsQuery = query(
       collection(db, 'chats'),
       where('participants', 'array-contains', userId)
     )
     const chatsSnapshot = await getDocs(chatsQuery)
     
-    chatsSnapshot.forEach((doc) => {
-      batch.delete(doc.ref)
-    })
+    // First, delete all messages in each chat (subcollection)
+    for (const chatDoc of chatsSnapshot.docs) {
+      const chatId = chatDoc.id
+      console.log(`🗑️ Deleting messages for chat: ${chatId}`)
+      
+      // Get all messages in this chat
+      const messagesRef = collection(db, 'chats', chatId, 'messages')
+      const messagesSnapshot = await getDocs(messagesRef)
+      
+      // Delete each message
+      for (const messageDoc of messagesSnapshot.docs) {
+        batch.delete(messageDoc.ref)
+      }
+      console.log(`   ✅ ${messagesSnapshot.size} messages deleted from chat ${chatId}`)
+      
+      // Now delete the chat document itself
+      batch.delete(chatDoc.ref)
+    }
     
-    console.log(`✅ ${chatsSnapshot.size} chats deleted`)
+    console.log(`✅ ${chatsSnapshot.size} chats and their messages deleted`)
+    
+    // 3f. Also delete messages from matches collection (some chats stored there)
+    for (const matchDoc of matchesSnapshot.docs) {
+      const matchId = matchDoc.id
+      
+      // Get all messages in this match's chat
+      const matchMessagesRef = collection(db, 'matches', matchId, 'messages')
+      const matchMessagesSnapshot = await getDocs(matchMessagesRef)
+      
+      // Delete each message
+      for (const messageDoc of matchMessagesSnapshot.docs) {
+        batch.delete(messageDoc.ref)
+      }
+      
+      if (matchMessagesSnapshot.size > 0) {
+        console.log(`   ✅ ${matchMessagesSnapshot.size} messages deleted from match ${matchId}`)
+      }
+    }
+    
+    console.log(`✅ All chat messages cleaned up`)
     
     // Step 4: Commit the batch
     await batch.commit()

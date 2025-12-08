@@ -853,6 +853,39 @@ useEffect(() => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* ✅ Suggested Messages - Always visible to help start conversation */}
+      {messages.length < 3 && !loading && (
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="px-4 pb-2"
+        >
+          <p className="text-xs text-white/40 mb-2 text-center">Quick replies:</p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {[
+              "Hey! Nice to match with you 👋",
+              "What brings you here today?",
+              "Love your photos! 📸",
+              "Ready to meet up? 😊",
+              "Hi! How's your day going?"
+            ].map((suggestion, index) => (
+              <motion.button
+                key={index}
+                onClick={() => {
+                  setInputText(suggestion)
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-3 py-1.5 bg-[#1a4d3e]/60 hover:bg-[#4ade80]/20 border border-[#4ade80]/30 rounded-full text-xs text-white/80 hover:text-white transition-all"
+              >
+                {suggestion}
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {messages.length === 0 && !loading && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}

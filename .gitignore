@@ -42,3 +42,23 @@ firestore-debug.log
 # Temp files
 *.tmp
 .cache/
+# === ADDED FOR SECURITY ===
+# Firebase service account keys - NEVER COMMIT!
+*-firebase-adminsdk-*.json
+firebase-service-account.json
+serviceAccountKey.json
+
+# Next.js
+.next/
+out/
+
+# Vercel
+.vercel/
+
+# Private keys
+*.pem
+
+# Backup files
+*.bak
+*.backup
+*.old

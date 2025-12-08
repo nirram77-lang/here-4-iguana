@@ -3,6 +3,7 @@
  * 🦎 I4IGUANA - Firebase Cloud Functions with OneSignal
  *
  * Push notifications using OneSignal API
+ * Updated: 2025-12-06 - WORKING API KEY!
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -43,32 +44,33 @@ const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
 const db = admin.firestore();
-// OneSignal Configuration
+// OneSignal Configuration - WORKING KEY (Rotated 2025-12-06)
 const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7';
-const ONESIGNAL_API_KEY = 'os_v2_app_4aajaji6vrbuzorhgu6gbmh4675gd6p7p25eefexb44ruurql7jjhyyo2pxknixeu2mw5d5obdtge36kl2cgetwmjigxq6plv3rnuey';
+const ONESIGNAL_API_KEY = 'os_v2_app_4aajaji6vrbuzorhgu6gbmh465qf2jv7xa5ui5fxnpdovkzsbsbi2r4afyjrm63fy5orulj25ob4vqsjxtbgljku5ysads6upxxvjay';
 /**
  * Send push notification via OneSignal
  */
 async function sendOneSignalNotification(externalUserId, title, message, data, url) {
     try {
+        console.log('🔔 Sending notification to:', externalUserId);
+        console.log('📝 Title:', title);
+        console.log('📝 Message:', message);
         const response = await fetch('https://onesignal.com/api/v1/notifications', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json; charset=utf-8',
                 'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
             },
             body: JSON.stringify({
                 app_id: ONESIGNAL_APP_ID,
-                // ✅ Support both old and new OneSignal API
-                include_aliases: { external_id: [externalUserId] },
-                target_channel: 'push',
+                include_external_user_ids: [externalUserId],
                 headings: { en: title },
                 contents: { en: message },
                 data: data || {},
                 url: url || 'https://i4iguana-app.vercel.app',
-                chrome_web_icon: 'https://i4iguana-app.vercel.app/icon-192.png',
-                chrome_web_badge: 'https://i4iguana-app.vercel.app/icon-monochrome.png',
-                firefox_icon: 'https://i4iguana-app.vercel.app/icon-192.png',
+                chrome_web_icon: 'https://i4iguana-app.vercel.app/notification-icon-192.png',
+                chrome_web_badge: 'https://i4iguana-app.vercel.app/notification-badge.png',
+                firefox_icon: 'https://i4iguana-app.vercel.app/notification-icon-192.png',
             }),
         });
         const result = await response.json();
@@ -77,6 +79,7 @@ async function sendOneSignalNotification(externalUserId, title, message, data, u
             console.error('❌ OneSignal error:', result.errors);
             return false;
         }
+        console.log('✅ Notification sent successfully! ID:', result.id);
         return true;
     }
     catch (error) {
@@ -86,7 +89,6 @@ async function sendOneSignalNotification(externalUserId, title, message, data, u
 }
 /**
  * 🔔 Trigger: New Match Created
- * Sends notification to User B when User A likes them back (mutual match)
  */
 exports.onNewMatch = functions.firestore
     .document('activeMatches/{matchId}')
@@ -98,13 +100,10 @@ exports.onNewMatch = functions.firestore
     }
     const { odedUserId, sharonUserId, odedName, sharonName } = matchData;
     console.log(`🎉 New match! ${odedName} ↔ ${sharonName}`);
-    // Send notification to both users
     const notifications = [];
-    // Notify User A (Oded) about the match
     if (odedUserId) {
         notifications.push(sendOneSignalNotification(odedUserId, '💚 It\'s a Match!', `You and ${sharonName} liked each other! Start chatting now.`, { type: 'match', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app'));
     }
-    // Notify User B (Sharon) about the match
     if (sharonUserId) {
         notifications.push(sendOneSignalNotification(sharonUserId, '💚 It\'s a Match!', `You and ${odedName} liked each other! Start chatting now.`, { type: 'match', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app'));
     }
@@ -114,7 +113,6 @@ exports.onNewMatch = functions.firestore
 });
 /**
  * 💬 Trigger: New Message in Chat
- * Sends notification to the recipient
  */
 exports.onNewMessage = functions.firestore
     .document('chats/{chatId}/messages/{messageId}')
@@ -125,31 +123,32 @@ exports.onNewMessage = functions.firestore
         console.log('❌ No message data found');
         return null;
     }
-    const { senderId, senderName, text } = messageData;
-    // Get chat document to find recipient
-    const chatDoc = await db.collection('chats').doc(chatId).get();
-    const chatData = chatDoc.data();
-    if (!chatData) {
-        console.log('❌ No chat data found');
-        return null;
-    }
-    const { participants } = chatData;
-    // Find recipient (the other participant)
-    const recipientId = participants.find((id) => id !== senderId);
+    const { senderId, recipientId, senderName, text } = messageData;
+    console.log('📨 Message data:', { senderId, recipientId, senderName, text: text?.substring(0, 30) });
     if (!recipientId) {
-        console.log('❌ No recipient found');
+        console.log('❌ No recipientId in message data');
+        const chatDoc = await db.collection('chats').doc(chatId).get();
+        const chatData = chatDoc.data();
+        if (chatData?.participants) {
+            const fallbackRecipientId = chatData.participants.find((id) => id !== senderId);
+            if (fallbackRecipientId) {
+                console.log('✅ Found recipient from chat participants:', fallbackRecipientId);
+                const truncatedText = text?.length > 50 ? text.substring(0, 50) + '...' : text || '';
+                await sendOneSignalNotification(fallbackRecipientId, `💬 ${senderName || 'Someone'}`, truncatedText, { type: 'message', chatId }, 'https://i4iguana-app.vercel.app');
+                return null;
+            }
+        }
+        console.log('❌ Could not find recipient');
         return null;
     }
     console.log(`💬 New message from ${senderName} to ${recipientId}`);
-    // Truncate message for notification
-    const truncatedText = text.length > 50 ? text.substring(0, 50) + '...' : text;
-    await sendOneSignalNotification(recipientId, `💬 ${senderName}`, truncatedText, { type: 'message', chatId }, 'https://i4iguana-app.vercel.app');
-    console.log('✅ Message notification sent');
+    const truncatedText = text?.length > 50 ? text.substring(0, 50) + '...' : text || '';
+    const success = await sendOneSignalNotification(recipientId, `💬 ${senderName || 'Someone'}`, truncatedText, { type: 'message', chatId }, 'https://i4iguana-app.vercel.app');
+    console.log('📤 OneSignal notification result:', success ? '✅ Success' : '❌ Failed');
     return null;
 });
 /**
  * ❤️ Trigger: New Like Received
- * Notifies a user when someone likes them (before it's a match)
  */
 exports.onNewLike = functions.firestore
     .document('swipes/{swipeId}')
@@ -159,27 +158,22 @@ exports.onNewLike = functions.firestore
         return null;
     }
     const { odedId, sharonId, odedName } = swipeData;
-    // Check if this creates a match (Sharon already liked Oded)
     const reverseSwipe = await db.collection('swipes')
         .where('odedId', '==', sharonId)
         .where('sharonId', '==', odedId)
         .where('action', '==', 'like')
         .get();
-    // If it's going to be a match, don't send "like" notification
-    // The match notification will be sent instead
     if (!reverseSwipe.empty) {
         console.log('🎉 This will be a match - skipping like notification');
         return null;
     }
     console.log(`❤️ ${odedName} liked user ${sharonId}`);
-    // Send subtle notification to Sharon
     await sendOneSignalNotification(sharonId, '👀 Someone Likes You!', 'Open I4IGUANA to see who\'s interested in you.', { type: 'like' }, 'https://i4iguana-app.vercel.app');
     console.log('✅ Like notification sent');
     return null;
 });
 /**
  * 🤝 Trigger: Meeting Confirmed
- * Notifies when a user confirms "We Are Meeting"
  */
 exports.onMeetingConfirmed = functions.firestore
     .document('activeMatches/{matchId}')
@@ -188,12 +182,10 @@ exports.onMeetingConfirmed = functions.firestore
     const after = change.after.data();
     if (!before || !after)
         return null;
-    // Check if odedConfirmed changed from false to true
     if (!before.odedConfirmed && after.odedConfirmed) {
         console.log(`🤝 ${after.odedName} confirmed meeting!`);
         await sendOneSignalNotification(after.sharonUserId, '🎉 Meeting Confirmed!', `${after.odedName} confirmed you're meeting! Have fun! 🦎`, { type: 'meeting_confirmed', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app');
     }
-    // Check if sharonConfirmed changed from false to true
     if (!before.sharonConfirmed && after.sharonConfirmed) {
         console.log(`🤝 ${after.sharonName} confirmed meeting!`);
         await sendOneSignalNotification(after.odedUserId, '🎉 Meeting Confirmed!', `${after.sharonName} confirmed you're meeting! Have fun! 🦎`, { type: 'meeting_confirmed', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app');

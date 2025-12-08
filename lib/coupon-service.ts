@@ -1,105 +1,41 @@
 /**
  * 🎟️ I4IGUANA Coupon System
- * Handles promotional codes for Premium upgrades and Pass bonuses
+ * Handles promotional codes from Firestore - PASS, WEEKLY, MONTHLY
  */
 
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
 
 // ===================================
-// 🎟️ COUPON CODES CONFIGURATION
+// 🎟️ COUPON TYPES & INTERFACES
 // ===================================
 
-interface CouponConfig {
-  code: string
-  type: 'premium' | 'pass'
-  durationDays?: number  // For premium coupons
-  passCount?: number     // For pass coupons
-  description: string
-  maxUses?: number       // Optional limit on total uses
-  expiresAt?: Date       // Optional expiration date
-}
-
-// 🔥 ACTIVE COUPONS - Add/remove coupons here!
-const ACTIVE_COUPONS: CouponConfig[] = [
-  // ═══════════════════════════════════════════════════════════
-  // 🚀 PILOT 2026 MAIN COUPONS
-  // ═══════════════════════════════════════════════════════════
-  {
-    code: 'PILOTW2026',
-    type: 'premium',
-    durationDays: 7,
-    description: '🎉 Pilot Premium - שבוע חינם!'
-  },
-  {
-    code: 'PILOTM2026',
-    type: 'premium',
-    durationDays: 30,
-    description: '🎉 Pilot Premium - חודש חינם!'
-  },
-  {
-    code: 'PASS2026',
-    type: 'pass',
-    passCount: 1,
-    description: '🎁 Bonus Pass - פאס חינמי!'
-  },
-  {
-    code: 'PILOT2026',
-    type: 'premium',
-    durationDays: 7,
-    description: '🎉 Pilot Premium - 7 Days Free!'
-  },
-  // ═══════════════════════════════════════════════════════════
-  // 🎫 PILOT PASS COUPONS (1 Pass, 2 Days, Single Use)
-  // ═══════════════════════════════════════════════════════════
-  { code: 'PILOT-PASS-01', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-02', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-03', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-04', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-05', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-06', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-07', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-08', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-09', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-10', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-11', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-12', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-13', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-14', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  { code: 'PILOT-PASS-15', type: 'pass', passCount: 1, description: '🎫 Pilot Pass' },
-  // ═══════════════════════════════════════════════════════════
-  // 💎 PILOT PREMIUM COUPONS (2 Days Premium, Single Use)
-  // ═══════════════════════════════════════════════════════════
-  { code: 'PILOT-VIP-01', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-02', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-03', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-04', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-05', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-06', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-07', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-08', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-09', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-10', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-11', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-12', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-13', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-14', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-  { code: 'PILOT-VIP-15', type: 'premium', durationDays: 2, description: '💎 Pilot Premium 2 Days' },
-]
-
-// ===================================
-// 🔍 COUPON VALIDATION
-// ===================================
+export type CouponType = 'pass' | 'weekly' | 'monthly'
 
 export interface CouponResult {
   success: boolean
   message: string
-  couponType?: 'premium' | 'pass'
+  couponType?: CouponType
   reward?: string
 }
 
+interface FirestoreCoupon {
+  code: string
+  type: CouponType
+  status: 'available' | 'used' | 'expired'
+  usedBy: string | null
+  usedByEmail: string | null
+  usedAt: any | null
+  createdAt: any
+  expiresAt: any | null
+}
+
+// ===================================
+// 🔍 COUPON REDEMPTION
+// ===================================
+
 /**
- * Validate and apply a coupon code
+ * Validate and apply a coupon code from Firestore
  */
 export async function redeemCoupon(
   phoneNumber: string,
@@ -111,27 +47,58 @@ export async function redeemCoupon(
     
     console.log(`🎟️ Attempting to redeem coupon: ${normalizedCode}`)
     
-    // Find matching coupon
-    const coupon = ACTIVE_COUPONS.find(c => c.code === normalizedCode)
+    // ═══════════════════════════════════════════════════════════
+    // Step 1: Check Firestore for the coupon
+    // ═══════════════════════════════════════════════════════════
+    const couponRef = doc(db, 'coupons', normalizedCode)
+    const couponSnap = await getDoc(couponRef)
     
-    if (!coupon) {
-      console.log('❌ Invalid coupon code')
+    if (!couponSnap.exists()) {
+      console.log('❌ Coupon not found in Firestore')
       return {
         success: false,
         message: 'Invalid coupon code. Please check and try again.'
       }
     }
     
-    // Check if coupon has expired
-    if (coupon.expiresAt && new Date() > coupon.expiresAt) {
-      console.log('❌ Coupon has expired')
+    const coupon = couponSnap.data() as FirestoreCoupon
+    
+    // ═══════════════════════════════════════════════════════════
+    // Step 2: Validate coupon status
+    // ═══════════════════════════════════════════════════════════
+    if (coupon.status === 'used') {
+      console.log('❌ Coupon already used')
+      return {
+        success: false,
+        message: 'This coupon has already been used.'
+      }
+    }
+    
+    if (coupon.status === 'expired') {
+      console.log('❌ Coupon expired')
       return {
         success: false,
         message: 'This coupon has expired.'
       }
     }
     
-    // Get user's phone identity
+    // Check expiration date
+    if (coupon.expiresAt) {
+      const expirationDate = coupon.expiresAt.toDate ? coupon.expiresAt.toDate() : new Date(coupon.expiresAt)
+      if (new Date() > expirationDate) {
+        console.log('❌ Coupon has expired')
+        // Update status in Firestore
+        await updateDoc(couponRef, { status: 'expired' })
+        return {
+          success: false,
+          message: 'This coupon has expired.'
+        }
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // Step 3: Get user's phone identity
+    // ═══════════════════════════════════════════════════════════
     const phoneRef = doc(db, 'phoneIdentities', phoneNumber)
     const phoneDoc = await getDoc(phoneRef)
     
@@ -144,28 +111,44 @@ export async function redeemCoupon(
     }
     
     const phoneData = phoneDoc.data()
+    const userEmail = phoneData.email || ''
     
-    // Check if user already used this coupon
-    const usedCoupons = phoneData.usedCoupons || []
-    if (usedCoupons.includes(normalizedCode)) {
-      console.log('❌ Coupon already used by this user')
-      return {
-        success: false,
-        message: 'You have already used this coupon.'
-      }
+    // ═══════════════════════════════════════════════════════════
+    // Step 4: Apply coupon based on type
+    // ═══════════════════════════════════════════════════════════
+    let result: CouponResult
+    
+    switch (coupon.type) {
+      case 'pass':
+        result = await applyPassCoupon(phoneRef, phoneData, coupon)
+        break
+      case 'weekly':
+        result = await applyPremiumCoupon(phoneRef, phoneData, coupon, 7)
+        break
+      case 'monthly':
+        result = await applyPremiumCoupon(phoneRef, phoneData, coupon, 30)
+        break
+      default:
+        return {
+          success: false,
+          message: 'Unknown coupon type.'
+        }
     }
     
-    // Apply coupon based on type
-    if (coupon.type === 'premium') {
-      return await applyPremiumCoupon(phoneRef, phoneData, coupon, normalizedCode)
-    } else if (coupon.type === 'pass') {
-      return await applyPassCoupon(phoneRef, phoneData, coupon, normalizedCode)
+    // ═══════════════════════════════════════════════════════════
+    // Step 5: Mark coupon as used in Firestore
+    // ═══════════════════════════════════════════════════════════
+    if (result.success) {
+      await updateDoc(couponRef, {
+        status: 'used',
+        usedBy: phoneNumber,
+        usedByEmail: userEmail,
+        usedAt: Timestamp.now()
+      })
+      console.log(`✅ Coupon ${normalizedCode} marked as used`)
     }
     
-    return {
-      success: false,
-      message: 'Unknown coupon type.'
-    }
+    return result
     
   } catch (error) {
     console.error('❌ Error redeeming coupon:', error)
@@ -176,18 +159,69 @@ export async function redeemCoupon(
   }
 }
 
-/**
- * Apply a Premium coupon
- */
+// ===================================
+// 🎫 APPLY PASS COUPON
+// ===================================
+
+async function applyPassCoupon(
+  phoneRef: any,
+  phoneData: any,
+  coupon: FirestoreCoupon
+): Promise<CouponResult> {
+  try {
+    const currentPasses = phoneData.passesLeft || 0
+    const newPassCount = currentPasses + 1
+    
+    // Update phone identity with extra pass
+    await updateDoc(phoneRef, {
+      passesLeft: newPassCount,
+      lastCouponRedeemedAt: Timestamp.now()
+    })
+    
+    console.log(`✅ Pass coupon applied! New pass count: ${newPassCount}`)
+    
+    return {
+      success: true,
+      message: `🎁 Bonus! You received 1 extra pass!`,
+      couponType: 'pass',
+      reward: `+1 pass (Total: ${newPassCount})`
+    }
+    
+  } catch (error) {
+    console.error('❌ Error applying pass coupon:', error)
+    return {
+      success: false,
+      message: 'Failed to add bonus pass.'
+    }
+  }
+}
+
+// ===================================
+// 💎 APPLY PREMIUM COUPON (WEEKLY/MONTHLY)
+// ===================================
+
 async function applyPremiumCoupon(
   phoneRef: any,
   phoneData: any,
-  coupon: CouponConfig,
-  couponCode: string
+  coupon: FirestoreCoupon,
+  durationDays: number
 ): Promise<CouponResult> {
   try {
-    const durationDays = coupon.durationDays || 7
     const premiumExpiresAt = new Date()
+    
+    // Check if user already has premium and extend it
+    if (phoneData.isPremium && phoneData.premiumExpiresAt) {
+      const currentExpiry = phoneData.premiumExpiresAt.toDate ? 
+        phoneData.premiumExpiresAt.toDate() : 
+        new Date(phoneData.premiumExpiresAt)
+      
+      if (currentExpiry > new Date()) {
+        // Extend from current expiry
+        premiumExpiresAt.setTime(currentExpiry.getTime())
+      }
+    }
+    
+    // Add duration days
     premiumExpiresAt.setDate(premiumExpiresAt.getDate() + durationDays)
     
     // Update phone identity with premium status
@@ -195,18 +229,18 @@ async function applyPremiumCoupon(
       isPremium: true,
       premiumExpiresAt: Timestamp.fromDate(premiumExpiresAt),
       premiumSource: 'coupon',
-      premiumCouponCode: couponCode,
-      passesLeft: 3,  // Premium users get 3 passes
-      usedCoupons: [...(phoneData.usedCoupons || []), couponCode],
+      premiumCouponCode: coupon.code,
+      passesLeft: Math.max(phoneData.passesLeft || 0, 3), // Premium users get at least 3 passes
       lastCouponRedeemedAt: Timestamp.now()
     })
     
-    console.log(`✅ Premium coupon applied! Expires: ${premiumExpiresAt.toLocaleDateString()}`)
+    const typeLabel = durationDays === 7 ? 'Weekly' : 'Monthly'
+    console.log(`✅ ${typeLabel} Premium coupon applied! Expires: ${premiumExpiresAt.toLocaleDateString()}`)
     
     return {
       success: true,
-      message: `🎉 Welcome to Premium! Your ${durationDays}-day trial is now active!`,
-      couponType: 'premium',
+      message: `🎉 Welcome to Premium! Your ${durationDays}-day ${typeLabel} subscription is now active!`,
+      couponType: durationDays === 7 ? 'weekly' : 'monthly',
       reward: `${durationDays} days Premium + 3 daily passes`
     }
     
@@ -219,74 +253,52 @@ async function applyPremiumCoupon(
   }
 }
 
-/**
- * Apply a Pass coupon
- */
-async function applyPassCoupon(
-  phoneRef: any,
-  phoneData: any,
-  coupon: CouponConfig,
-  couponCode: string
-): Promise<CouponResult> {
+// ===================================
+// 🔍 VALIDATE COUPON (without redeeming)
+// ===================================
+
+export async function validateCouponCode(couponCode: string): Promise<{
+  isValid: boolean
+  couponType?: CouponType
+  description?: string
+}> {
   try {
-    const passCount = coupon.passCount || 1
-    const currentPasses = phoneData.passesLeft || 0
-    const newPassCount = currentPasses + passCount
+    const normalizedCode = couponCode.trim().toUpperCase()
+    const couponRef = doc(db, 'coupons', normalizedCode)
+    const couponSnap = await getDoc(couponRef)
     
-    // Update phone identity with extra passes
-    await updateDoc(phoneRef, {
-      passesLeft: newPassCount,
-      usedCoupons: [...(phoneData.usedCoupons || []), couponCode],
-      lastCouponRedeemedAt: Timestamp.now()
-    })
+    if (!couponSnap.exists()) {
+      return { isValid: false }
+    }
     
-    console.log(`✅ Pass coupon applied! New pass count: ${newPassCount}`)
+    const coupon = couponSnap.data() as FirestoreCoupon
+    
+    if (coupon.status !== 'available') {
+      return { isValid: false }
+    }
+    
+    // Check expiration
+    if (coupon.expiresAt) {
+      const expirationDate = coupon.expiresAt.toDate ? coupon.expiresAt.toDate() : new Date(coupon.expiresAt)
+      if (new Date() > expirationDate) {
+        return { isValid: false }
+      }
+    }
+    
+    const descriptions: Record<CouponType, string> = {
+      'pass': '🎫 Bonus Pass - פאס חינמי!',
+      'weekly': '💎 Weekly Premium - שבוע חינם!',
+      'monthly': '👑 Monthly Premium - חודש חינם!'
+    }
     
     return {
-      success: true,
-      message: `🎁 Bonus! You received ${passCount} extra pass${passCount > 1 ? 'es' : ''}!`,
-      couponType: 'pass',
-      reward: `+${passCount} pass${passCount > 1 ? 'es' : ''} (Total: ${newPassCount})`
+      isValid: true,
+      couponType: coupon.type,
+      description: descriptions[coupon.type]
     }
     
   } catch (error) {
-    console.error('❌ Error applying pass coupon:', error)
-    return {
-      success: false,
-      message: 'Failed to add bonus pass.'
-    }
-  }
-}
-
-/**
- * Check if a coupon code is valid (without redeeming)
- */
-export function validateCouponCode(couponCode: string): {
-  isValid: boolean
-  couponType?: 'premium' | 'pass'
-  description?: string
-} {
-  const normalizedCode = couponCode.trim().toUpperCase()
-  const coupon = ACTIVE_COUPONS.find(c => c.code === normalizedCode)
-  
-  if (!coupon) {
+    console.error('Error validating coupon:', error)
     return { isValid: false }
   }
-  
-  if (coupon.expiresAt && new Date() > coupon.expiresAt) {
-    return { isValid: false }
-  }
-  
-  return {
-    isValid: true,
-    couponType: coupon.type,
-    description: coupon.description
-  }
-}
-
-/**
- * Get list of available coupon codes (for admin/testing)
- */
-export function getAvailableCoupons(): string[] {
-  return ACTIVE_COUPONS.map(c => c.code)
 }

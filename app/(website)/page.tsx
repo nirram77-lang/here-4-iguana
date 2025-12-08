@@ -11,20 +11,7 @@ export default function LandingPage() {
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY)
     window.addEventListener('scroll', handleScroll)
-    
-    // ✅ Capture install prompt for PWA
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault()
-      // @ts-ignore
-      window.deferredPrompt = e
-      console.log('✅ Install prompt captured')
-    }
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    }
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
@@ -34,7 +21,7 @@ export default function LandingPage() {
       {/* NAVIGATION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrollY > 50 || menuOpen ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
+        scrollY > 50 ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -82,15 +69,14 @@ export default function LandingPage() {
 
           {/* Mobile Menu */}
           {menuOpen && (
-            <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4 bg-[#0a1f1a]">
-              <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">How It Works</a>
-              <a href="#features" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Features</a>
-              <a href="#download" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Download</a>
-              <a href="#contact" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Contact</a>
-              <a href="/terms" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Terms of Service</a>
+            <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4">
+              <a href="#how-it-works" className="block text-gray-300 hover:text-green-400">How It Works</a>
+              <a href="#features" className="block text-gray-300 hover:text-green-400">Features</a>
+              <a href="#download" className="block text-gray-300 hover:text-green-400">Download</a>
+              <a href="#contact" className="block text-gray-300 hover:text-green-400">Contact</a>
+              <a href="/terms" className="block text-gray-300 hover:text-green-400">Terms of Service</a>
               <Link 
                 href="/app"
-                onClick={() => setMenuOpen(false)}
                 className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold"
               >
                 Open App
@@ -226,57 +212,12 @@ export default function LandingPage() {
 
           {/* Steps */}
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Step 1 - Install App */}
+            {/* Step 1 */}
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
                   1
-                </div>
-                <h3 className="text-2xl font-bold mb-4">Install App</h3>
-                <p className="text-gray-400 mb-4">
-                  Add I4IGUANA to your home screen for the best experience. Quick access, instant notifications.
-                </p>
-                {/* Install Button */}
-                <button
-                  id="install-app-btn"
-                  onClick={() => {
-                    // @ts-ignore
-                    if (window.deferredPrompt) {
-                      // @ts-ignore
-                      window.deferredPrompt.prompt()
-                      // @ts-ignore
-                      window.deferredPrompt.userChoice.then((choiceResult: any) => {
-                        // @ts-ignore
-                        window.deferredPrompt = null
-                      })
-                    } else {
-                      // Fallback: redirect to /app
-                      window.location.href = '/app'
-                    }
-                  }}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Install App
-                </button>
-                <div className="mt-4 flex items-center gap-2 text-green-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-sm">Works Offline</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2 - Check In */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
-              <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
-                  2
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Check In</h3>
                 <p className="text-gray-400">
@@ -292,7 +233,28 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Step 3 - She Decides */}
+            {/* Step 2 */}
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
+              <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
+                  2
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Discover</h3>
+                <p className="text-gray-400">
+                  See who's nearby within 10-500 meters. Real profiles, real photos, real people - right now.
+                </p>
+                <div className="mt-6 flex items-center gap-2 text-green-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span className="text-sm">Verified Profiles</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3 */}
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
@@ -403,69 +365,40 @@ export default function LandingPage() {
             Your next connection is just meters away.
           </p>
 
-          {/* ✅ NEW: Platform Badges - iPhone & Android */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mb-8">
-            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/20">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-              </svg>
-              <span className="font-semibold">iPhone</span>
-              <span className="text-green-400">✓</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/20">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>
-              </svg>
-              <span className="font-semibold">Android</span>
-              <span className="text-green-400">✓</span>
-            </div>
-          </div>
-
-          {/* App Button */}
-          <div className="flex flex-col items-center justify-center gap-4 mb-12">
+          {/* App Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link 
               href="/app"
-              className="group px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-xl shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-4"
+              className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-3"
             >
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                </svg>
-              </div>
+              <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.9 17.39c-.26.8-.78 1.49-1.4 2.1-1.02 1.02-2.43 1.51-3.82 1.51H6.05c-1.4 0-2.8-.49-3.82-1.51-1.01-1.02-1.51-2.43-1.51-3.82V6.05c0-1.4.49-2.8 1.51-3.82 1.02-1.02 2.43-1.51 3.82-1.51h6.63c1.4 0 2.8.49 3.82 1.51.62.62 1.14 1.3 1.4 2.1.24.73.28 1.52.28 2.28v8.5c0 .76-.04 1.55-.28 2.28zM12 6.21c-2.86 0-5.19 2.33-5.19 5.19s2.33 5.19 5.19 5.19 5.19-2.33 5.19-5.19-2.33-5.19-5.19-5.19z"/>
+              </svg>
               <div className="text-left">
-                <div className="text-sm opacity-80">Works on iPhone & Android</div>
-                <div className="text-xl font-bold">Open Web App</div>
+                <div className="text-xs opacity-80">Open in Browser</div>
+                <div className="text-lg font-bold">Web App</div>
               </div>
             </Link>
             
-            <p className="text-gray-500 text-sm">
-              No app store download needed • Instant access
-            </p>
-          </div>
-
-          {/* QR Code with enhanced styling */}
-          <div className="inline-block p-8 bg-white rounded-3xl shadow-2xl shadow-green-500/20">
-            <img 
-              src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://i4iguana.com/app&bgcolor=ffffff&color=0d2920"
-              alt="Scan to download"
-              className="w-44 h-44 mx-auto"
-            />
-            <p className="text-gray-800 text-lg mt-4 font-bold">Scan with your phone</p>
-            <div className="flex items-center justify-center gap-4 mt-3">
-              <div className="flex items-center gap-1 text-gray-600">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                </svg>
-                <span className="text-sm font-medium">iPhone</span>
-              </div>
-              <span className="text-gray-400">•</span>
-              <div className="flex items-center gap-1 text-gray-600">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>
-                </svg>
-                <span className="text-sm font-medium">Android</span>
+            <div className="px-8 py-4 bg-white/10 border border-white/20 rounded-2xl font-bold text-lg flex items-center gap-3 opacity-50 cursor-not-allowed">
+              <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              <div className="text-left">
+                <div className="text-xs opacity-80">Coming Soon</div>
+                <div className="text-lg font-bold">App Store</div>
               </div>
             </div>
+          </div>
+
+          {/* QR Code */}
+          <div className="inline-block p-6 bg-white rounded-2xl">
+            <img 
+              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://i4iguana.com/app&bgcolor=ffffff&color=0d2920"
+              alt="Scan to download"
+              className="w-36 h-36"
+            />
+            <p className="text-gray-800 text-sm mt-2 font-medium">Scan to Open App</p>
           </div>
         </div>
       </section>
@@ -510,10 +443,6 @@ export default function LandingPage() {
                 Real-time dating revolution. Meet real people at real places. 
                 She decides, you meet - instantly.
               </p>
-              {/* ✅ NEW: Creator Credit */}
-              <p className="text-gray-500 text-sm mt-4">
-                Created by <span className="text-green-400 font-medium">Nir Ram</span>
-              </p>
             </div>
 
             {/* Links */}
@@ -539,14 +468,9 @@ export default function LandingPage() {
 
           {/* Bottom */}
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-center md:text-left">
-              <p className="text-gray-400 text-sm font-medium">
-                © {new Date().getFullYear()} I4IGUANA. All rights reserved.
-              </p>
-              <p className="text-gray-500 text-xs mt-1">
-                A product by <span className="text-green-400">Nir Ram</span> • All copyrights reserved
-              </p>
-            </div>
+            <p className="text-gray-500 text-sm">
+              © {new Date().getFullYear()} I4IGUANA. All rights reserved.
+            </p>
             <div className="flex items-center gap-4">
               <a href="#" className="text-gray-400 hover:text-green-400 transition-colors">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">

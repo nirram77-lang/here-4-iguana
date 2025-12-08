@@ -9,8 +9,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult
+  browserLocalPersistence,
+  setPersistence
 } from 'firebase/auth'
 import { auth } from './firebase'
 
@@ -29,11 +29,6 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-function isMobile(): boolean {
-  if (typeof window === 'undefined') return false
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,21 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('🔄 Initializing authentication...')
     
-    // ✅ FIX: Handle redirect result for mobile devices (Samsung, etc.)
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth)
-        if (result) {
-          console.log('✅ Redirect result received:', result.user.email)
-        }
-      } catch (error: any) {
-        console.error('❌ Redirect result error:', error.code, error.message)
-        // Don't throw - just log the error and continue
-      }
-    }
+    // ✅ Set persistence
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => console.log('✅ Auth persistence set'))
+      .catch((error) => console.error('❌ Persistence error:', error))
     
-    handleRedirectResult()
-    
+    // ✅ Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       console.log('🔄 Auth state:', currentUser?.email || 'No user')
       setUser(currentUser)
@@ -81,20 +67,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prompt: 'select_account'
     })
     
-    const mobile = isMobile()
-    console.log(`📱 Device type: ${mobile ? 'Mobile' : 'Desktop'}`)
-    
     try {
-      if (mobile) {
-        console.log('📱 Using redirect flow for mobile')
-        await signInWithRedirect(auth, provider)
-      } else {
-        console.log('💻 Using popup flow for desktop')
-        await signInWithPopup(auth, provider)
-      }
+      // ✅ Always use popup - works on both mobile and desktop
+      console.log('🔐 Using popup flow for Google sign-in')
+      await setPersistence(auth, browserLocalPersistence)
+      const result = await signInWithPopup(auth, provider)
+      console.log('✅ Sign-in successful:', result.user.email)
     } catch (error: any) {
-      console.error(`❌ Google sign-in error:`, error.code, error.message)
-      throw error
+      console.error('❌ Google sign-in error:', error.code, error.message)
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('Sign-in cancelled')
+      } else if (error.code === 'auth/popup-blocked') {
+        throw new Error('Popup blocked - please allow popups for this site')
+      } else {
+        throw error
+      }
     }
   }
 
@@ -111,9 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout
   }
 
+  // ✅ Show nothing while initializing (very brief)
+  if (initializing) {
+    return null
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!initializing && children}
+      {children}
     </AuthContext.Provider>
   )
 }
