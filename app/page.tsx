@@ -1,16 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { trackPageView, trackSectionView } from '@/lib/analytics-service'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [trackedSections, setTrackedSections] = useState<Set<string>>(new Set())
+
+  // Refs for section tracking
+  const heroRef = useRef<HTMLElement>(null)
+  const featuresRef = useRef<HTMLElement>(null)
+  const howItWorksRef = useRef<HTMLElement>(null)
+  const downloadRef = useRef<HTMLElement>(null)
+  const partnersRef = useRef<HTMLElement>(null)
+  const contactRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY)
     window.addEventListener('scroll', handleScroll)
+    
+    // ✅ Track page view on load
+    trackPageView('website', 'hero')
     
     // ✅ Capture install prompt for PWA
     const handleBeforeInstallPrompt = (e: any) => {
@@ -26,6 +39,30 @@ export default function LandingPage() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     }
   }, [])
+
+  // ✅ Track section views when user scrolls to them
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const sectionId = entry.target.id
+            if (sectionId && !trackedSections.has(sectionId)) {
+              trackSectionView(`website_${sectionId}`)
+              setTrackedSections(prev => new Set([...prev, sectionId]))
+            }
+          }
+        })
+      },
+      { threshold: 0.3 } // 30% of section visible
+    )
+
+    // Observe all sections
+    const sections = document.querySelectorAll('section[id]')
+    sections.forEach(section => observer.observe(section))
+
+    return () => observer.disconnect()
+  }, [trackedSections])
 
   return (
     <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden">

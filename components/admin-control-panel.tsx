@@ -4,8 +4,15 @@ import { useState, useEffect } from 'react'
 import { 
   Ticket, Users, MapPin, Trash2, RefreshCw, Plus, 
   CheckCircle, XCircle, Clock, Download, Search,
-  AlertTriangle, Gift, Calendar, TrendingUp
+  AlertTriangle, Gift, Calendar, TrendingUp, BarChart3, Eye
 } from 'lucide-react'
+import { 
+  getAnalyticsSummary, 
+  getRecentPageViews, 
+  getPageDisplayName,
+  AnalyticsSummary,
+  PageView 
+} from '@/lib/analytics-service'
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -61,7 +68,7 @@ interface CheckIn {
 // ═══════════════════════════════════════════════════════════════
 
 export default function AdminControlPanel() {
-  const [activeTab, setActiveTab] = useState<'coupons' | 'users' | 'checkins' | 'stats'>('stats')
+  const [activeTab, setActiveTab] = useState<'coupons' | 'users' | 'checkins' | 'stats' | 'analytics'>('stats')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
 
@@ -75,6 +82,11 @@ export default function AdminControlPanel() {
   const [userSearch, setUserSearch] = useState('')
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
   const [inactiveDays, setInactiveDays] = useState(30)
+
+  // Analytics state
+  const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null)
+  const [recentViews, setRecentViews] = useState<PageView[]>([])
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   // Check-ins state
   const [venues, setVenues] = useState<Venue[]>([])
@@ -500,6 +512,27 @@ export default function AdminControlPanel() {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // ANALYTICS FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  const loadAnalytics = async () => {
+    setAnalyticsLoading(true)
+    try {
+      const [summary, recent] = await Promise.all([
+        getAnalyticsSummary(),
+        getRecentPageViews(50)
+      ])
+      setAnalyticsSummary(summary)
+      setRecentViews(recent)
+    } catch (error) {
+      console.error('Error loading analytics:', error)
+      setMessage({ type: 'error', text: 'Failed to load analytics' })
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // EFFECTS
   // ═══════════════════════════════════════════════════════════════
 
@@ -570,13 +603,17 @@ export default function AdminControlPanel() {
         <div className="flex gap-2 mb-6 flex-wrap">
           {[
             { id: 'stats', icon: TrendingUp, label: '📊 Dashboard' },
+            { id: 'analytics', icon: BarChart3, label: '📈 Analytics' },
             { id: 'coupons', icon: Ticket, label: '🎫 Coupons' },
             { id: 'users', icon: Users, label: '👥 Users' },
             { id: 'checkins', icon: MapPin, label: '📍 Check-ins' },
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => {
+                setActiveTab(tab.id as any)
+                if (tab.id === 'analytics') loadAnalytics()
+              }}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 activeTab === tab.id
                   ? 'bg-green-500 text-white'
@@ -682,6 +719,152 @@ export default function AdminControlPanel() {
                   Refresh Stats
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* ANALYTICS TAB */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6">
+                <Eye className="w-8 h-8 mb-2 opacity-80" />
+                <div className="text-3xl font-bold">{analyticsSummary?.today.views || 0}</div>
+                <div className="text-blue-200">Views Today</div>
+              </div>
+              <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6">
+                <Users className="w-8 h-8 mb-2 opacity-80" />
+                <div className="text-3xl font-bold">{analyticsSummary?.today.uniqueVisitors || 0}</div>
+                <div className="text-green-200">Unique Visitors Today</div>
+              </div>
+              <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6">
+                <BarChart3 className="w-8 h-8 mb-2 opacity-80" />
+                <div className="text-3xl font-bold">{analyticsSummary?.thisWeek.views || 0}</div>
+                <div className="text-purple-200">Views This Week</div>
+              </div>
+              <div className="bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl p-6">
+                <TrendingUp className="w-8 h-8 mb-2 opacity-80" />
+                <div className="text-3xl font-bold">{analyticsSummary?.thisMonth.views || 0}</div>
+                <div className="text-orange-200">Views This Month</div>
+              </div>
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Daily Trend */}
+              <div className="bg-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">📈 Daily Trend (Last 7 Days)</h3>
+                <div className="flex items-end gap-2 h-40">
+                  {analyticsSummary?.dailyTrend.map((day, index) => {
+                    const maxViews = Math.max(...(analyticsSummary?.dailyTrend.map(d => d.views) || [1]))
+                    const height = maxViews > 0 ? (day.views / maxViews) * 100 : 0
+                    return (
+                      <div key={index} className="flex-1 flex flex-col items-center">
+                        <div className="text-xs text-gray-400 mb-1">{day.views}</div>
+                        <div 
+                          className="w-full bg-green-500 rounded-t transition-all"
+                          style={{ height: `${Math.max(height, 5)}%` }}
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {(!analyticsSummary?.dailyTrend || analyticsSummary.dailyTrend.length === 0) && (
+                    <div className="w-full text-center text-gray-500">No data yet</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Popular Pages */}
+              <div className="bg-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">🔥 Popular Pages</h3>
+                <div className="space-y-3">
+                  {analyticsSummary?.popularPages.slice(0, 6).map((page, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <span className="text-gray-300">{getPageDisplayName(page.page)}</span>
+                      <span className="text-green-400 font-bold">{page.views}</span>
+                    </div>
+                  ))}
+                  {(!analyticsSummary?.popularPages || analyticsSummary.popularPages.length === 0) && (
+                    <div className="text-gray-500">No data yet</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Popular Sections (Website) */}
+            <div className="bg-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-4">🎯 Website Sections Performance</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {analyticsSummary?.popularSections.slice(0, 8).map((section, index) => (
+                  <div key={index} className="bg-gray-700 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-green-400">{section.views}</div>
+                    <div className="text-sm text-gray-400">{getPageDisplayName(section.section)}</div>
+                  </div>
+                ))}
+                {(!analyticsSummary?.popularSections || analyticsSummary.popularSections.length === 0) && (
+                  <div className="col-span-4 text-center text-gray-500 py-8">
+                    No section data yet. Visit the website to start tracking!
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-gray-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">👁️ Recent Activity (Live)</h3>
+                <button
+                  onClick={loadAnalytics}
+                  disabled={analyticsLoading}
+                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-colors"
+                >
+                  {analyticsLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    '🔄 Refresh'
+                  )}
+                </button>
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {recentViews.slice(0, 20).map((view, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm py-2 border-b border-gray-700">
+                    <div className="flex items-center gap-3">
+                      <span className="text-green-400">{getPageDisplayName(view.page)}</span>
+                      {view.section && (
+                        <span className="text-gray-500">→ {view.section}</span>
+                      )}
+                    </div>
+                    <span className="text-gray-500">
+                      {view.timestamp?.toDate?.()?.toLocaleTimeString?.() || 'Just now'}
+                    </span>
+                  </div>
+                ))}
+                {recentViews.length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No recent activity. Visit the website or app to see live tracking!
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Google Analytics Link */}
+            <div className="bg-gray-800 rounded-xl p-6 text-center">
+              <h3 className="text-lg font-bold mb-2">📊 Need More Details?</h3>
+              <p className="text-gray-400 mb-4">View advanced analytics in Google Analytics</p>
+              <a
+                href="https://analytics.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+              >
+                Open Google Analytics →
+              </a>
             </div>
           </div>
         )}
