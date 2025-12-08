@@ -10,6 +10,16 @@ sk_test_51SO9wRGgzDjUcfZ01PSWNcKxTg7zEEMDh3193Du2kc7TqqHTqVNW5IcMIlHqcvD6x3X9vlH
 
 לינקים חשובים 
 
+https://i4iguana-app.vercel.app/
+http://localhost:3000/admin/super
+http://localhost:3000/admin/venue
+
+https://i4iguana-quldoy4x6-nirram77-8391s-projects.vercel.app/admin/login
+
+https://i4iguana-9barnlxq8-nirram77-8391s-projects.vercel.app/admin/super/db
+
+file:///C:/Users/nirra/Downloads/iguana-bar-tv-sign.html - מודעה עם QR
+
 
 
 ARCHI - Admin
@@ -18,8 +28,24 @@ bBFyiiA2gicf
 
 super admin
 nir.ram77@gmail.com	
-Iguana2020!
+Iguana2026!
 
+
+גיבוי יומי שוטף לענן - אפליקציית I4UGUANA
+
+# אחרי כל עבודה - הרץ:
+git add .
+git commit -m "תיאור השינוי"
+git push
+
+שחזור מאסון - BCP
+
+# על מחשב חדש:
+git clone https://github.com/nirram77-lang/here-4-iguana.git
+cd here-4-iguana
+npm install
+# העתק .env.local מדיסק חיצוני
+npm run dev
 
 
 PRICE ID

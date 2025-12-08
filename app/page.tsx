@@ -57,8 +57,8 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-8">
               <a href="#how-it-works" className="text-gray-300 hover:text-green-400 transition-colors">How It Works</a>
               <a href="#features" className="text-gray-300 hover:text-green-400 transition-colors">Features</a>
+              <a href="#partners" className="text-gray-300 hover:text-green-400 transition-colors">For Venues</a>
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
-              <a href="#contact" className="text-gray-300 hover:text-green-400 transition-colors">Contact</a>
               <Link 
                 href="/app"
                 className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
@@ -85,9 +85,9 @@ export default function LandingPage() {
             <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4 bg-[#0a1f1a]">
               <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">How It Works</a>
               <a href="#features" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Features</a>
+              <a href="#partners" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">For Venues</a>
               <a href="#download" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Download</a>
               <a href="#contact" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Contact</a>
-              <a href="/terms" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Terms of Service</a>
               <Link 
                 href="/app"
                 onClick={() => setMenuOpen(false)}
@@ -466,6 +466,129 @@ export default function LandingPage() {
                 <span className="text-sm font-medium">Android</span>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* VENUE OWNERS / BUSINESS SECTION */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section id="partners" className="py-24 px-6 bg-gradient-to-b from-[#0a1f1a] to-[#0d2920]">
+        <div className="max-w-5xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 rounded-full text-green-400 text-sm font-medium mb-6">
+              <span>🏢</span>
+              <span>For Venue Owners</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              Bring <span className="text-green-400">Real Connections</span> to Your Venue
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+              Join the I4IGUANA network and transform your bar, club, or venue into a hotspot for meaningful connections. More engagement, more customers, more buzz.
+            </p>
+          </div>
+
+          {/* Benefits Grid */}
+          <div className="grid md:grid-cols-3 gap-6 mb-16">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:border-green-500/50 transition-all">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📈</span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Increase Traffic</h3>
+              <p className="text-gray-400 text-sm">Users check in at your venue to find matches nearby. More app users = more customers.</p>
+            </div>
+            
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:border-green-500/50 transition-all">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🎯</span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Targeted Audience</h3>
+              <p className="text-gray-400 text-sm">Singles aged 21-45 actively looking to meet people. Your ideal customer base.</p>
+            </div>
+            
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:border-green-500/50 transition-all">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">✨</span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Free to Join</h3>
+              <p className="text-gray-400 text-sm">No fees, no commitments. We provide QR stickers and promote your venue in the app.</p>
+            </div>
+          </div>
+
+          {/* Business Card */}
+          <div className="max-w-md mx-auto">
+            <div className="bg-gradient-to-br from-[#0d2920] to-[#1a4d3e] rounded-3xl p-8 border border-green-500/30 shadow-2xl shadow-green-500/10 relative overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-green-500/5 rounded-full blur-2xl"></div>
+              
+              {/* Card Content */}
+              <div className="relative z-10">
+                {/* Logo & Name */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-black/30 rounded-2xl flex items-center justify-center border border-green-500/30">
+                    <img src="/notification-icon-192.png" alt="I4IGUANA" className="w-12 h-12" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">Nir Ram</h3>
+                    <p className="text-green-400 font-medium">Founder & CEO</p>
+                  </div>
+                </div>
+                
+                {/* Company */}
+                <div className="mb-6 pb-6 border-b border-white/10">
+                  <p className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
+                    I4IGUANA
+                  </p>
+                  <p className="text-gray-400 text-sm mt-1">Real-Time Dating Revolution</p>
+                </div>
+                
+                {/* Contact Details */}
+                <div className="space-y-4">
+                  <a href="tel:+972522653170" className="flex items-center gap-4 text-white hover:text-green-400 transition-colors group">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">052-265-3170</span>
+                  </a>
+                  
+                  <a href="mailto:nir@i4iguana.com" className="flex items-center gap-4 text-white hover:text-green-400 transition-colors group">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">nir@i4iguana.com</span>
+                  </a>
+                  
+                  <a href="https://i4iguana.com" className="flex items-center gap-4 text-white hover:text-green-400 transition-colors group">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">i4iguana.com</span>
+                  </a>
+                </div>
+                
+                {/* CTA */}
+                <div className="mt-8">
+                  <a 
+                    href="tel:+972522653170"
+                    className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-center font-bold text-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
+                  >
+                    📞 Let's Talk Partnership
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-center text-gray-500 text-sm mt-6">
+              🦎 Join 6+ venues already in the network
+            </p>
           </div>
         </div>
       </section>
