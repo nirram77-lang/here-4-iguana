@@ -41,6 +41,17 @@ export const deleteUserAccount = async (userId: string): Promise<{
     
     console.log(`📱 User's phone number: ${phoneNumber}`)
     
+    // ✅ CRITICAL FIX: Mark as deleted IMMEDIATELY (before anything else!)
+    // This ensures even if batch fails, user is marked as deleted!
+    await updateDoc(userRef, {
+      deleted: true,
+      deletedAt: new Date().toISOString(),
+      onboardingComplete: false,
+      phoneVerified: false,
+      isAvailable: false
+    })
+    console.log('✅ User marked as deleted IMMEDIATELY')
+    
     // Step 2: Check if phoneIdentity has active timer
     const phoneRef = doc(db, 'phoneIdentities', phoneNumber)
     const phoneDoc = await getDoc(phoneRef)
@@ -60,240 +71,228 @@ export const deleteUserAccount = async (userId: string): Promise<{
       }
     }
     
-    // Step 3: Delete user data in batches
-    const batch = writeBatch(db)
-    
-    // 3a. Delete user profile (mark as deleted, don't actually delete document)
-    batch.update(userRef, {
-      deleted: true,
-      deletedAt: new Date().toISOString(),
-      onboardingComplete: false,  // ✅ CRITICAL: Force onboarding on re-login
-      // Clear sensitive data
-      email: null,
-      displayName: null,
-      name: null,  // ✅ FIX: Also clear name!
-      photoURL: null,
-      photos: [],
-      bio: '',
-      hobbies: [],
-      phoneNumber: null,  // ✅ Clear phone link from user profile
-      phoneVerified: false,  // ✅ FIX: Reset phone verification!
-      phoneVerifiedAt: null,  // ✅ FIX: Clear verification timestamp
-      // ✅ Clear location & preferences
-      location: null,
-      preferences: null,
-      // ✅ Clear swipe history
-      swipedRight: [],
-      swipedLeft: [],
-      matches: [],
-      // ✅ Clear check-in data
-      checkedInVenue: null,
-      checkInData: null,
-      isAvailable: false
-    })
-    
-    console.log('✅ User profile marked for deletion')
-    
-    // 3b. Delete all user's matches
-    const matchesQuery = query(
-      collection(db, 'matches'),
-      where('participants', 'array-contains', userId)
-    )
-    const matchesSnapshot = await getDocs(matchesQuery)
-    
-    matchesSnapshot.forEach((doc) => {
-      batch.delete(doc.ref)
-    })
-    
-    console.log(`✅ ${matchesSnapshot.size} matches deleted`)
-    
-    // 3b-2. ✅ CRITICAL FIX: Remove deleted user's UID from OTHER users' swipedRight/swipedLeft
-    // This prevents "ghost matches" when user re-registers with new account
-    console.log('🧹 Cleaning up deleted user UID from other users swipes...')
-    
-    // Find users who have swiped on this user
-    const usersWhoSwipedRightQuery = query(
-      collection(db, 'users'),
-      where('swipedRight', 'array-contains', userId)
-    )
-    const usersWhoSwipedRightSnapshot = await getDocs(usersWhoSwipedRightQuery)
-    
-    for (const userDoc of usersWhoSwipedRightSnapshot.docs) {
-      const userData = userDoc.data()
-      const updatedSwipedRight = (userData.swipedRight || []).filter((id: string) => id !== userId)
-      batch.update(userDoc.ref, { swipedRight: updatedSwipedRight })
-    }
-    console.log(`✅ Removed from ${usersWhoSwipedRightSnapshot.size} users' swipedRight`)
-    
-    const usersWhoSwipedLeftQuery = query(
-      collection(db, 'users'),
-      where('swipedLeft', 'array-contains', userId)
-    )
-    const usersWhoSwipedLeftSnapshot = await getDocs(usersWhoSwipedLeftQuery)
-    
-    for (const userDoc of usersWhoSwipedLeftSnapshot.docs) {
-      const userData = userDoc.data()
-      const updatedSwipedLeft = (userData.swipedLeft || []).filter((id: string) => id !== userId)
-      batch.update(userDoc.ref, { swipedLeft: updatedSwipedLeft })
-    }
-    console.log(`✅ Removed from ${usersWhoSwipedLeftSnapshot.size} users' swipedLeft`)
-    
-    // 3c. ✅ CRITICAL: Handle active match cancellation BEFORE deleting
-    // Check activeMatches collection (10-minute timer matches)
-    const activeMatchesQuery = query(
-      collection(db, 'activeMatches'),
-      where('users', 'array-contains', userId),
-      where('isActive', '==', true)
-    )
-    const activeMatchesSnapshot = await getDocs(activeMatchesQuery)
-    
-    if (activeMatchesSnapshot.size > 0) {
-      console.log(`🔔 Found ${activeMatchesSnapshot.size} active matches - notifying other users...`)
+    // Step 3: Delete user data in batches (cleanup - can fail without breaking delete)
+    try {
+      const batch = writeBatch(db)
       
-      for (const matchDoc of activeMatchesSnapshot.docs) {
-        const matchData = matchDoc.data()
-        const otherUserId = matchData.users.find((id: string) => id !== userId)
+      // 3a. Clear sensitive data from user profile
+      batch.update(userRef, {
+        email: null,
+        displayName: null,
+        name: null,
+        photoURL: null,
+        photos: [],
+        bio: '',
+        hobbies: [],
+        phoneNumber: null,
+        phoneVerifiedAt: null,
+        location: null,
+        preferences: null,
+        swipedRight: [],
+        swipedLeft: [],
+        matches: [],
+        checkedInVenue: null,
+        checkInData: null
+      })
+      
+      console.log('✅ User profile data cleared')
+      
+      // 3b. Delete all user's matches
+      const matchesQuery = query(
+        collection(db, 'matches'),
+        where('participants', 'array-contains', userId)
+      )
+      const matchesSnapshot = await getDocs(matchesQuery)
+      
+      matchesSnapshot.forEach((matchDoc) => {
+        batch.delete(matchDoc.ref)
+      })
+      
+      console.log(`✅ ${matchesSnapshot.size} matches deleted`)
+      
+      // 3b-2. Remove deleted user's UID from OTHER users' swipedRight/swipedLeft
+      console.log('🧹 Cleaning up deleted user UID from other users swipes...')
+      
+      const usersWhoSwipedRightQuery = query(
+        collection(db, 'users'),
+        where('swipedRight', 'array-contains', userId)
+      )
+      const usersWhoSwipedRightSnapshot = await getDocs(usersWhoSwipedRightQuery)
+      
+      for (const swipeDoc of usersWhoSwipedRightSnapshot.docs) {
+        const swipeData = swipeDoc.data()
+        const updatedSwipedRight = (swipeData.swipedRight || []).filter((id: string) => id !== userId)
+        batch.update(swipeDoc.ref, { swipedRight: updatedSwipedRight })
+      }
+      console.log(`✅ Removed from ${usersWhoSwipedRightSnapshot.size} users' swipedRight`)
+      
+      const usersWhoSwipedLeftQuery = query(
+        collection(db, 'users'),
+        where('swipedLeft', 'array-contains', userId)
+      )
+      const usersWhoSwipedLeftSnapshot = await getDocs(usersWhoSwipedLeftQuery)
+      
+      for (const swipeDoc of usersWhoSwipedLeftSnapshot.docs) {
+        const swipeData = swipeDoc.data()
+        const updatedSwipedLeft = (swipeData.swipedLeft || []).filter((id: string) => id !== userId)
+        batch.update(swipeDoc.ref, { swipedLeft: updatedSwipedLeft })
+      }
+      console.log(`✅ Removed from ${usersWhoSwipedLeftSnapshot.size} users' swipedLeft`)
+      
+      // 3c. Handle active match cancellation
+      const activeMatchesQuery = query(
+        collection(db, 'activeMatches'),
+        where('users', 'array-contains', userId),
+        where('isActive', '==', true)
+      )
+      const activeMatchesSnapshot = await getDocs(activeMatchesQuery)
+      
+      if (activeMatchesSnapshot.size > 0) {
+        console.log(`🔔 Found ${activeMatchesSnapshot.size} active matches - notifying other users...`)
         
-        if (otherUserId) {
-          // Deactivate the match
-          batch.update(matchDoc.ref, {
-            isActive: false,
-            cancelledAt: Timestamp.now(),
-            cancelledBy: userId,
-            cancelReason: 'account_deleted'
-          })
+        for (const matchDoc of activeMatchesSnapshot.docs) {
+          const matchData = matchDoc.data()
+          const otherUserId = matchData.users.find((id: string) => id !== userId)
           
-          // ✅ Create notification for other user with iguana animation
-          const notificationRef = doc(collection(db, 'notifications'))
-          await setDoc(notificationRef, {
-            userId: otherUserId,
-            type: 'match_cancelled',
-            title: 'Match Ended',
-            message: 'Your match partner has left. Iguana is searching for a new match for you! 🦎✨',
-            read: false,
-            createdAt: Timestamp.now(),
-            matchId: matchDoc.id,
-            showIguanaAnimation: true  // ✅ Trigger iguana searching animation
-          })
-          
-          console.log(`✅ Match ${matchDoc.id} cancelled, notification sent to user ${otherUserId}`)
+          if (otherUserId) {
+            batch.update(matchDoc.ref, {
+              isActive: false,
+              cancelledAt: Timestamp.now(),
+              cancelledBy: userId,
+              cancelReason: 'account_deleted'
+            })
+            
+            const notificationRef = doc(collection(db, 'notifications'))
+            await setDoc(notificationRef, {
+              userId: otherUserId,
+              type: 'match_cancelled',
+              title: 'Match Ended',
+              message: 'Your match partner has left. Iguana is searching for a new match for you! 🦎✨',
+              read: false,
+              createdAt: Timestamp.now(),
+              matchId: matchDoc.id,
+              showIguanaAnimation: true
+            })
+            
+            console.log(`✅ Match ${matchDoc.id} cancelled, notification sent to user ${otherUserId}`)
+          }
         }
       }
-    }
-    
-    // 3d. Delete all user's notifications
-    const notificationsQuery = query(
-      collection(db, 'notifications'),
-      where('userId', '==', userId)
-    )
-    const notificationsSnapshot = await getDocs(notificationsQuery)
-    
-    notificationsSnapshot.forEach((doc) => {
-      batch.delete(doc.ref)
-    })
-    
-    console.log(`✅ ${notificationsSnapshot.size} notifications deleted`)
-    
-    // 3e. Delete all user's chat messages (in all chats they participated in)
-    // ✅ CRITICAL FIX: Delete messages separately to avoid batch overflow (500 limit)
-    const chatsQuery = query(
-      collection(db, 'chats'),
-      where('participants', 'array-contains', userId)
-    )
-    const chatsSnapshot = await getDocs(chatsQuery)
-    
-    // First, delete all messages in each chat (in separate batches to avoid 500 limit)
-    for (const chatDoc of chatsSnapshot.docs) {
-      const chatId = chatDoc.id
-      console.log(`🗑️ Deleting messages for chat: ${chatId}`)
       
-      // Get all messages in this chat
-      const messagesRef = collection(db, 'chats', chatId, 'messages')
-      const messagesSnapshot = await getDocs(messagesRef)
+      // 3d. Delete all user's notifications
+      const notificationsQuery = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId)
+      )
+      const notificationsSnapshot = await getDocs(notificationsQuery)
       
-      // Delete messages in mini-batches of 100
-      let messagesBatch = writeBatch(db)
-      let batchCount = 0
+      notificationsSnapshot.forEach((notifDoc) => {
+        batch.delete(notifDoc.ref)
+      })
       
-      for (const messageDoc of messagesSnapshot.docs) {
-        messagesBatch.delete(messageDoc.ref)
-        batchCount++
+      console.log(`✅ ${notificationsSnapshot.size} notifications deleted`)
+      
+      // 3e. Delete all user's chat messages
+      const chatsQuery = query(
+        collection(db, 'chats'),
+        where('participants', 'array-contains', userId)
+      )
+      const chatsSnapshot = await getDocs(chatsQuery)
+      
+      for (const chatDoc of chatsSnapshot.docs) {
+        const chatId = chatDoc.id
+        console.log(`🗑️ Deleting messages for chat: ${chatId}`)
         
-        if (batchCount >= 100) {
+        const messagesRef = collection(db, 'chats', chatId, 'messages')
+        const messagesSnapshot = await getDocs(messagesRef)
+        
+        // Delete messages in mini-batches of 100
+        let messagesBatch = writeBatch(db)
+        let batchCount = 0
+        
+        for (const messageDoc of messagesSnapshot.docs) {
+          messagesBatch.delete(messageDoc.ref)
+          batchCount++
+          
+          if (batchCount >= 100) {
+            await messagesBatch.commit()
+            messagesBatch = writeBatch(db)
+            batchCount = 0
+          }
+        }
+        
+        if (batchCount > 0) {
           await messagesBatch.commit()
-          messagesBatch = writeBatch(db)
-          batchCount = 0
         }
-      }
-      
-      // Commit remaining messages
-      if (batchCount > 0) {
-        await messagesBatch.commit()
-      }
-      
-      console.log(`   ✅ ${messagesSnapshot.size} messages deleted from chat ${chatId}`)
-      
-      // Now delete the chat document itself
-      batch.delete(chatDoc.ref)
-    }
-    
-    console.log(`✅ ${chatsSnapshot.size} chats and their messages deleted`)
-    
-    // 3f. Also delete messages from matches collection (some chats stored there)
-    for (const matchDoc of matchesSnapshot.docs) {
-      const matchId = matchDoc.id
-      
-      // Get all messages in this match's chat
-      const matchMessagesRef = collection(db, 'matches', matchId, 'messages')
-      const matchMessagesSnapshot = await getDocs(matchMessagesRef)
-      
-      // Delete in mini-batches
-      let matchMsgBatch = writeBatch(db)
-      let matchBatchCount = 0
-      
-      for (const messageDoc of matchMessagesSnapshot.docs) {
-        matchMsgBatch.delete(messageDoc.ref)
-        matchBatchCount++
         
-        if (matchBatchCount >= 100) {
+        console.log(`   ✅ ${messagesSnapshot.size} messages deleted from chat ${chatId}`)
+        
+        batch.delete(chatDoc.ref)
+      }
+      
+      console.log(`✅ ${chatsSnapshot.size} chats and their messages deleted`)
+      
+      // 3f. Delete messages from matches collection
+      for (const matchDoc of matchesSnapshot.docs) {
+        const matchId = matchDoc.id
+        
+        const matchMessagesRef = collection(db, 'matches', matchId, 'messages')
+        const matchMessagesSnapshot = await getDocs(matchMessagesRef)
+        
+        let matchMsgBatch = writeBatch(db)
+        let matchBatchCount = 0
+        
+        for (const messageDoc of matchMessagesSnapshot.docs) {
+          matchMsgBatch.delete(messageDoc.ref)
+          matchBatchCount++
+          
+          if (matchBatchCount >= 100) {
+            await matchMsgBatch.commit()
+            matchMsgBatch = writeBatch(db)
+            matchBatchCount = 0
+          }
+        }
+        
+        if (matchBatchCount > 0) {
           await matchMsgBatch.commit()
-          matchMsgBatch = writeBatch(db)
-          matchBatchCount = 0
+        }
+        
+        if (matchMessagesSnapshot.size > 0) {
+          console.log(`   ✅ ${matchMessagesSnapshot.size} messages deleted from match ${matchId}`)
         }
       }
       
-      if (matchBatchCount > 0) {
-        await matchMsgBatch.commit()
-      }
+      console.log(`✅ All chat messages cleaned up`)
       
-      if (matchMessagesSnapshot.size > 0) {
-        console.log(`   ✅ ${matchMessagesSnapshot.size} messages deleted from match ${matchId}`)
-      }
+      // Step 4: Commit the main batch
+      await batch.commit()
+      console.log('✅ All user data deleted')
+      
+    } catch (batchError) {
+      // Batch cleanup failed - but user is already marked as deleted!
+      console.error('⚠️ Batch cleanup failed (user still marked as deleted):', batchError)
     }
     
-    console.log(`✅ All chat messages cleaned up`)
-    
-    // Step 4: Commit the batch
-    await batch.commit()
-    console.log('✅ All user data deleted')
-    
-    // Step 5: ✅ CRITICAL - Handle phoneIdentity based on timer status
+    // Step 5: Handle phoneIdentity based on timer status
     if (hasActiveTimer) {
       console.log(`🔒 Preserving phoneIdentity timer: ${Math.floor(timerRemaining / 60)} minutes remaining`)
       console.log('   This prevents re-registration exploit')
     } else {
-      // ✅ FIX: No active timer - reset passes for clean re-registration
       console.log('✅ No active timer - resetting phoneIdentity for clean re-registration')
-      await updateDoc(phoneRef, {
-        passesLeft: 1,
-        passesUsedToday: 0,
-        matchesCountToday: 0,
-        lockedUntil: null,
-        lastPassReset: Timestamp.now()
-      })
+      try {
+        await updateDoc(phoneRef, {
+          passesLeft: 1,
+          passesUsedToday: 0,
+          matchesCountToday: 0,
+          lockedUntil: null,
+          lastPassReset: Timestamp.now()
+        })
+      } catch (phoneError) {
+        console.error('⚠️ Error resetting phoneIdentity:', phoneError)
+      }
     }
     
-    // Return success with timer info
+    // Return success - user is definitely marked as deleted!
     return {
       success: true,
       phoneIdentityPreserved: hasActiveTimer,
@@ -312,14 +311,12 @@ export const deleteUserAccount = async (userId: string): Promise<{
 
 /**
  * Check if user can delete account
- * (Maybe you want to prevent deletion during active matches, etc.)
  */
 export const canDeleteAccount = async (userId: string): Promise<{
   canDelete: boolean
   reason?: string
 }> => {
   try {
-    // Check if user has active matches in activeMatches collection
     const activeMatchesQuery = query(
       collection(db, 'activeMatches'),
       where('users', 'array-contains', userId),
@@ -328,15 +325,13 @@ export const canDeleteAccount = async (userId: string): Promise<{
     
     const activeMatches = await getDocs(activeMatchesQuery)
     
-    // ✅ Allow deletion even with active matches - we'll notify the other user
-    // This is better UX than blocking deletion
-    
+    // Allow deletion even with active matches - we'll notify the other user
     return { canDelete: true }
     
   } catch (error) {
     console.error('Error checking if can delete:', error)
     return {
-      canDelete: true  // Allow deletion even if check fails
+      canDelete: true
     }
   }
 }
