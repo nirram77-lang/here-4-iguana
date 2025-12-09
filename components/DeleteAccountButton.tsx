@@ -74,6 +74,23 @@ export default function DeleteAccountButton() {
         console.log(`   ✓ Removed: ${key}`);
       });
       
+      // ✅ NEW: Logout from OneSignal (unlink device from this user)
+      try {
+        const OneSignal = (window as any).OneSignal;
+        if (OneSignal) {
+          console.log('🔔 Logging out from OneSignal...');
+          if (OneSignal.logout) {
+            await OneSignal.logout();
+            console.log('   ✓ OneSignal logout successful');
+          } else if (OneSignal.removeExternalUserId) {
+            await OneSignal.removeExternalUserId();
+            console.log('   ✓ OneSignal removeExternalUserId successful');
+          }
+        }
+      } catch (oneSignalError) {
+        console.log('⚠️ OneSignal logout error (continuing anyway):', oneSignalError);
+      }
+      
       // ✅ NEW: Set force flag to show notification modal on re-registration
       localStorage.setItem('force_notification_setup', 'true');
       console.log('   ✓ Set: force_notification_setup');

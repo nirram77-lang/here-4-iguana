@@ -87,6 +87,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
+    // ✅ Logout from OneSignal first (unlink device from user)
+    try {
+      const OneSignal = (window as any).OneSignal;
+      if (OneSignal) {
+        console.log('🔔 Logging out from OneSignal...');
+        if (OneSignal.logout) {
+          await OneSignal.logout();
+          console.log('   ✓ OneSignal logout successful');
+        } else if (OneSignal.removeExternalUserId) {
+          await OneSignal.removeExternalUserId();
+          console.log('   ✓ OneSignal removeExternalUserId successful');
+        }
+      }
+    } catch (oneSignalError) {
+      console.log('⚠️ OneSignal logout error (continuing anyway):', oneSignalError);
+    }
+    
     await signOut(auth)
   }
 
