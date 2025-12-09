@@ -939,6 +939,20 @@ export default function Page() {
       // Only check when user is logged in and on home OR match screen
       if (!user || (currentScreen !== "home" && currentScreen !== "match")) return
       
+      // ✅ CRITICAL: Check force flag FIRST - before any delays!
+      const forceNotificationSetup = localStorage.getItem('force_notification_setup')
+      if (forceNotificationSetup === 'true') {
+        console.log('🔔 FORCE: Showing notification modal after account re-registration')
+        localStorage.removeItem('force_notification_setup')
+        
+        // Wait a bit for the home screen to fully render, then show modal
+        setTimeout(() => {
+          console.log('🔔 FORCE: Opening notification modal NOW')
+          setShowNotificationModal(true)
+        }, 1500)
+        return
+      }
+      
       // Check if browser supports notifications
       if (typeof window === 'undefined' || !('Notification' in window)) {
         console.log('⚠️ Browser does not support notifications')
@@ -967,20 +981,6 @@ export default function Page() {
       const oneSignalLinkedKey = `oneSignalLinked_${user.uid}`
       const modalShown = localStorage.getItem(modalShownKey)
       const oneSignalLinked = localStorage.getItem(oneSignalLinkedKey)
-      
-      // ✅ NEW: Check for force notification setup flag (set after account deletion)
-      const forceNotificationSetup = localStorage.getItem('force_notification_setup')
-      if (forceNotificationSetup === 'true') {
-        console.log('🔔 FORCE: Showing notification modal after account re-registration')
-        localStorage.removeItem('force_notification_setup')
-        localStorage.setItem(modalShownKey, 'true')
-        
-        // Wait a bit for the home screen to fully render
-        setTimeout(() => {
-          setShowNotificationModal(true)
-        }, 2000)
-        return
-      }
       
       // If permission granted and OneSignal is subscribed, just link user
       if (permission === 'granted' && isOneSignalSubscribed) {
@@ -2166,6 +2166,26 @@ export default function Page() {
           setIsCheckedIn(checkInStatus.isCheckedIn)
           setCurrentScreen("home")
         }
+        
+        // ✅ CRITICAL: Show notification modal after onboarding completion!
+        // Check if we should show notification prompt
+        const modalShownKey = `notificationModalShown_${user.uid}`
+        const forceSetup = localStorage.getItem('force_notification_setup')
+        const modalAlreadyShown = localStorage.getItem(modalShownKey)
+        
+        // Show notification modal if: force flag is set OR modal never shown before
+        if (forceSetup === 'true' || modalAlreadyShown !== 'true') {
+          console.log('🔔 Showing notification modal after onboarding...')
+          localStorage.removeItem('force_notification_setup')
+          localStorage.setItem(modalShownKey, 'true')
+          
+          // Wait for other modals to close, then show notification modal
+          setTimeout(() => {
+            console.log('🔔 Opening notification permission modal NOW')
+            setShowNotificationModal(true)
+          }, 2000)
+        }
+        
       } catch (error) {
         console.error('❌ Error saving onboarding data:', error)
       }
