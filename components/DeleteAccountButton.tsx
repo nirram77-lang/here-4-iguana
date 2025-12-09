@@ -59,6 +59,20 @@ export default function DeleteAccountButton() {
       setShowConfirm(false);
       setIsDeleting(false);
       
+      // ✅ CRITICAL FIX: Clear localStorage so notifications modal shows again on re-register
+      console.log('🧹 Clearing localStorage for fresh start...');
+      const keysToRemove = [
+        `notificationModalShown_${user.uid}`,
+        `oneSignalLinked_${user.uid}`,
+        'hasScannedQR',
+        'i4iguana_checkin',
+        'lastVenueId'
+      ];
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`   ✓ Removed: ${key}`);
+      });
+      
       // Show success message
       setShowSuccess(true);
       

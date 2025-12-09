@@ -792,6 +792,11 @@ export default function Page() {
           localStorage.removeItem('hasScannedQR')
           localStorage.removeItem('pendingCheckIn')
           localStorage.removeItem('i4iguana_phone_verified')
+          // ✅ CRITICAL: Clear notification modal flags so it shows again!
+          localStorage.removeItem(`notificationModalShown_${user.uid}`)
+          localStorage.removeItem(`oneSignalLinked_${user.uid}`)
+          localStorage.removeItem('i4iguana_checkin')
+          localStorage.removeItem('lastVenueId')
           sessionStorage.clear()
           
           // ✅ Reset deleted flag - user is re-registering
