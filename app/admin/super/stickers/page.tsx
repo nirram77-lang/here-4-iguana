@@ -12,7 +12,7 @@ interface Venue {
   displayName?: string
 }
 
-type TemplateType = 'venue' | 'club-owners'
+type TemplateType = 'venue' | 'club-owners' | 'customers'
 
 export default function StickerGeneratorPage() {
   const [venues, setVenues] = useState<Venue[]>([])
@@ -731,7 +731,382 @@ END:VCARD`
     </div>
   </div>
 </body>
-</html>`
+</html>\`
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CUSTOMERS PROMOTIONAL STICKER - WOW FACTOR!
+  // ═══════════════════════════════════════════════════════════════
+  const generateCustomersStickerHTML = () => {
+    const websiteUrl = 'https://i4iguana.com'
+    const websiteQrUrl = \`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=\${encodeURIComponent(websiteUrl)}&color=0d2920\`
+    const iguanaRadarImg = 'https://i4iguana-app.vercel.app/iguana-radar.jpg'
+
+    return \`<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I4IGUANA - מצא את האחד/ת</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Heebo', sans-serif;
+      background: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+    }
+    .sticker {
+      width: 20cm;
+      height: 20cm;
+      background: linear-gradient(160deg, #0d2920 0%, #1a4d3e 40%, #0d2920 100%);
+      border-radius: 20px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    
+    /* Animated glow effect */
+    .sticker::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(74, 222, 128, 0.15) 0%, transparent 50%);
+      animation: pulse 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    
+    /* Sparkles */
+    .sticker::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        radial-gradient(circle at 15% 15%, #4ade80 2px, transparent 2px),
+        radial-gradient(circle at 85% 20%, #4ade80 1.5px, transparent 1.5px),
+        radial-gradient(circle at 10% 80%, #4ade80 1px, transparent 1px),
+        radial-gradient(circle at 90% 85%, #4ade80 2px, transparent 2px),
+        radial-gradient(circle at 50% 5%, #4ade80 1.5px, transparent 1.5px),
+        radial-gradient(circle at 5% 50%, #4ade80 1px, transparent 1px),
+        radial-gradient(circle at 95% 45%, #4ade80 1.5px, transparent 1.5px),
+        radial-gradient(circle at 30% 95%, #4ade80 1px, transparent 1px),
+        radial-gradient(circle at 70% 3%, #4ade80 1px, transparent 1px);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    
+    /* Green border glow */
+    .border-glow {
+      position: absolute;
+      inset: 8px;
+      border: 3px solid #4ade80;
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(74, 222, 128, 0.3), inset 0 0 20px rgba(74, 222, 128, 0.1);
+      pointer-events: none;
+    }
+    
+    .content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      align-items: center;
+      text-align: center;
+    }
+    
+    /* Hook - Top */
+    .hook {
+      margin-top: 15px;
+      margin-bottom: 10px;
+    }
+    
+    .hook-text {
+      font-size: 18px;
+      color: #4ade80;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    
+    /* Main Title */
+    .main-title {
+      font-size: 42px;
+      font-weight: 900;
+      color: white;
+      margin-bottom: 5px;
+      text-shadow: 0 2px 20px rgba(74, 222, 128, 0.5);
+    }
+    
+    .main-title .green {
+      color: #4ade80;
+    }
+    
+    .subtitle {
+      font-size: 16px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 15px;
+    }
+    
+    /* Logo Section */
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: 15px 0;
+    }
+    
+    .logo-circle {
+      width: 130px;
+      height: 130px;
+      border: 3px solid #4ade80;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      box-shadow: 0 0 30px rgba(74, 222, 128, 0.4);
+    }
+    
+    .logo-inner {
+      width: 105px;
+      height: 105px;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    
+    .logo-inner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .brand-text {
+      text-align: right;
+    }
+    
+    .brand-name {
+      font-size: 36px;
+      font-weight: 900;
+      color: white;
+      letter-spacing: 1px;
+    }
+    
+    .brand-name span {
+      color: #4ade80;
+    }
+    
+    .brand-tagline {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 2px;
+    }
+    
+    /* Features */
+    .features {
+      display: flex;
+      gap: 30px;
+      margin: 20px 0;
+    }
+    
+    .feature {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .feature-icon {
+      width: 45px;
+      height: 45px;
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+    }
+    
+    .feature-text {
+      font-size: 11px;
+      color: white;
+      font-weight: 600;
+      max-width: 80px;
+    }
+    
+    /* QR Section */
+    .qr-section {
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      padding: 20px 30px;
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+    
+    .qr-code {
+      width: 110px;
+      height: 110px;
+      border-radius: 12px;
+      border: 3px solid #4ade80;
+    }
+    
+    .qr-info {
+      text-align: right;
+    }
+    
+    .qr-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0d2920;
+      margin-bottom: 5px;
+    }
+    
+    .qr-desc {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    
+    .qr-url {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: #0d2920;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    
+    /* Contact */
+    .contact {
+      margin-top: auto;
+      padding-top: 10px;
+    }
+    
+    .contact-line {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    .contact-line a {
+      color: #4ade80;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    
+    /* CTA */
+    .cta-badge {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: #0d2920;
+      padding: 10px 30px;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 800;
+      margin-top: 10px;
+      box-shadow: 0 4px 20px rgba(74, 222, 128, 0.5);
+    }
+    
+    @media print {
+      body { background: white; padding: 0; }
+      .sticker { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sticker">
+    <div class="border-glow"></div>
+    
+    <div class="content">
+      <!-- Hook -->
+      <div class="hook">
+        <div class="hook-text">✨ הכרויות בזמן אמת ✨</div>
+      </div>
+      
+      <!-- Main Title -->
+      <h1 class="main-title">היא <span class="green">מחליטה</span> ראשונה!</h1>
+      <p class="subtitle">מצא/י את האחד/ת - כאן ועכשיו</p>
+      
+      <!-- Logo Section -->
+      <div class="logo-section">
+        <div class="brand-text">
+          <div class="brand-name"><span>I4</span>IGUANA</div>
+          <div class="brand-tagline">Dating App for Real Meetings</div>
+        </div>
+        <div class="logo-circle">
+          <div class="logo-inner">
+            <img src="\${iguanaRadarImg}" alt="I4IGUANA">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Features -->
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">📍</div>
+          <div class="feature-text">אנשים באותו מקום</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-text">התאמה מיידית</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">💬</div>
+          <div class="feature-text">צ'אט פרטי</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🎯</div>
+          <div class="feature-text">מפגש אמיתי</div>
+        </div>
+      </div>
+      
+      <!-- QR Section -->
+      <div class="qr-section">
+        <div class="qr-info">
+          <div class="qr-title">סרוק והתחל עכשיו!</div>
+          <div class="qr-desc">
+            האפליקציה שמחברת בין אנשים<br>
+            באותו מקום, באותו רגע
+          </div>
+          <div class="qr-url">🌐 i4iguana.com</div>
+        </div>
+        <img src="\${websiteQrUrl}" class="qr-code" alt="QR Code">
+      </div>
+      
+      <!-- Contact -->
+      <div class="contact">
+        <div class="contact-line">
+          שאלות? <a href="mailto:nir@i4iguana.com">nir@i4iguana.com</a>
+        </div>
+      </div>
+      
+      <!-- CTA -->
+      <div class="cta-badge">🦎 הצטרף/י לאלפי רווקים!</div>
+    </div>
+  </div>
+</body>
+</html>\`
   }
 
   const selectedVenueData = venues.find(v => v.id === selectedVenue)
@@ -742,6 +1117,8 @@ END:VCARD`
       html = generateVenueStickerHTML(selectedVenueData, language)
     } else if (template === 'club-owners') {
       html = generateClubOwnersStickerHTML()
+    } else if (template === 'customers') {
+      html = generateCustomersStickerHTML()
     }
     if (!html) return
     const printWindow = window.open('', '_blank')
@@ -761,6 +1138,9 @@ END:VCARD`
     } else if (template === 'club-owners') {
       html = generateClubOwnersStickerHTML()
       filename = 'sticker-club-owners.html'
+    } else if (template === 'customers') {
+      html = generateCustomersStickerHTML()
+      filename = 'sticker-customers.html'
     }
     if (!html) return
     const blob = new Blob([html], { type: 'text/html' })
@@ -777,11 +1157,13 @@ END:VCARD`
       return generateVenueStickerHTML(selectedVenueData, language)
     } else if (template === 'club-owners') {
       return generateClubOwnersStickerHTML()
+    } else if (template === 'customers') {
+      return generateCustomersStickerHTML()
     }
     return ''
   }
 
-  const canAction = template === 'club-owners' || (template === 'venue' && selectedVenueData)
+  const canAction = template === 'club-owners' || template === 'customers' || (template === 'venue' && selectedVenueData)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0d2920] to-[#1a4d3e] p-4 md:p-8">
@@ -826,6 +1208,16 @@ END:VCARD`
                 <div>
                   <div>🎯 מודעה לבעלי מועדונים</div>
                   <div className="text-xs opacity-70">מדבקה שיווקית כללית</div>
+                </div>
+              </button>
+              <button
+                onClick={() => setTemplate('customers')}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-right ${template === 'customers' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-[#0d2920] text-white/60 border border-[#4ade80]/30'}`}
+              >
+                <Sparkles className="w-5 h-5" />
+                <div>
+                  <div>💚 מודעה ללקוחות</div>
+                  <div className="text-xs opacity-70">WOW - היא מחליטה ראשונה!</div>
                 </div>
               </button>
             </div>
