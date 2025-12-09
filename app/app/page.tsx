@@ -193,9 +193,8 @@ export default function Page() {
     'signup': 'welcome',
     'phone-verification': null,  // Don't allow back from phone verification
     'onboarding-welcome': null,  // Don't allow back from welcome
-    'onboarding-name': 'onboarding-welcome',  // ✅ FIXED: Allow back to welcome
+    'onboarding-name': 'onboarding-welcome',  // ✅ Allow back to welcome
     'onboarding-gender': 'onboarding-name',
-    // ✅ "She Decides" - Skip orientation, go directly gender → age
     'onboarding-age': 'onboarding-gender',
     'onboarding-hobbies': 'onboarding-age',
     'onboarding-lifestyle': 'onboarding-hobbies',
@@ -208,36 +207,42 @@ export default function Page() {
     'scan': 'home'
   }
 
-  // ✅ Handle hardware back button press - SINGLE useEffect for consistency
+  // ✅ Ref to track current screen for popstate handler (avoids stale closure)
+  const currentScreenRef = useRef<Screen>(currentScreen)
+  useEffect(() => {
+    currentScreenRef.current = currentScreen
+  }, [currentScreen])
+
+  // ✅ Handle hardware back button - runs ONCE on mount
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const handlePopState = (event: PopStateEvent) => {
-      console.log('📱 Hardware back button pressed')
-      console.log(`   Current screen: ${currentScreen}`)
+    // Push initial state
+    window.history.pushState({ screen: 'initial' }, '', '')
+
+    const handlePopState = () => {
+      const screen = currentScreenRef.current
+      console.log('📱 Hardware back button pressed, current screen:', screen)
       
-      const previousScreen = screenBackMap[currentScreen]
+      const previousScreen = screenBackMap[screen]
       
       if (previousScreen) {
-        console.log(`   ✅ Navigating to: ${previousScreen}`)
+        console.log('   ✅ Navigating to:', previousScreen)
         setCurrentScreen(previousScreen)
       } else {
-        console.log('   ⛔ No previous screen - staying on current screen')
+        console.log('   ⛔ No previous screen - staying')
       }
       
-      // Always push state to prevent app exit
-      event.preventDefault()
+      // CRITICAL: Always push state back to prevent app exit
+      window.history.pushState({ screen: 'navigation' }, '', '')
     }
-
-    // Push initial state for this screen
-    window.history.pushState({ screen: currentScreen }, '', '')
 
     window.addEventListener('popstate', handlePopState)
 
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [currentScreen])
+  }, []) // Empty deps - runs once on mount
 
   // ✅ NEW: Handle Stripe payment success redirect
   useEffect(() => {
