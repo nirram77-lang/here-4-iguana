@@ -121,7 +121,8 @@ END:VCARD`
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 2px 6px;
+      padding: 8px 10px;
+      margin-top: 6px;
     }
     
     /* כרטיס ביקור */
@@ -335,6 +336,7 @@ END:VCARD`
     
     <!-- TOP: שמאל=פרטים, ימין=מקום -->
     <div class="top-row">
+      <div class="venue-tag">Archie Bar - Ashkelon 📍</div>
       <div class="contact-card">
         <img src="${vCardQrUrl}" alt="QR">
         <div class="contact-info">
@@ -345,7 +347,6 @@ END:VCARD`
           <div class="contact-hint">סרוק להוספת איש קשר</div>
         </div>
       </div>
-      <div class="venue-tag">Archie Bar - Ashkelon 📍</div>
     </div>
     
     <!-- CENTER -->
@@ -365,17 +366,17 @@ END:VCARD`
       <div class="realtime-btn">✨ הכרויות בזמן אמת <div class="dot"></div></div>
     </div>
     
-    <!-- QR CODES -->
+    <!-- QR CODES: 1 שמאל, 2 ימין -->
     <div class="qr-row">
-      <div class="qr-box">
-        <div class="qr-num">1</div>
-        <img src="${appQrUrl}" alt="App">
-        <div class="qr-text">📱 הורד את האפליקציה</div>
-      </div>
       <div class="qr-box">
         <div class="qr-num">2</div>
         <img src="${venueQrApi}" alt="Venue">
         <div class="qr-text">📍 סרוק כאן להצטרפות</div>
+      </div>
+      <div class="qr-box">
+        <div class="qr-num">1</div>
+        <img src="${appQrUrl}" alt="App">
+        <div class="qr-text">📱 הורד את האפליקציה</div>
       </div>
     </div>
     
@@ -445,7 +446,8 @@ END:VCARD`
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 2px 6px;
+      padding: 8px 10px;
+      margin-top: 6px;
     }
     
     .venue-tag {
@@ -651,9 +653,8 @@ END:VCARD`
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
-    <!-- TOP: Left=Venue, Right=Contact -->
+    <!-- TOP: Left=Contact, Right=Venue -->
     <div class="top-row">
-      <div class="venue-tag">📍 ${venue.displayName || venue.name}</div>
       <div class="contact-card">
         <img src="${vCardQrUrl}" alt="QR">
         <div class="contact-info">
@@ -664,6 +665,7 @@ END:VCARD`
           <div class="contact-hint">Scan to save contact</div>
         </div>
       </div>
+      <div class="venue-tag">${venue.displayName || venue.name} 📍</div>
     </div>
     
     <!-- CENTER -->
