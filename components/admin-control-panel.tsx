@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { 
   Ticket, Users, MapPin, Trash2, RefreshCw, Plus, 
   CheckCircle, XCircle, Clock, Download, Search,
-  AlertTriangle, Gift, Calendar, TrendingUp, BarChart3, Eye
+  AlertTriangle, Gift, Calendar, TrendingUp, BarChart3, Eye, QrCode
 } from 'lucide-react'
 import { 
   getAnalyticsSummary, 
@@ -718,6 +719,13 @@ export default function AdminControlPanel() {
                   <RefreshCw className="w-4 h-4 inline mr-2" />
                   Refresh Stats
                 </button>
+                <Link
+                  href="/admin/super/stickers"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <QrCode className="w-4 h-4" />
+                  🖨️ Sticker Generator
+                </Link>
               </div>
             </div>
           </div>
