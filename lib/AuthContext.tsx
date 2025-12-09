@@ -116,10 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout
   }
 
-  // ✅ Show nothing while initializing (very brief)
-  if (initializing) {
-    return null
-  }
+  // ✅ REMOVED: No more null return during initializing
+  // The HTML splash screen handles the loading state now
 
   return (
     <AuthContext.Provider value={value}>

@@ -25,13 +25,13 @@ export default function SplashScreen({
     if (!showButtons) {
       const timer = setTimeout(() => {
         onComplete()
-      }, 1500)
+      }, 800)  // ✅ Reduced from 1500ms - HTML splash already showed
       return () => clearTimeout(timer)
     } else {
       // Show buttons after initial animation
       const timer = setTimeout(() => {
         setShowContent(true)
-      }, 800)
+      }, 500)  // ✅ Reduced from 800ms
       return () => clearTimeout(timer)
     }
   }, [onComplete, showButtons])

@@ -1,5 +1,5 @@
 // I4IGUANA Service Worker
-const CACHE_NAME = 'i4iguana-v3'
+const CACHE_NAME = 'i4iguana-v4'
 const urlsToCache = [
   '/',
   '/manifest.json',

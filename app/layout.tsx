@@ -13,7 +13,7 @@ const GA_MEASUREMENT_ID = 'G-5BZR9TWG9N'
 const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7'
 
 // App Version - increment this to force cache clear on all users
-const APP_VERSION = '2.1.0'
+const APP_VERSION = '2.2.0'
 
 export const metadata: Metadata = {
   title: 'I4IGUANA - Meet Now',
@@ -219,6 +219,109 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={inter.className} style={{ overscrollBehavior: 'none', overscrollBehaviorY: 'none' }}>
+        {/* ✅ CRITICAL: HTML Splash Screen - Shows IMMEDIATELY before React loads */}
+        <div 
+          id="html-splash" 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'linear-gradient(to bottom, #1a4d3e, #0d2920, #051410)',
+          }}
+        >
+          {/* Iguana Radar Image */}
+          <img 
+            src="/iguana-radar.jpg" 
+            alt="I4IGUANA"
+            style={{
+              width: '256px',
+              height: '176px',
+              objectFit: 'cover',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(74, 222, 128, 0.4)',
+            }}
+          />
+          
+          {/* App Name */}
+          <h1 style={{
+            marginTop: '40px',
+            fontSize: '36px',
+            fontWeight: 'bold',
+            color: 'white',
+            letterSpacing: '0.1em',
+          }}>
+            I4IGUANA
+          </h1>
+          
+          {/* Tagline */}
+          <p style={{
+            marginTop: '12px',
+            fontSize: '18px',
+            color: '#4ade80',
+            fontWeight: '500',
+          }}>
+            Meet Now
+          </p>
+          
+          {/* Loading Dots */}
+          <div style={{
+            position: 'absolute',
+            bottom: '64px',
+            display: 'flex',
+            gap: '8px',
+          }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: '#4ade80',
+              animation: 'pulse 0.8s ease-in-out infinite',
+            }}></div>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: '#4ade80',
+              animation: 'pulse 0.8s ease-in-out infinite 0.15s',
+            }}></div>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: '#4ade80',
+              animation: 'pulse 0.8s ease-in-out infinite 0.3s',
+            }}></div>
+          </div>
+          
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes pulse {
+              0%, 100% { opacity: 0.4; transform: scale(1); }
+              50% { opacity: 1; transform: scale(1.4); }
+            }
+          `}} />
+        </div>
+        
+        {/* Script to hide HTML splash when React is ready */}
+        <Script id="hide-html-splash" strategy="afterInteractive">
+          {`
+            // Hide HTML splash after a short delay to let React take over
+            setTimeout(function() {
+              var splash = document.getElementById('html-splash');
+              if (splash) {
+                splash.style.transition = 'opacity 0.3s ease-out';
+                splash.style.opacity = '0';
+                setTimeout(function() {
+                  splash.style.display = 'none';
+                }, 300);
+              }
+            }, 500);
+          `}
+        </Script>
+        
         <AuthProvider>
           {children}
         </AuthProvider>
