@@ -707,7 +707,98 @@ export default function Page() {
       }
       
       // User exists → check if we need to navigate
-      // Skip if already on home/match/notifications/profile/chat/scan OR phone-verification
+      // ✅ CRITICAL FIX: ALWAYS check deleted status FIRST - before ANY other logic!
+      // This MUST run before checking localStorage or any cached values!
+      
+      // ✅ ANTI-RACE-CONDITION: Check if we're already handling a deleted account
+      const isHandlingDeleted = localStorage.getItem('i4iguana_handling_deleted')
+      if (isHandlingDeleted === 'true') {
+        console.log('🔄 Already handling deleted account - waiting...')
+        // We're already in process of handling a deleted account
+        // Don't interfere - just check if we should stay on phone-verification
+        if (currentScreen === 'phone-verification') {
+          console.log('   ✅ Already on phone-verification, staying here')
+          return
+        }
+        // Clear the flag after 5 seconds in case something went wrong
+        setTimeout(() => {
+          localStorage.removeItem('i4iguana_handling_deleted')
+        }, 5000)
+        return
+      }
+      
+      // ✅ STEP 1: Get profile and check deleted status IMMEDIATELY
+      let profile: any = null
+      try {
+        profile = await getUserProfile(user.uid)
+        
+        // ✅ CRITICAL: If account was deleted - FORCE phone verification!
+        if (profile?.deleted === true) {
+          console.log('🗑️ ===== DELETED ACCOUNT DETECTED! =====')
+          console.log('   Setting handling flag to prevent race condition...')
+          
+          // ✅ SET FLAG FIRST to prevent re-entry
+          localStorage.setItem('i4iguana_handling_deleted', 'true')
+          
+          console.log('   Clearing ALL cached data and forcing phone verification...')
+          
+          // ✅ NUCLEAR OPTION: Clear EVERYTHING from localStorage (except handling flag!)
+          const keysToRemove = [
+            'hasScannedQR',
+            'pendingCheckIn', 
+            'i4iguana_phone_verified',
+            `notificationModalShown_${user.uid}`,
+            `oneSignalLinked_${user.uid}`,
+            'i4iguana_checkin',
+            'lastVenueId',
+            'force_notification_setup'
+          ]
+          keysToRemove.forEach(key => localStorage.removeItem(key))
+          sessionStorage.clear()
+          
+          console.log('   ✅ All localStorage cleared')
+          
+          // ✅ Reset user profile for fresh start
+          const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+          const { db } = await import('@/lib/firebase')
+          await updateDoc(doc(db, 'users', user.uid), { 
+            deleted: false, 
+            onboardingComplete: false,
+            phoneVerified: false,
+            phoneVerifiedAt: null,
+            phoneNumber: null,
+            isAvailable: true,
+            swipedRight: [],
+            swipedLeft: [],
+            matches: [],
+            // ✅ CRITICAL: Also clear photos to prevent wasDefinitelyVerified bypass!
+            photos: [],
+            name: null,
+            bio: ''
+          })
+          console.log('   ✅ User profile reset in Firebase')
+          
+          // ✅ FORCE phone verification - NO EXCEPTIONS!
+          console.log('   ✅ Redirecting to phone-verification...')
+          setCurrentScreen("phone-verification")
+          
+          // ✅ Clear the handling flag after navigation is done
+          setTimeout(() => {
+            localStorage.removeItem('i4iguana_handling_deleted')
+            console.log('   ✅ Cleared handling_deleted flag')
+          }, 3000)
+          
+          return
+        }
+      } catch (profileError) {
+        console.error('⚠️ Error checking profile:', profileError)
+        // If we can't check profile, go to phone verification as safe default
+        localStorage.removeItem('i4iguana_handling_deleted')
+        setCurrentScreen("phone-verification")
+        return
+      }
+      
+      // ✅ STEP 2: Now we can safely check if already on app screen
       const appScreens = ["home", "match", "notifications", "profile", "chat", "scan", "phone-verification"]
       if (appScreens.includes(currentScreen)) {
         console.log('✅ Already in app, staying on:', currentScreen)
@@ -724,44 +815,15 @@ export default function Page() {
         }
       }
       
-      // ✅ Check profile with timeout (5 seconds max on mobile)
-      try {
-        const profilePromise = getUserProfile(user.uid)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Profile check timeout')), 5000)
-        )
-        
-        const profile = await Promise.race([profilePromise, timeoutPromise]) as any
-        
-        // ⚡ FIX: Account was deleted - reset and REQUIRE phone verification
-        if (profile?.deleted === true) {
-          console.log('🗑️ Account was deleted → Resetting for re-registration')
-          
-          // Clear any localStorage flags
-          localStorage.removeItem('hasScannedQR')
-          localStorage.removeItem('pendingCheckIn')
-          localStorage.removeItem('i4iguana_phone_verified')
-          sessionStorage.clear()
-          
-          // ✅ Reset deleted flag - user is re-registering
-          const { doc, updateDoc } = await import('firebase/firestore')
-          const { db } = await import('@/lib/firebase')
-          await updateDoc(doc(db, 'users', user.uid), { 
-            deleted: false, 
-            onboardingComplete: false,
-            phoneVerified: false,
-            isAvailable: true,  // ✅ FIX: Reset to visible!
-            // ✅ CRITICAL FIX: Reset swipes for fresh matching!
-            swipedRight: [],
-            swipedLeft: [],
-            matches: []
-          })
-          console.log('✅ Reset deleted flag + swipes - going to phone verification')
-          
-          // ✅ CRITICAL FIX: After delete account, MUST verify phone again!
-          setCurrentScreen("phone-verification")
-          return
-        }
+      // ✅ Use the profile we already loaded above (no need to fetch again!)
+      // The deleted check was already done - if we're here, account is NOT deleted
+      
+      if (!profile) {
+        // Profile doesn't exist - this is a new user, go to phone verification
+        console.log('📱 No profile found → New user → Phone verification required')
+        setCurrentScreen("phone-verification")
+        return
+      }
         
         // ✅ CRITICAL FIX: Check for active match FIRST - before phone verification!
         // This prevents the phone-verification screen from flashing for 1 second
@@ -845,42 +907,8 @@ export default function Page() {
         
         const hasCompletedOnboarding = profile?.onboardingComplete === true
         
-        // ⚡ CRITICAL FIX: Check deleted FIRST - before any other profile checks!
-        if (profile?.deleted === true) {
-          console.log('🗑️ Account was deleted → Resetting for re-registration')
-          
-          // Clear any localStorage flags
-          localStorage.removeItem('hasScannedQR')
-          localStorage.removeItem('pendingCheckIn')
-          localStorage.removeItem('i4iguana_phone_verified')
-          // ✅ CRITICAL: Clear notification modal flags so it shows again!
-          localStorage.removeItem(`notificationModalShown_${user.uid}`)
-          localStorage.removeItem(`oneSignalLinked_${user.uid}`)
-          localStorage.removeItem('i4iguana_checkin')
-          localStorage.removeItem('lastVenueId')
-          // ✅ NEW: Set flag to FORCE notification modal after re-registration
-          localStorage.setItem('force_notification_setup', 'true')
-          sessionStorage.clear()
-          
-          // ✅ Reset deleted flag - user is re-registering
-          const { doc, updateDoc } = await import('firebase/firestore')
-          const { db } = await import('@/lib/firebase')
-          await updateDoc(doc(db, 'users', user.uid), { 
-            deleted: false, 
-            onboardingComplete: false,
-            phoneVerified: false,
-            isAvailable: true,  // ✅ FIX: Reset to visible!
-            // ✅ CRITICAL FIX: Reset swipes for fresh matching!
-            swipedRight: [],
-            swipedLeft: [],
-            matches: []
-          })
-          console.log('✅ Reset deleted flag + swipes - going to phone verification')
-          
-          // ✅ CRITICAL FIX: After delete account, MUST verify phone again!
-          setCurrentScreen("phone-verification")
-          return
-        }
+        // ✅ NOTE: deleted check is already done above (with race-condition protection)
+        // No need to check again here
         
         const hasBasicProfile = profile && profile.photos && profile.photos.length > 0 && (profile.name || profile.displayName)
         
@@ -2403,6 +2431,9 @@ export default function Page() {
             // ✅ CRITICAL: Cache phone verification to prevent refresh bug
             localStorage.setItem('i4iguana_phone_verified', 'true')
             
+            // ✅ CRITICAL: Clear the race-condition flag now that verification is complete
+            localStorage.removeItem('i4iguana_handling_deleted')
+            
             // Check if user needs onboarding
             try {
               const profile = await getUserProfile(user.uid)
@@ -2422,6 +2453,9 @@ export default function Page() {
           }}
           onSkip={async () => {
             console.log('🔧 DEV: Skipping phone verification')
+            
+            // ✅ CRITICAL: Clear the race-condition flag
+            localStorage.removeItem('i4iguana_handling_deleted')
             
             // In dev mode, use fake phone number based on userId
             const devPhoneNumber = `+972DEV${user.uid.slice(-8)}`

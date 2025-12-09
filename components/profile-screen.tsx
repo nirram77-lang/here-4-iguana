@@ -577,6 +577,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       // ✅ FIX: Clear ALL other localStorage and sessionStorage
       localStorage.removeItem('hasScannedQR')
       localStorage.removeItem('pendingCheckIn')
+      localStorage.removeItem('i4iguana_phone_verified')
+      localStorage.removeItem('i4iguana_handling_deleted')  // ✅ Clear race-condition flag
       
       // ✅ NEW: Clear match sound timestamps for all users
       Object.keys(localStorage).forEach(key => {
