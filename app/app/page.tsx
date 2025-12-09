@@ -139,6 +139,9 @@ export default function Page() {
   // ✅ NEW: Track if splash animation completed
   const [splashComplete, setSplashComplete] = useState(false)
   
+  // ✅ NEW: Track background time for splash on return
+  const backgroundTimeRef = useRef<number | null>(null)
+  
   // ✅ NEW: In-App Notification for messages
   const [inAppNotification, setInAppNotification] = useState<{
     isVisible: boolean
@@ -608,6 +611,40 @@ export default function Page() {
     
     return () => unsubscribe()
   }, [user, matchedUser])
+
+  // ✅ NEW: Show splash when returning from background after 30+ minutes
+  useEffect(() => {
+    const BACKGROUND_THRESHOLD = 30 * 60 * 1000 // 30 minutes in milliseconds
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // App going to background - save timestamp
+        backgroundTimeRef.current = Date.now()
+        console.log('📱 App went to background')
+      } else {
+        // App returning to foreground
+        if (backgroundTimeRef.current) {
+          const timeInBackground = Date.now() - backgroundTimeRef.current
+          console.log(`📱 App returned from background after ${Math.round(timeInBackground / 1000 / 60)} minutes`)
+          
+          if (timeInBackground >= BACKGROUND_THRESHOLD) {
+            // Been in background for 30+ minutes - show splash
+            console.log('🚀 Showing splash after long background period')
+            setSplashComplete(false)
+            setCurrentScreen("splash")
+          }
+          
+          backgroundTimeRef.current = null
+        }
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   // ✅ OPTIMIZED: Handle auth state changes with timeout
   useEffect(() => {
