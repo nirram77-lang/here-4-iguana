@@ -47,6 +47,7 @@ export default function StickerGeneratorPage() {
     const venueQrUrl = `https://i4iguana-app.vercel.app/checkin/${venue.id}`
     const appQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://i4iguana-app.vercel.app&color=0d2920'
     const venueQrApi = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(venueQrUrl)}&color=0d2920`
+    const iguanaRadarImg = 'https://i4iguana-app.vercel.app/iguana-radar.jpg'
     
     const vCardData = `BEGIN:VCARD
 VERSION:3.0
@@ -58,278 +59,269 @@ EMAIL:nir@i4iguana.com
 URL:https://i4iguana.com
 END:VCARD`
     const vCardQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(vCardData)}&color=0d2920`
-    
-    // תמונת האיגואנה עם פסי הרדאר
-    const iguanaRadarImg = 'https://i4iguana-app.vercel.app/iguana-radar.jpg'
-    
+
+    // ═══════════════════════════════════════════════════════════════
+    // HEBREW VERSION - בדיוק כמו המקור
+    // ═══════════════════════════════════════════════════════════════
     if (lang === 'hebrew') {
       return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>I4IGUANA Sticker</title>
+  <title>I4IGUANA - מדבקה</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap');
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
       font-family: 'Heebo', sans-serif;
-      background: #e5e5e5;
+      background: #e0e0e0;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 15px;
     }
     
     .sticker {
       width: 20cm;
       height: 20cm;
-      background: #fff;
-      border-radius: 20px;
+      background: white;
+      border-radius: 18px;
       position: relative;
       display: flex;
       flex-direction: column;
-      padding: 12px;
+      justify-content: space-between;
+      padding: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     
-    /* מסגרת ירוקה */
     .sticker::before {
       content: '';
       position: absolute;
       inset: 0;
       border: 4px solid #4ade80;
-      border-radius: 20px;
+      border-radius: 18px;
       pointer-events: none;
     }
     
-    /* פינות */
     .corner {
       position: absolute;
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 14px; left: 14px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
-    .corner-tr { top: 14px; right: 14px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
-    .corner-bl { bottom: 14px; left: 14px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
-    .corner-br { bottom: 14px; right: 14px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
-    
-    /* חלק עליון */
+    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+
+    /* === TOP ROW === */
     .top-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 8px 16px;
+      padding: 4px 8px;
     }
     
-    /* כרטיס ביקור - שמאל */
-    .business-card {
+    /* כרטיס ביקור - שמאל (ב-RTL מופיע ימין ויזואלית) */
+    .contact-card {
       display: flex;
       align-items: center;
       gap: 8px;
       border: 2px solid #4ade80;
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 8px 10px;
-      background: #fff;
+      background: white;
     }
     
-    .business-card .qr {
-      width: 50px;
-      height: 50px;
+    .contact-card img {
+      width: 48px;
+      height: 48px;
       border-radius: 4px;
     }
     
-    .business-card .info {
+    .contact-info {
       text-align: right;
-      font-size: 10px;
-      color: #333;
     }
     
-    .business-card .name {
-      font-size: 12px;
+    .contact-name {
+      font-size: 13px;
       font-weight: 700;
       color: #0d2920;
     }
     
-    .business-card .title {
-      font-size: 9px;
+    .contact-title {
+      font-size: 10px;
       color: #4ade80;
       font-weight: 600;
     }
     
-    .business-card .contact {
+    .contact-detail {
       font-size: 9px;
       color: #555;
       line-height: 1.4;
     }
     
-    .business-card .label {
+    .contact-hint {
       font-size: 7px;
       color: #999;
       margin-top: 2px;
     }
     
-    /* תג מקום - ימין */
+    /* תג מקום - ימין (ב-RTL מופיע שמאל ויזואלית) */
     .venue-tag {
       border: 2px solid #4ade80;
-      border-radius: 20px;
-      padding: 8px 16px;
-      background: #fff;
-      font-size: 12px;
+      border-radius: 18px;
+      padding: 8px 14px;
+      background: white;
+      font-size: 13px;
       font-weight: 600;
       color: #166534;
     }
-    
-    /* לוגו מרכזי */
-    .logo-area {
-      flex: 1;
+
+    /* === CENTER LOGO === */
+    .center-area {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 10px 0;
+      padding: 8px 0;
     }
     
-    .iguana-circle {
-      width: 180px;
-      height: 180px;
+    .logo-circle {
+      width: 160px;
+      height: 160px;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #fff;
+      background: white;
     }
     
-    .iguana-box {
-      width: 150px;
-      height: 150px;
-      border-radius: 16px;
+    .logo-inner {
+      width: 130px;
+      height: 130px;
+      border-radius: 14px;
       overflow: hidden;
     }
     
-    .iguana-box img {
+    .logo-inner img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
     
-    .app-title {
-      font-size: 32px;
+    .brand-name {
+      font-size: 30px;
       font-weight: 900;
       color: #0d2920;
-      margin-top: 8px;
+      margin-top: 6px;
       letter-spacing: 2px;
     }
     
-    .app-title span {
+    .brand-name span {
       color: #4ade80;
     }
-    
-    /* טאגליין */
+
+    /* === TAGLINE === */
     .tagline-area {
       text-align: center;
-      padding: 5px 0;
+      padding: 4px 0;
     }
     
-    .main-tag {
-      font-size: 26px;
+    .main-slogan {
+      font-size: 24px;
       font-weight: 900;
       color: #0d2920;
     }
     
-    .main-tag .green {
+    .main-slogan .green {
       color: #4ade80;
     }
     
-    .sub-tag {
-      font-size: 13px;
+    .sub-slogan {
+      font-size: 12px;
       color: #666;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     
-    .badge {
+    .realtime-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-size: 12px;
+      padding: 7px 18px;
+      border-radius: 18px;
+      font-size: 11px;
       font-weight: 700;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     
-    .badge .dot {
-      width: 8px;
-      height: 8px;
+    .realtime-btn .dot {
+      width: 7px;
+      height: 7px;
       background: #0d2920;
       border-radius: 50%;
     }
-    
-    /* QR קודים */
+
+    /* === QR CODES === */
     .qr-row {
       display: flex;
       justify-content: center;
-      gap: 24px;
-      padding: 12px 0;
+      gap: 20px;
+      padding: 8px 0;
     }
     
-    .qr-item {
+    .qr-box {
       text-align: center;
-      background: #f9f9f9;
+      background: #f8f8f8;
       padding: 10px;
-      border-radius: 14px;
+      border-radius: 12px;
       border: 2px solid #eee;
     }
     
-    .qr-item .step {
-      width: 24px;
-      height: 24px;
+    .qr-num {
+      width: 22px;
+      height: 22px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      color: #fff;
-      font-size: 14px;
+      color: white;
+      font-size: 13px;
       font-weight: 800;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -20px auto 6px;
+      margin: -18px auto 5px;
     }
     
-    .qr-item img {
-      width: 120px;
-      height: 120px;
-      border-radius: 8px;
+    .qr-box img {
+      width: 110px;
+      height: 110px;
+      border-radius: 6px;
     }
     
-    .qr-item .text {
-      font-size: 11px;
+    .qr-text {
+      font-size: 10px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 6px;
+      margin-top: 5px;
     }
-    
-    /* פוטר */
-    .footer {
+
+    /* === FOOTER === */
+    .footer-text {
       text-align: center;
-      padding: 6px 0;
-      font-size: 10px;
+      font-size: 9px;
       color: #bbb;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
+      padding: 4px 0;
     }
-    
+
     @media print {
-      body { background: #fff; padding: 0; }
-      .sticker { box-shadow: none; }
+      body { background: white; padding: 0; }
+      .sticker { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -340,89 +332,93 @@ END:VCARD`
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
+    <!-- TOP -->
     <div class="top-row">
-      <div class="business-card">
-        <img src="${vCardQrUrl}" class="qr" alt="QR">
-        <div class="info">
-          <div class="name">Nir Ram</div>
-          <div class="title">Founder & CEO</div>
-          <div class="contact">052-265-3170</div>
-          <div class="contact">nir@i4iguana.com</div>
-          <div class="label">סרוק להוספת איש קשר</div>
+      <div class="contact-card">
+        <img src="${vCardQrUrl}" alt="QR">
+        <div class="contact-info">
+          <div class="contact-name">Nir Ram</div>
+          <div class="contact-title">Founder & CEO</div>
+          <div class="contact-detail">052-265-3170</div>
+          <div class="contact-detail">nir@i4iguana.com</div>
+          <div class="contact-hint">סרוק להוספת איש קשר</div>
         </div>
       </div>
       <div class="venue-tag">Archie Bar - Ashkelon 📍</div>
     </div>
     
-    <div class="logo-area">
-      <div class="iguana-circle">
-        <div class="iguana-box">
+    <!-- CENTER -->
+    <div class="center-area">
+      <div class="logo-circle">
+        <div class="logo-inner">
           <img src="${iguanaRadarImg}" alt="I4IGUANA">
         </div>
       </div>
-      <div class="app-title"><span>I4</span>IGUANA</div>
+      <div class="brand-name"><span>I4</span>IGUANA</div>
     </div>
     
+    <!-- TAGLINE -->
     <div class="tagline-area">
-      <div class="main-tag">היא <span class="green">מחליטה</span> ראשונה!</div>
-      <div class="sub-tag">מצאו מישהו כאן, עכשיו.</div>
-      <div class="badge">✨ הכרויות בזמן אמת <div class="dot"></div></div>
+      <div class="main-slogan">היא <span class="green">מחליטה</span> ראשונה!</div>
+      <div class="sub-slogan">מצאו מישהו כאן, עכשיו.</div>
+      <div class="realtime-btn">✨ הכרויות בזמן אמת <div class="dot"></div></div>
     </div>
     
+    <!-- QR CODES -->
     <div class="qr-row">
-      <div class="qr-item">
-        <div class="step">1</div>
-        <img src="${appQrUrl}" alt="Download">
-        <div class="text">📱 הורד את האפליקציה</div>
+      <div class="qr-box">
+        <div class="qr-num">1</div>
+        <img src="${appQrUrl}" alt="App">
+        <div class="qr-text">📱 הורד את האפליקציה</div>
       </div>
-      <div class="qr-item">
-        <div class="step">2</div>
-        <img src="${venueQrApi}" alt="Check-in">
-        <div class="text">📍 סרוק כאן להצטרפות</div>
+      <div class="qr-box">
+        <div class="qr-num">2</div>
+        <img src="${venueQrApi}" alt="Venue">
+        <div class="qr-text">📍 סרוק כאן להצטרפות</div>
       </div>
     </div>
     
-    <div class="footer">Dating App for Real Meetings</div>
+    <!-- FOOTER -->
+    <div class="footer-text">Dating App for Real Meetings</div>
   </div>
 </body>
 </html>`
     }
-    
-    // English version
+
+    // ═══════════════════════════════════════════════════════════════
+    // ENGLISH VERSION
+    // ═══════════════════════════════════════════════════════════════
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>I4IGUANA Sticker</title>
+  <title>I4IGUANA - Sticker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
       font-family: 'Inter', sans-serif;
-      background: #e5e5e5;
+      background: #e0e0e0;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 15px;
     }
     
     .sticker {
       width: 20cm;
       height: 20cm;
-      background: #fff;
-      border-radius: 20px;
+      background: white;
+      border-radius: 18px;
       position: relative;
       display: flex;
       flex-direction: column;
-      padding: 12px;
+      justify-content: space-between;
+      padding: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     
     .sticker::before {
@@ -430,223 +426,219 @@ END:VCARD`
       position: absolute;
       inset: 0;
       border: 4px solid #4ade80;
-      border-radius: 20px;
+      border-radius: 18px;
       pointer-events: none;
     }
     
     .corner {
       position: absolute;
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 14px; left: 14px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
-    .corner-tr { top: 14px; right: 14px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
-    .corner-bl { bottom: 14px; left: 14px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
-    .corner-br { bottom: 14px; right: 14px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
-    
+    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+
     .top-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 8px 16px;
+      padding: 4px 8px;
     }
     
     .venue-tag {
       border: 2px solid #4ade80;
-      border-radius: 20px;
-      padding: 8px 16px;
-      background: #fff;
-      font-size: 12px;
+      border-radius: 18px;
+      padding: 8px 14px;
+      background: white;
+      font-size: 13px;
       font-weight: 600;
       color: #166534;
     }
     
-    .business-card {
+    .contact-card {
       display: flex;
       align-items: center;
       gap: 8px;
       border: 2px solid #4ade80;
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 8px 10px;
-      background: #fff;
+      background: white;
     }
     
-    .business-card .qr {
-      width: 50px;
-      height: 50px;
+    .contact-card img {
+      width: 48px;
+      height: 48px;
       border-radius: 4px;
     }
     
-    .business-card .info {
+    .contact-info {
       text-align: left;
-      font-size: 10px;
-      color: #333;
     }
     
-    .business-card .name {
-      font-size: 12px;
+    .contact-name {
+      font-size: 13px;
       font-weight: 700;
       color: #0d2920;
     }
     
-    .business-card .title {
-      font-size: 9px;
+    .contact-title {
+      font-size: 10px;
       color: #4ade80;
       font-weight: 600;
     }
     
-    .business-card .contact {
+    .contact-detail {
       font-size: 9px;
       color: #555;
       line-height: 1.4;
     }
     
-    .business-card .label {
+    .contact-hint {
       font-size: 7px;
       color: #999;
       margin-top: 2px;
     }
-    
-    .logo-area {
-      flex: 1;
+
+    .center-area {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 10px 0;
+      padding: 8px 0;
     }
     
-    .iguana-circle {
-      width: 180px;
-      height: 180px;
+    .logo-circle {
+      width: 160px;
+      height: 160px;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #fff;
+      background: white;
     }
     
-    .iguana-box {
-      width: 150px;
-      height: 150px;
-      border-radius: 16px;
+    .logo-inner {
+      width: 130px;
+      height: 130px;
+      border-radius: 14px;
       overflow: hidden;
     }
     
-    .iguana-box img {
+    .logo-inner img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
     
-    .app-title {
-      font-size: 32px;
+    .brand-name {
+      font-size: 30px;
       font-weight: 900;
       color: #0d2920;
-      margin-top: 8px;
+      margin-top: 6px;
       letter-spacing: 2px;
     }
     
-    .app-title span {
+    .brand-name span {
       color: #4ade80;
     }
-    
+
     .tagline-area {
       text-align: center;
-      padding: 5px 0;
+      padding: 4px 0;
     }
     
-    .main-tag {
-      font-size: 26px;
+    .main-slogan {
+      font-size: 24px;
       font-weight: 900;
       color: #0d2920;
     }
     
-    .main-tag .green {
+    .main-slogan .green {
       color: #4ade80;
     }
     
-    .sub-tag {
-      font-size: 13px;
+    .sub-slogan {
+      font-size: 12px;
       color: #666;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     
-    .badge {
+    .realtime-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-size: 12px;
+      padding: 7px 18px;
+      border-radius: 18px;
+      font-size: 11px;
       font-weight: 700;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     
-    .badge .dot {
-      width: 8px;
-      height: 8px;
+    .realtime-btn .dot {
+      width: 7px;
+      height: 7px;
       background: #0d2920;
       border-radius: 50%;
     }
-    
+
     .qr-row {
       display: flex;
       justify-content: center;
-      gap: 24px;
-      padding: 12px 0;
+      gap: 20px;
+      padding: 8px 0;
     }
     
-    .qr-item {
+    .qr-box {
       text-align: center;
-      background: #f9f9f9;
+      background: #f8f8f8;
       padding: 10px;
-      border-radius: 14px;
+      border-radius: 12px;
       border: 2px solid #eee;
     }
     
-    .qr-item .step {
-      width: 24px;
-      height: 24px;
+    .qr-num {
+      width: 22px;
+      height: 22px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      color: #fff;
-      font-size: 14px;
+      color: white;
+      font-size: 13px;
       font-weight: 800;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -20px auto 6px;
+      margin: -18px auto 5px;
     }
     
-    .qr-item img {
-      width: 120px;
-      height: 120px;
-      border-radius: 8px;
+    .qr-box img {
+      width: 110px;
+      height: 110px;
+      border-radius: 6px;
     }
     
-    .qr-item .text {
-      font-size: 11px;
+    .qr-text {
+      font-size: 10px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 6px;
+      margin-top: 5px;
     }
-    
-    .footer {
+
+    .footer-text {
       text-align: center;
-      padding: 6px 0;
-      font-size: 10px;
+      font-size: 9px;
       color: #bbb;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
+      padding: 4px 0;
     }
-    
+
     @media print {
-      body { background: #fff; padding: 0; }
-      .sticker { box-shadow: none; }
+      body { background: white; padding: 0; }
+      .sticker { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -657,49 +649,54 @@ END:VCARD`
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
+    <!-- TOP -->
     <div class="top-row">
       <div class="venue-tag">📍 ${venue.displayName || venue.name}</div>
-      <div class="business-card">
-        <img src="${vCardQrUrl}" class="qr" alt="QR">
-        <div class="info">
-          <div class="name">Nir Ram</div>
-          <div class="title">Founder & CEO</div>
-          <div class="contact">052-265-3170</div>
-          <div class="contact">nir@i4iguana.com</div>
-          <div class="label">Scan to save contact</div>
+      <div class="contact-card">
+        <img src="${vCardQrUrl}" alt="QR">
+        <div class="contact-info">
+          <div class="contact-name">Nir Ram</div>
+          <div class="contact-title">Founder & CEO</div>
+          <div class="contact-detail">052-265-3170</div>
+          <div class="contact-detail">nir@i4iguana.com</div>
+          <div class="contact-hint">Scan to save contact</div>
         </div>
       </div>
     </div>
     
-    <div class="logo-area">
-      <div class="iguana-circle">
-        <div class="iguana-box">
+    <!-- CENTER -->
+    <div class="center-area">
+      <div class="logo-circle">
+        <div class="logo-inner">
           <img src="${iguanaRadarImg}" alt="I4IGUANA">
         </div>
       </div>
-      <div class="app-title"><span>I4</span>IGUANA</div>
+      <div class="brand-name"><span>I4</span>IGUANA</div>
     </div>
     
+    <!-- TAGLINE -->
     <div class="tagline-area">
-      <div class="main-tag"><span class="green">She Decides</span> First!</div>
-      <div class="sub-tag">Find someone here, right now.</div>
-      <div class="badge">✨ Real-time Dating <div class="dot"></div></div>
+      <div class="main-slogan"><span class="green">She Decides</span> First!</div>
+      <div class="sub-slogan">Find someone here, right now.</div>
+      <div class="realtime-btn">✨ Real-time Dating <div class="dot"></div></div>
     </div>
     
+    <!-- QR CODES -->
     <div class="qr-row">
-      <div class="qr-item">
-        <div class="step">1</div>
-        <img src="${appQrUrl}" alt="Download">
-        <div class="text">📱 Download the App</div>
+      <div class="qr-box">
+        <div class="qr-num">1</div>
+        <img src="${appQrUrl}" alt="App">
+        <div class="qr-text">📱 Download the App</div>
       </div>
-      <div class="qr-item">
-        <div class="step">2</div>
-        <img src="${venueQrApi}" alt="Check-in">
-        <div class="text">📍 Scan to Check In</div>
+      <div class="qr-box">
+        <div class="qr-num">2</div>
+        <img src="${venueQrApi}" alt="Venue">
+        <div class="qr-text">📍 Scan to Check In</div>
       </div>
     </div>
     
-    <div class="footer">Dating App for Real Meetings</div>
+    <!-- FOOTER -->
+    <div class="footer-text">Dating App for Real Meetings</div>
   </div>
 </body>
 </html>`
@@ -736,8 +733,7 @@ END:VCARD`
     <div className="min-h-screen bg-gradient-to-b from-[#0d2920] to-[#1a4d3e] p-4 md:p-8">
       <div className="max-w-6xl mx-auto mb-8">
         <Link href="/admin/super/control" className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-4">
-          <ArrowLeft className="w-5 h-5" />
-          Back to Control Panel
+          <ArrowLeft className="w-5 h-5" /> Back to Control Panel
         </Link>
         <div className="flex items-center gap-3">
           <div className="p-3 bg-[#4ade80]/20 rounded-xl">
@@ -754,8 +750,7 @@ END:VCARD`
         <div className="space-y-6">
           <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-[#4ade80]" />
-              Select Venue
+              <Building2 className="w-5 h-5 text-[#4ade80]" /> Select Venue
             </h2>
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -778,19 +773,18 @@ END:VCARD`
 
           <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#4ade80]" />
-              Language
+              <Sparkles className="w-5 h-5 text-[#4ade80]" /> Language
             </h2>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setLanguage('hebrew')}
-                className={`px-4 py-3 rounded-xl font-bold ${language === 'hebrew' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-[#0d2920] text-white/60 border border-[#4ade80]/30'}`}
+                className={`px-4 py-3 rounded-xl font-bold transition-all ${language === 'hebrew' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-[#0d2920] text-white/60 border border-[#4ade80]/30'}`}
               >
                 🇮🇱 עברית
               </button>
               <button
                 onClick={() => setLanguage('english')}
-                className={`px-4 py-3 rounded-xl font-bold ${language === 'english' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-[#0d2920] text-white/60 border border-[#4ade80]/30'}`}
+                className={`px-4 py-3 rounded-xl font-bold transition-all ${language === 'english' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-[#0d2920] text-white/60 border border-[#4ade80]/30'}`}
               >
                 🇺🇸 English
               </button>
@@ -805,16 +799,14 @@ END:VCARD`
                 disabled={!selectedVenue}
                 className="w-full flex items-center justify-center gap-2 bg-[#4ade80] hover:bg-[#3bc970] disabled:bg-gray-600 text-[#0d2920] font-bold py-3 px-4 rounded-xl"
               >
-                <Printer className="w-5 h-5" />
-                Print Sticker
+                <Printer className="w-5 h-5" /> Print Sticker
               </button>
               <button
                 onClick={handleDownload}
                 disabled={!selectedVenue}
                 className="w-full flex items-center justify-center gap-2 bg-[#0d2920] disabled:bg-gray-600 text-white/80 font-bold py-3 px-4 rounded-xl border border-[#4ade80]/30"
               >
-                <Download className="w-5 h-5" />
-                Download HTML
+                <Download className="w-5 h-5" /> Download HTML
               </button>
             </div>
             <p className="text-white/40 text-sm mt-4 text-center">Sticker size: 20×20 cm</p>
