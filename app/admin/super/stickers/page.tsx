@@ -61,7 +61,7 @@ END:VCARD`
     const vCardQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(vCardData)}&color=0d2920`
 
     // ═══════════════════════════════════════════════════════════════
-    // HEBREW VERSION - בדיוק כמו המקור
+    // HEBREW VERSION - מלוטש ומדויק
     // ═══════════════════════════════════════════════════════════════
     if (lang === 'hebrew') {
       return `<!DOCTYPE html>
@@ -81,7 +81,7 @@ END:VCARD`
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 15px;
+      padding: 10px;
     }
     
     .sticker {
@@ -92,8 +92,7 @@ END:VCARD`
       position: relative;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      padding: 14px;
+      padding: 12px 14px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     
@@ -122,23 +121,23 @@ END:VCARD`
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 4px 8px;
+      padding: 2px 6px;
     }
     
-    /* כרטיס ביקור - שמאל (ב-RTL מופיע ימין ויזואלית) */
+    /* כרטיס ביקור */
     .contact-card {
       display: flex;
       align-items: center;
       gap: 8px;
       border: 2px solid #4ade80;
       border-radius: 10px;
-      padding: 8px 10px;
+      padding: 6px 8px;
       background: white;
     }
     
     .contact-card img {
-      width: 48px;
-      height: 48px;
+      width: 52px;
+      height: 52px;
       border-radius: 4px;
     }
     
@@ -161,16 +160,16 @@ END:VCARD`
     .contact-detail {
       font-size: 9px;
       color: #555;
-      line-height: 1.4;
+      line-height: 1.3;
     }
     
     .contact-hint {
       font-size: 7px;
       color: #999;
-      margin-top: 2px;
+      margin-top: 1px;
     }
     
-    /* תג מקום - ימין (ב-RTL מופיע שמאל ויזואלית) */
+    /* תג מקום */
     .venue-tag {
       border: 2px solid #4ade80;
       border-radius: 18px;
@@ -183,15 +182,17 @@ END:VCARD`
 
     /* === CENTER LOGO === */
     .center-area {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 8px 0;
+      justify-content: center;
+      padding: 5px 0;
     }
     
     .logo-circle {
-      width: 160px;
-      height: 160px;
+      width: 210px;
+      height: 210px;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
@@ -201,9 +202,9 @@ END:VCARD`
     }
     
     .logo-inner {
-      width: 130px;
-      height: 130px;
-      border-radius: 14px;
+      width: 175px;
+      height: 175px;
+      border-radius: 16px;
       overflow: hidden;
     }
     
@@ -214,10 +215,10 @@ END:VCARD`
     }
     
     .brand-name {
-      font-size: 30px;
+      font-size: 34px;
       font-weight: 900;
       color: #0d2920;
-      margin-top: 6px;
+      margin-top: 8px;
       letter-spacing: 2px;
     }
     
@@ -228,11 +229,11 @@ END:VCARD`
     /* === TAGLINE === */
     .tagline-area {
       text-align: center;
-      padding: 4px 0;
+      padding: 5px 0;
     }
     
     .main-slogan {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 900;
       color: #0d2920;
     }
@@ -242,9 +243,9 @@ END:VCARD`
     }
     
     .sub-slogan {
-      font-size: 12px;
+      font-size: 14px;
       color: #666;
-      margin-top: 3px;
+      margin-top: 2px;
     }
     
     .realtime-btn {
@@ -253,16 +254,16 @@ END:VCARD`
       gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 7px 18px;
-      border-radius: 18px;
-      font-size: 11px;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 700;
       margin-top: 8px;
     }
     
     .realtime-btn .dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       background: #0d2920;
       border-radius: 50%;
     }
@@ -271,49 +272,49 @@ END:VCARD`
     .qr-row {
       display: flex;
       justify-content: center;
-      gap: 20px;
-      padding: 8px 0;
+      gap: 24px;
+      padding: 10px 0;
     }
     
     .qr-box {
       text-align: center;
       background: #f8f8f8;
-      padding: 10px;
-      border-radius: 12px;
+      padding: 12px;
+      border-radius: 14px;
       border: 2px solid #eee;
     }
     
     .qr-num {
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: white;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 800;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -18px auto 5px;
+      margin: -20px auto 6px;
     }
     
     .qr-box img {
-      width: 110px;
-      height: 110px;
+      width: 120px;
+      height: 120px;
       border-radius: 6px;
     }
     
     .qr-text {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 5px;
+      margin-top: 6px;
     }
 
     /* === FOOTER === */
     .footer-text {
       text-align: center;
-      font-size: 9px;
+      font-size: 10px;
       color: #bbb;
       letter-spacing: 0.5px;
       padding: 4px 0;
@@ -332,7 +333,7 @@ END:VCARD`
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
-    <!-- TOP -->
+    <!-- TOP: שמאל=פרטים, ימין=מקום -->
     <div class="top-row">
       <div class="contact-card">
         <img src="${vCardQrUrl}" alt="QR">
@@ -386,7 +387,7 @@ END:VCARD`
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // ENGLISH VERSION
+    // ENGLISH VERSION - מלוטש ומדויק
     // ═══════════════════════════════════════════════════════════════
     return `<!DOCTYPE html>
 <html lang="en">
@@ -405,7 +406,7 @@ END:VCARD`
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 15px;
+      padding: 10px;
     }
     
     .sticker {
@@ -416,8 +417,7 @@ END:VCARD`
       position: relative;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      padding: 14px;
+      padding: 12px 14px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     
@@ -445,7 +445,7 @@ END:VCARD`
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 4px 8px;
+      padding: 2px 6px;
     }
     
     .venue-tag {
@@ -464,13 +464,13 @@ END:VCARD`
       gap: 8px;
       border: 2px solid #4ade80;
       border-radius: 10px;
-      padding: 8px 10px;
+      padding: 6px 8px;
       background: white;
     }
     
     .contact-card img {
-      width: 48px;
-      height: 48px;
+      width: 52px;
+      height: 52px;
       border-radius: 4px;
     }
     
@@ -493,25 +493,27 @@ END:VCARD`
     .contact-detail {
       font-size: 9px;
       color: #555;
-      line-height: 1.4;
+      line-height: 1.3;
     }
     
     .contact-hint {
       font-size: 7px;
       color: #999;
-      margin-top: 2px;
+      margin-top: 1px;
     }
 
     .center-area {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 8px 0;
+      justify-content: center;
+      padding: 5px 0;
     }
     
     .logo-circle {
-      width: 160px;
-      height: 160px;
+      width: 210px;
+      height: 210px;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
@@ -521,9 +523,9 @@ END:VCARD`
     }
     
     .logo-inner {
-      width: 130px;
-      height: 130px;
-      border-radius: 14px;
+      width: 175px;
+      height: 175px;
+      border-radius: 16px;
       overflow: hidden;
     }
     
@@ -534,10 +536,10 @@ END:VCARD`
     }
     
     .brand-name {
-      font-size: 30px;
+      font-size: 34px;
       font-weight: 900;
       color: #0d2920;
-      margin-top: 6px;
+      margin-top: 8px;
       letter-spacing: 2px;
     }
     
@@ -547,11 +549,11 @@ END:VCARD`
 
     .tagline-area {
       text-align: center;
-      padding: 4px 0;
+      padding: 5px 0;
     }
     
     .main-slogan {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 900;
       color: #0d2920;
     }
@@ -561,9 +563,9 @@ END:VCARD`
     }
     
     .sub-slogan {
-      font-size: 12px;
+      font-size: 14px;
       color: #666;
-      margin-top: 3px;
+      margin-top: 2px;
     }
     
     .realtime-btn {
@@ -572,16 +574,16 @@ END:VCARD`
       gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 7px 18px;
-      border-radius: 18px;
-      font-size: 11px;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 700;
       margin-top: 8px;
     }
     
     .realtime-btn .dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       background: #0d2920;
       border-radius: 50%;
     }
@@ -589,48 +591,48 @@ END:VCARD`
     .qr-row {
       display: flex;
       justify-content: center;
-      gap: 20px;
-      padding: 8px 0;
+      gap: 24px;
+      padding: 10px 0;
     }
     
     .qr-box {
       text-align: center;
       background: #f8f8f8;
-      padding: 10px;
-      border-radius: 12px;
+      padding: 12px;
+      border-radius: 14px;
       border: 2px solid #eee;
     }
     
     .qr-num {
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: white;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 800;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -18px auto 5px;
+      margin: -20px auto 6px;
     }
     
     .qr-box img {
-      width: 110px;
-      height: 110px;
+      width: 120px;
+      height: 120px;
       border-radius: 6px;
     }
     
     .qr-text {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 5px;
+      margin-top: 6px;
     }
 
     .footer-text {
       text-align: center;
-      font-size: 9px;
+      font-size: 10px;
       color: #bbb;
       letter-spacing: 0.5px;
       padding: 4px 0;
@@ -649,7 +651,7 @@ END:VCARD`
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
-    <!-- TOP -->
+    <!-- TOP: Left=Venue, Right=Contact -->
     <div class="top-row">
       <div class="venue-tag">📍 ${venue.displayName || venue.name}</div>
       <div class="contact-card">
