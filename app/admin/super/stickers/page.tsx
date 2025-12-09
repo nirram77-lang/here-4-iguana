@@ -10,9 +10,6 @@ interface Venue {
   id: string
   name: string
   displayName?: string
-  qrCodeUrl?: string
-  address?: string
-  city?: string
 }
 
 export default function StickerGeneratorPage() {
@@ -27,19 +24,14 @@ export default function StickerGeneratorPage() {
       try {
         const venuesSnapshot = await getDocs(collection(db, 'venues'))
         const venuesList: Venue[] = []
-        
         venuesSnapshot.forEach((doc) => {
           const data = doc.data()
           venuesList.push({
             id: doc.id,
             name: data.name || doc.id,
             displayName: data.displayName || data.name || doc.id,
-            qrCodeUrl: data.qrCodeUrl || '',
-            address: data.address || '',
-            city: data.city || ''
           })
         })
-        
         venuesList.sort((a, b) => (a.displayName || a.name).localeCompare(b.displayName || b.name))
         setVenues(venuesList)
       } catch (error) {
@@ -48,7 +40,6 @@ export default function StickerGeneratorPage() {
         setLoading(false)
       }
     }
-
     loadVenues()
   }, [])
 
@@ -56,7 +47,20 @@ export default function StickerGeneratorPage() {
     const venueQrUrl = `https://i4iguana-app.vercel.app/checkin/${venue.id}`
     const appQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://i4iguana-app.vercel.app&color=0d2920'
     const venueQrApi = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(venueQrUrl)}&color=0d2920`
-    const iguanaImg = 'https://i4iguana-app.vercel.app/notification-icon-192.png'
+    
+    const vCardData = `BEGIN:VCARD
+VERSION:3.0
+FN:Nir Ram
+ORG:I4IGUANA
+TITLE:Founder & CEO
+TEL:052-265-3170
+EMAIL:nir@i4iguana.com
+URL:https://i4iguana.com
+END:VCARD`
+    const vCardQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(vCardData)}&color=0d2920`
+    
+    // תמונת האיגואנה עם פסי הרדאר
+    const iguanaRadarImg = 'https://i4iguana-app.vercel.app/iguana-radar.jpg'
     
     if (lang === 'hebrew') {
       return `<!DOCTYPE html>
@@ -64,305 +68,268 @@ export default function StickerGeneratorPage() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>I4IGUANA - ${venue.displayName || venue.name}</title>
+  <title>I4IGUANA Sticker</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
       font-family: 'Heebo', sans-serif;
-      background: #f0f0f0;
+      background: #e5e5e5;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
       padding: 20px;
     }
     
     .sticker {
       width: 20cm;
       height: 20cm;
-      background: white;
+      background: #fff;
       border-radius: 20px;
-      padding: 0.6cm;
+      position: relative;
       display: flex;
       flex-direction: column;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      padding: 12px;
     }
     
+    /* מסגרת ירוקה */
     .sticker::before {
       content: '';
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
+      inset: 0;
       border: 4px solid #4ade80;
       border-radius: 20px;
       pointer-events: none;
     }
     
+    /* פינות */
     .corner {
       position: absolute;
-      width: 35px;
-      height: 35px;
+      width: 32px;
+      height: 32px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
-    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
-    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
-    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+    .corner-tl { top: 14px; left: 14px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+    .corner-tr { top: 14px; right: 14px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
+    .corner-bl { bottom: 14px; left: 14px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
+    .corner-br { bottom: 14px; right: 14px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
     
-    .top-section {
+    /* חלק עליון */
+    .top-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.3cm 0.5cm;
-      z-index: 1;
+      padding: 8px 16px;
     }
     
+    /* כרטיס ביקור - שמאל */
     .business-card {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       border: 2px solid #4ade80;
-      border-radius: 14px;
-      padding: 10px 14px;
-      background: white;
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: #fff;
     }
     
-    .business-icon {
+    .business-card .qr {
       width: 50px;
       height: 50px;
-      border-radius: 10px;
-      object-fit: contain;
+      border-radius: 4px;
     }
     
-    .business-info {
+    .business-card .info {
       text-align: right;
+      font-size: 10px;
+      color: #333;
     }
     
-    .business-name {
-      font-size: 14px;
+    .business-card .name {
+      font-size: 12px;
       font-weight: 700;
       color: #0d2920;
     }
     
-    .business-title {
-      font-size: 11px;
+    .business-card .title {
+      font-size: 9px;
       color: #4ade80;
       font-weight: 600;
     }
     
-    .business-contact {
-      font-size: 10px;
+    .business-card .contact {
+      font-size: 9px;
       color: #555;
+      line-height: 1.4;
+    }
+    
+    .business-card .label {
+      font-size: 7px;
+      color: #999;
       margin-top: 2px;
     }
     
-    .venue-badge {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background: white;
+    /* תג מקום - ימין */
+    .venue-tag {
       border: 2px solid #4ade80;
       border-radius: 20px;
-      padding: 10px 16px;
-    }
-    
-    .venue-badge span {
-      font-size: 14px;
+      padding: 8px 16px;
+      background: #fff;
+      font-size: 12px;
       font-weight: 600;
       color: #166534;
     }
     
-    .logo-section {
-      text-align: center;
-      margin: 0.4cm 0 0.3cm;
-      z-index: 1;
+    /* לוגו מרכזי */
+    .logo-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 0;
     }
     
-    .iguana-container {
-      width: 6.5cm;
-      height: 6.5cm;
+    .iguana-circle {
+      width: 180px;
+      height: 180px;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto;
-      background: white;
+      background: #fff;
     }
     
-    .iguana-inner {
-      width: 5.5cm;
-      height: 5.5cm;
-      border-radius: 14px;
-      border: 2px solid #4ade80;
-      background: linear-gradient(135deg, #0a1f18, #143028);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
+    .iguana-box {
+      width: 150px;
+      height: 150px;
+      border-radius: 16px;
       overflow: hidden;
     }
     
-    .iguana-inner::before {
-      content: '(((';
-      position: absolute;
-      left: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 24px;
-      font-weight: 300;
-      color: #4ade80;
-      opacity: 0.8;
-      letter-spacing: -4px;
+    .iguana-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     
-    .iguana-inner::after {
-      content: ')))';
-      position: absolute;
-      right: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 24px;
-      font-weight: 300;
-      color: #4ade80;
-      opacity: 0.8;
-      letter-spacing: -4px;
-    }
-    
-    .iguana-img {
-      width: 4cm;
-      height: 4cm;
-      object-fit: contain;
-      position: relative;
-      z-index: 1;
-    }
-    
-    .app-name {
-      font-size: 36px;
+    .app-title {
+      font-size: 32px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 3px;
-      margin-top: 0.25cm;
+      margin-top: 8px;
+      letter-spacing: 2px;
     }
     
-    .app-name span {
+    .app-title span {
       color: #4ade80;
     }
     
-    .tagline-section {
+    /* טאגליין */
+    .tagline-area {
       text-align: center;
-      margin: 0.2cm 0;
-      z-index: 1;
+      padding: 5px 0;
     }
     
-    .main-tagline {
-      font-size: 30px;
+    .main-tag {
+      font-size: 26px;
       font-weight: 900;
       color: #0d2920;
     }
     
-    .main-tagline .highlight {
+    .main-tag .green {
       color: #4ade80;
     }
     
-    .sub-tagline {
-      font-size: 14px;
+    .sub-tag {
+      font-size: 13px;
       color: #666;
       margin-top: 4px;
     }
     
-    .realtime-badge {
+    .badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
       padding: 8px 20px;
-      border-radius: 25px;
-      font-size: 13px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 700;
       margin-top: 10px;
     }
     
-    .pulse-dot {
+    .badge .dot {
       width: 8px;
       height: 8px;
       background: #0d2920;
       border-radius: 50%;
-      animation: pulse 2s infinite;
     }
     
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
-    }
-    
-    .qr-section {
+    /* QR קודים */
+    .qr-row {
       display: flex;
       justify-content: center;
-      gap: 1cm;
-      margin: 0.35cm 0;
-      z-index: 1;
+      gap: 24px;
+      padding: 12px 0;
     }
     
-    .qr-box {
+    .qr-item {
       text-align: center;
-      background: #fafafa;
-      padding: 0.35cm;
-      border-radius: 16px;
-      border: 2px solid #e5e5e5;
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 14px;
+      border: 2px solid #eee;
     }
     
-    .qr-box img {
-      width: 4cm;
-      height: 4cm;
-      border-radius: 10px;
-    }
-    
-    .qr-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: #0d2920;
-      margin-top: 0.15cm;
-    }
-    
-    .qr-step {
-      font-size: 16px;
-      font-weight: 800;
-      color: white;
+    .qr-item .step {
+      width: 24px;
+      height: 24px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 28px;
-      height: 28px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.35cm auto 0.1cm;
-      box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
+      margin: -20px auto 6px;
     }
     
+    .qr-item img {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+    }
+    
+    .qr-item .text {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0d2920;
+      margin-top: 6px;
+    }
+    
+    /* פוטר */
     .footer {
       text-align: center;
-      margin-top: auto;
-      padding-bottom: 0.2cm;
-      z-index: 1;
-    }
-    
-    .footer-text {
-      font-size: 11px;
-      color: #aaa;
+      padding: 6px 0;
+      font-size: 10px;
+      color: #bbb;
       letter-spacing: 1px;
     }
     
     @media print {
-      body { background: white; padding: 0; }
-      .sticker { 
-        box-shadow: none; 
-        -webkit-print-color-adjust: exact; 
-        print-color-adjust: exact; 
-      }
+      body { background: #fff; padding: 0; }
+      .sticker { box-shadow: none; }
     }
   </style>
 </head>
@@ -373,97 +340,95 @@ export default function StickerGeneratorPage() {
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
-    <div class="top-section">
+    <div class="top-row">
       <div class="business-card">
-        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
-        <div class="business-info">
-          <div class="business-name">Nir Ram</div>
-          <div class="business-title">Founder & CEO</div>
-          <div class="business-contact">📞 052-265-3170</div>
-          <div class="business-contact">✉️ nir@i4iguana.com</div>
-          <div class="business-contact">🌐 i4iguana.com</div>
+        <img src="${vCardQrUrl}" class="qr" alt="QR">
+        <div class="info">
+          <div class="name">Nir Ram</div>
+          <div class="title">Founder & CEO</div>
+          <div class="contact">052-265-3170</div>
+          <div class="contact">nir@i4iguana.com</div>
+          <div class="label">סרוק להוספת איש קשר</div>
         </div>
       </div>
-      <div class="venue-badge">
-        <span>Archie Bar - Ashkelon 📍</span>
-      </div>
+      <div class="venue-tag">Archie Bar - Ashkelon 📍</div>
     </div>
     
-    <div class="logo-section">
-      <div class="iguana-container">
-        <div class="iguana-inner">
-          <img src="${iguanaImg}" alt="I4IGUANA" class="iguana-img">
+    <div class="logo-area">
+      <div class="iguana-circle">
+        <div class="iguana-box">
+          <img src="${iguanaRadarImg}" alt="I4IGUANA">
         </div>
       </div>
-      <div class="app-name"><span>I4</span>IGUANA</div>
+      <div class="app-title"><span>I4</span>IGUANA</div>
     </div>
     
-    <div class="tagline-section">
-      <div class="main-tagline">היא <span class="highlight">מחליטה</span> ראשונה!</div>
-      <div class="sub-tagline">מצאו מישהו כאן, עכשיו.</div>
-      <div class="realtime-badge">
-        ✨ זיווגים בזמן אמת
-        <div class="pulse-dot"></div>
+    <div class="tagline-area">
+      <div class="main-tag">היא <span class="green">מחליטה</span> ראשונה!</div>
+      <div class="sub-tag">מצאו מישהו כאן, עכשיו.</div>
+      <div class="badge">✨ הכרויות בזמן אמת <div class="dot"></div></div>
+    </div>
+    
+    <div class="qr-row">
+      <div class="qr-item">
+        <div class="step">1</div>
+        <img src="${appQrUrl}" alt="Download">
+        <div class="text">📱 הורד את האפליקציה</div>
+      </div>
+      <div class="qr-item">
+        <div class="step">2</div>
+        <img src="${venueQrApi}" alt="Check-in">
+        <div class="text">📍 סרוק כאן להצטרפות</div>
       </div>
     </div>
     
-    <div class="qr-section">
-      <div class="qr-box">
-        <div class="qr-step">1</div>
-        <img src="${appQrUrl}" alt="הורד אפליקציה">
-        <div class="qr-label">📱 הורד את האפליקציה</div>
-      </div>
-      <div class="qr-box">
-        <div class="qr-step">2</div>
-        <img src="${venueQrApi}" alt="צ'ק אין">
-        <div class="qr-label">📍 סרוק כאן להצטרפות</div>
-      </div>
-    </div>
-    
-    <div class="footer">
-      <div class="footer-text">Dating App for Real Meetings</div>
-    </div>
+    <div class="footer">Dating App for Real Meetings</div>
   </div>
 </body>
 </html>`
     }
     
+    // English version
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>I4IGUANA - ${venue.displayName || venue.name}</title>
+  <title>I4IGUANA Sticker</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
       font-family: 'Inter', sans-serif;
-      background: #f0f0f0;
+      background: #e5e5e5;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
       padding: 20px;
     }
     
     .sticker {
       width: 20cm;
       height: 20cm;
-      background: white;
+      background: #fff;
       border-radius: 20px;
-      padding: 0.6cm;
+      position: relative;
       display: flex;
       flex-direction: column;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      padding: 12px;
     }
     
     .sticker::before {
       content: '';
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
+      inset: 0;
       border: 4px solid #4ade80;
       border-radius: 20px;
       pointer-events: none;
@@ -471,267 +436,217 @@ export default function StickerGeneratorPage() {
     
     .corner {
       position: absolute;
-      width: 35px;
-      height: 35px;
+      width: 32px;
+      height: 32px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
-    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
-    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
-    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+    .corner-tl { top: 14px; left: 14px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+    .corner-tr { top: 14px; right: 14px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
+    .corner-bl { bottom: 14px; left: 14px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
+    .corner-br { bottom: 14px; right: 14px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
     
-    .top-section {
+    .top-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.3cm 0.5cm;
-      z-index: 1;
+      padding: 8px 16px;
+    }
+    
+    .venue-tag {
+      border: 2px solid #4ade80;
+      border-radius: 20px;
+      padding: 8px 16px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      color: #166534;
     }
     
     .business-card {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       border: 2px solid #4ade80;
-      border-radius: 14px;
-      padding: 10px 14px;
-      background: white;
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: #fff;
     }
     
-    .business-icon {
+    .business-card .qr {
       width: 50px;
       height: 50px;
-      border-radius: 10px;
-      object-fit: contain;
+      border-radius: 4px;
     }
     
-    .business-info {
+    .business-card .info {
       text-align: left;
+      font-size: 10px;
+      color: #333;
     }
     
-    .business-name {
-      font-size: 14px;
+    .business-card .name {
+      font-size: 12px;
       font-weight: 700;
       color: #0d2920;
     }
     
-    .business-title {
-      font-size: 11px;
+    .business-card .title {
+      font-size: 9px;
       color: #4ade80;
       font-weight: 600;
     }
     
-    .business-contact {
-      font-size: 10px;
+    .business-card .contact {
+      font-size: 9px;
       color: #555;
+      line-height: 1.4;
+    }
+    
+    .business-card .label {
+      font-size: 7px;
+      color: #999;
       margin-top: 2px;
     }
     
-    .venue-badge {
+    .logo-area {
+      flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 4px;
-      background: white;
-      border: 2px solid #4ade80;
-      border-radius: 20px;
-      padding: 10px 16px;
+      justify-content: center;
+      padding: 10px 0;
     }
     
-    .venue-badge span {
-      font-size: 14px;
-      font-weight: 600;
-      color: #166534;
-    }
-    
-    .logo-section {
-      text-align: center;
-      margin: 0.4cm 0 0.3cm;
-      z-index: 1;
-    }
-    
-    .iguana-container {
-      width: 6.5cm;
-      height: 6.5cm;
+    .iguana-circle {
+      width: 180px;
+      height: 180px;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto;
-      background: white;
+      background: #fff;
     }
     
-    .iguana-inner {
-      width: 5.5cm;
-      height: 5.5cm;
-      border-radius: 14px;
-      border: 2px solid #4ade80;
-      background: linear-gradient(135deg, #0a1f18, #143028);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
+    .iguana-box {
+      width: 150px;
+      height: 150px;
+      border-radius: 16px;
       overflow: hidden;
     }
     
-    .iguana-inner::before {
-      content: '(((';
-      position: absolute;
-      left: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 24px;
-      font-weight: 300;
-      color: #4ade80;
-      opacity: 0.8;
-      letter-spacing: -4px;
+    .iguana-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     
-    .iguana-inner::after {
-      content: ')))';
-      position: absolute;
-      right: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 24px;
-      font-weight: 300;
-      color: #4ade80;
-      opacity: 0.8;
-      letter-spacing: -4px;
-    }
-    
-    .iguana-img {
-      width: 4cm;
-      height: 4cm;
-      object-fit: contain;
-      position: relative;
-      z-index: 1;
-    }
-    
-    .app-name {
-      font-size: 36px;
+    .app-title {
+      font-size: 32px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 3px;
-      margin-top: 0.25cm;
+      margin-top: 8px;
+      letter-spacing: 2px;
     }
     
-    .app-name span {
+    .app-title span {
       color: #4ade80;
     }
     
-    .tagline-section {
+    .tagline-area {
       text-align: center;
-      margin: 0.2cm 0;
-      z-index: 1;
+      padding: 5px 0;
     }
     
-    .main-tagline {
-      font-size: 30px;
+    .main-tag {
+      font-size: 26px;
       font-weight: 900;
       color: #0d2920;
     }
     
-    .main-tagline .highlight {
+    .main-tag .green {
       color: #4ade80;
     }
     
-    .sub-tagline {
-      font-size: 14px;
+    .sub-tag {
+      font-size: 13px;
       color: #666;
       margin-top: 4px;
     }
     
-    .realtime-badge {
+    .badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
       padding: 8px 20px;
-      border-radius: 25px;
-      font-size: 13px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 700;
       margin-top: 10px;
     }
     
-    .pulse-dot {
+    .badge .dot {
       width: 8px;
       height: 8px;
       background: #0d2920;
       border-radius: 50%;
-      animation: pulse 2s infinite;
     }
     
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
-    }
-    
-    .qr-section {
+    .qr-row {
       display: flex;
       justify-content: center;
-      gap: 1cm;
-      margin: 0.35cm 0;
-      z-index: 1;
+      gap: 24px;
+      padding: 12px 0;
     }
     
-    .qr-box {
+    .qr-item {
       text-align: center;
-      background: #fafafa;
-      padding: 0.35cm;
-      border-radius: 16px;
-      border: 2px solid #e5e5e5;
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 14px;
+      border: 2px solid #eee;
     }
     
-    .qr-box img {
-      width: 4cm;
-      height: 4cm;
-      border-radius: 10px;
-    }
-    
-    .qr-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: #0d2920;
-      margin-top: 0.15cm;
-    }
-    
-    .qr-step {
-      font-size: 16px;
-      font-weight: 800;
-      color: white;
+    .qr-item .step {
+      width: 24px;
+      height: 24px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 28px;
-      height: 28px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.35cm auto 0.1cm;
-      box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
+      margin: -20px auto 6px;
+    }
+    
+    .qr-item img {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+    }
+    
+    .qr-item .text {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0d2920;
+      margin-top: 6px;
     }
     
     .footer {
       text-align: center;
-      margin-top: auto;
-      padding-bottom: 0.2cm;
-      z-index: 1;
-    }
-    
-    .footer-text {
-      font-size: 11px;
-      color: #aaa;
+      padding: 6px 0;
+      font-size: 10px;
+      color: #bbb;
       letter-spacing: 1px;
     }
     
     @media print {
-      body { background: white; padding: 0; }
-      .sticker { 
-        box-shadow: none; 
-        -webkit-print-color-adjust: exact; 
-        print-color-adjust: exact; 
-      }
+      body { background: #fff; padding: 0; }
+      .sticker { box-shadow: none; }
     }
   </style>
 </head>
@@ -742,56 +657,49 @@ export default function StickerGeneratorPage() {
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
-    <div class="top-section">
+    <div class="top-row">
+      <div class="venue-tag">📍 ${venue.displayName || venue.name}</div>
       <div class="business-card">
-        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
-        <div class="business-info">
-          <div class="business-name">Nir Ram</div>
-          <div class="business-title">Founder & CEO</div>
-          <div class="business-contact">📞 052-265-3170</div>
-          <div class="business-contact">✉️ nir@i4iguana.com</div>
-          <div class="business-contact">🌐 i4iguana.com</div>
+        <img src="${vCardQrUrl}" class="qr" alt="QR">
+        <div class="info">
+          <div class="name">Nir Ram</div>
+          <div class="title">Founder & CEO</div>
+          <div class="contact">052-265-3170</div>
+          <div class="contact">nir@i4iguana.com</div>
+          <div class="label">Scan to save contact</div>
         </div>
       </div>
-      <div class="venue-badge">
-        <span>📍 ${venue.displayName || venue.name}</span>
-      </div>
     </div>
     
-    <div class="logo-section">
-      <div class="iguana-container">
-        <div class="iguana-inner">
-          <img src="${iguanaImg}" alt="I4IGUANA" class="iguana-img">
+    <div class="logo-area">
+      <div class="iguana-circle">
+        <div class="iguana-box">
+          <img src="${iguanaRadarImg}" alt="I4IGUANA">
         </div>
       </div>
-      <div class="app-name"><span>I4</span>IGUANA</div>
+      <div class="app-title"><span>I4</span>IGUANA</div>
     </div>
     
-    <div class="tagline-section">
-      <div class="main-tagline"><span class="highlight">She Decides</span> First!</div>
-      <div class="sub-tagline">Find someone here, right now.</div>
-      <div class="realtime-badge">
-        ✨ Real-time Matching
-        <div class="pulse-dot"></div>
-      </div>
+    <div class="tagline-area">
+      <div class="main-tag"><span class="green">She Decides</span> First!</div>
+      <div class="sub-tag">Find someone here, right now.</div>
+      <div class="badge">✨ Real-time Dating <div class="dot"></div></div>
     </div>
     
-    <div class="qr-section">
-      <div class="qr-box">
-        <div class="qr-step">1</div>
-        <img src="${appQrUrl}" alt="Download App">
-        <div class="qr-label">📱 Download the App</div>
+    <div class="qr-row">
+      <div class="qr-item">
+        <div class="step">1</div>
+        <img src="${appQrUrl}" alt="Download">
+        <div class="text">📱 Download the App</div>
       </div>
-      <div class="qr-box">
-        <div class="qr-step">2</div>
+      <div class="qr-item">
+        <div class="step">2</div>
         <img src="${venueQrApi}" alt="Check-in">
-        <div class="qr-label">📍 Scan to Check In</div>
+        <div class="text">📍 Scan to Check In</div>
       </div>
     </div>
     
-    <div class="footer">
-      <div class="footer-text">Dating App for Real Meetings</div>
-    </div>
+    <div class="footer">Dating App for Real Meetings</div>
   </div>
 </body>
 </html>`
@@ -827,14 +735,10 @@ export default function StickerGeneratorPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0d2920] to-[#1a4d3e] p-4 md:p-8">
       <div className="max-w-6xl mx-auto mb-8">
-        <Link 
-          href="/admin/super/control"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-4"
-        >
+        <Link href="/admin/super/control" className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-4">
           <ArrowLeft className="w-5 h-5" />
           Back to Control Panel
         </Link>
-        
         <div className="flex items-center gap-3">
           <div className="p-3 bg-[#4ade80]/20 rounded-xl">
             <QrCode className="w-8 h-8 text-[#4ade80]" />
@@ -853,7 +757,6 @@ export default function StickerGeneratorPage() {
               <Building2 className="w-5 h-5 text-[#4ade80]" />
               Select Venue
             </h2>
-            
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="w-6 h-6 text-[#4ade80] animate-spin" />
@@ -862,17 +765,14 @@ export default function StickerGeneratorPage() {
               <select
                 value={selectedVenue}
                 onChange={(e) => setSelectedVenue(e.target.value)}
-                className="w-full bg-[#0d2920] border border-[#4ade80]/30 rounded-xl px-4 py-3 text-white focus:border-[#4ade80] focus:outline-none"
+                className="w-full bg-[#0d2920] border border-[#4ade80]/30 rounded-xl px-4 py-3 text-white"
               >
                 <option value="">Choose a venue...</option>
                 {venues.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.displayName || venue.name}
-                  </option>
+                  <option key={venue.id} value={venue.id}>{venue.displayName || venue.name}</option>
                 ))}
               </select>
             )}
-            
             <p className="text-white/40 text-sm mt-2">{venues.length} venues available</p>
           </div>
 
@@ -881,25 +781,16 @@ export default function StickerGeneratorPage() {
               <Sparkles className="w-5 h-5 text-[#4ade80]" />
               Language
             </h2>
-            
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setLanguage('hebrew')}
-                className={`px-4 py-3 rounded-xl font-bold transition-all ${
-                  language === 'hebrew'
-                    ? 'bg-[#4ade80] text-[#0d2920]'
-                    : 'bg-[#0d2920] text-white/60 hover:text-white border border-[#4ade80]/30'
-                }`}
+                className={`px-4 py-3 rounded-xl font-bold ${language === 'hebrew' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-[#0d2920] text-white/60 border border-[#4ade80]/30'}`}
               >
                 🇮🇱 עברית
               </button>
               <button
                 onClick={() => setLanguage('english')}
-                className={`px-4 py-3 rounded-xl font-bold transition-all ${
-                  language === 'english'
-                    ? 'bg-[#4ade80] text-[#0d2920]'
-                    : 'bg-[#0d2920] text-white/60 hover:text-white border border-[#4ade80]/30'
-                }`}
+                className={`px-4 py-3 rounded-xl font-bold ${language === 'english' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-[#0d2920] text-white/60 border border-[#4ade80]/30'}`}
               >
                 🇺🇸 English
               </button>
@@ -908,44 +799,33 @@ export default function StickerGeneratorPage() {
 
           <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
             <h2 className="text-lg font-bold text-white mb-4">Actions</h2>
-            
             <div className="space-y-3">
               <button
                 onClick={handlePrint}
                 disabled={!selectedVenue}
-                className="w-full flex items-center justify-center gap-2 bg-[#4ade80] hover:bg-[#3bc970] disabled:bg-gray-600 disabled:cursor-not-allowed text-[#0d2920] font-bold py-3 px-4 rounded-xl transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-[#4ade80] hover:bg-[#3bc970] disabled:bg-gray-600 text-[#0d2920] font-bold py-3 px-4 rounded-xl"
               >
                 <Printer className="w-5 h-5" />
                 Print Sticker
               </button>
-              
               <button
                 onClick={handleDownload}
                 disabled={!selectedVenue}
-                className="w-full flex items-center justify-center gap-2 bg-[#0d2920] hover:bg-[#0d2920]/80 disabled:bg-gray-600 disabled:cursor-not-allowed text-white/80 font-bold py-3 px-4 rounded-xl border border-[#4ade80]/30 transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-[#0d2920] disabled:bg-gray-600 text-white/80 font-bold py-3 px-4 rounded-xl border border-[#4ade80]/30"
               >
                 <Download className="w-5 h-5" />
                 Download HTML
               </button>
             </div>
-            
-            <p className="text-white/40 text-sm mt-4 text-center">
-              Sticker size: 20×20 cm
-            </p>
+            <p className="text-white/40 text-sm mt-4 text-center">Sticker size: 20×20 cm</p>
           </div>
         </div>
 
         <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
           <h2 className="text-lg font-bold text-white mb-4">Preview</h2>
-          
           {selectedVenueData ? (
             <div className="bg-gray-200 rounded-xl overflow-hidden aspect-square">
-              <iframe
-                ref={iframeRef}
-                srcDoc={previewHTML}
-                className="w-full h-full border-0"
-                title="Sticker Preview"
-              />
+              <iframe ref={iframeRef} srcDoc={previewHTML} className="w-full h-full border-0" title="Preview" />
             </div>
           ) : (
             <div className="bg-[#0d2920] rounded-xl aspect-square flex items-center justify-center">
