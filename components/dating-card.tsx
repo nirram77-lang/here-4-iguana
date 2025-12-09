@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { motion, AnimatePresence, PanInfo } from "framer-motion"
-import { ChevronLeft, ChevronRight, MapPin, Briefcase, GraduationCap, Wine, Cigarette, Ruler, Heart } from "lucide-react"
+import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from "framer-motion"
+import { ChevronLeft, ChevronRight, MapPin, Briefcase, GraduationCap, Wine, Cigarette, Ruler, Heart, X } from "lucide-react"
 
 interface DatingCardProps {
   user: {
@@ -32,7 +32,22 @@ interface DatingCardProps {
 
 export default function DatingCard({ user, onSwipe }: DatingCardProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
-  const [showDetails, setShowDetails] = useState(false)
+  const [exitX, setExitX] = useState(0)
+  const [exitRotation, setExitRotation] = useState(0)
+  const [isExiting, setIsExiting] = useState(false)
+  
+  // ✅ Motion values for Tinder-like swipe
+  const x = useMotionValue(0)
+  
+  // ✅ Card rotation based on drag (Tinder effect!)
+  const rotate = useTransform(x, [-300, 0, 300], [-25, 0, 25])
+  
+  // ✅ Like/Nope indicator opacity based on drag
+  const likeOpacity = useTransform(x, [0, 100, 200], [0, 0.8, 1])
+  const nopeOpacity = useTransform(x, [-200, -100, 0], [1, 0.8, 0])
+  
+  // ✅ Scale effect when dragging
+  const scale = useTransform(x, [-300, 0, 300], [0.95, 1, 0.95])
   
   // Get all photos
   const photos = user.photos?.length ? user.photos : (user.photoURL ? [user.photoURL] : [])
@@ -84,13 +99,25 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
     }
   }
   
-  // ✅ Swipe gesture handling
+  // ✅ Enhanced swipe gesture handling with exit animation
   const handleDragEnd = useCallback((event: any, info: PanInfo) => {
     const threshold = 100
-    if (info.offset.x > threshold) {
-      onSwipe('right')
-    } else if (info.offset.x < -threshold) {
-      onSwipe('left')
+    const velocity = info.velocity.x
+    const offset = info.offset.x
+    
+    // Check if swipe was strong enough (either by distance or velocity)
+    if (offset > threshold || velocity > 500) {
+      // Swipe RIGHT - LIKE! 💚
+      setExitX(500)
+      setExitRotation(30)
+      setIsExiting(true)
+      setTimeout(() => onSwipe('right'), 200)
+    } else if (offset < -threshold || velocity < -500) {
+      // Swipe LEFT - PASS! ❌
+      setExitX(-500)
+      setExitRotation(-30)
+      setIsExiting(true)
+      setTimeout(() => onSwipe('left'), 200)
     }
   }, [onSwipe])
   
@@ -115,12 +142,19 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
 
   return (
     <motion.div
+      style={{ x, rotate, scale }}
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.9}
       onDragEnd={handleDragEnd}
-      className="relative w-[340px] h-[520px] rounded-3xl overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing"
-      style={{ touchAction: 'pan-y' }}
+      animate={isExiting ? { 
+        x: exitX, 
+        rotate: exitRotation,
+        opacity: 0,
+        transition: { duration: 0.3, ease: "easeOut" }
+      } : {}}
+      className="relative w-[340px] h-[520px] rounded-3xl overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing select-none"
+      whileTap={{ cursor: "grabbing" }}
     >
       {/* Photo */}
       <AnimatePresence mode="wait">
@@ -146,6 +180,42 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
           )}
         </motion.div>
       </AnimatePresence>
+      
+      {/* ✅ LIKE Indicator - Hollywood Style Heart! */}
+      <motion.div
+        style={{ opacity: likeOpacity }}
+        className="absolute top-16 left-6 z-30 pointer-events-none"
+      >
+        <motion.div 
+          className="relative"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ repeat: Infinity, duration: 0.8 }}
+        >
+          {/* Glow effect */}
+          <div className="absolute inset-0 blur-xl bg-[#4ade80]/50 rounded-full scale-150" />
+          {/* Heart icon with border */}
+          <div className="relative border-[5px] border-[#4ade80] text-[#4ade80] px-5 py-3 rounded-2xl font-black text-3xl bg-black/30 backdrop-blur-sm flex items-center gap-2 rotate-[-15deg] shadow-[0_0_30px_rgba(74,222,128,0.5)]">
+            <Heart className="w-8 h-8 fill-[#4ade80]" />
+            <span>LIKE</span>
+          </div>
+        </motion.div>
+      </motion.div>
+      
+      {/* ✅ NOPE Indicator - Hollywood Style X! */}
+      <motion.div
+        style={{ opacity: nopeOpacity }}
+        className="absolute top-16 right-6 z-30 pointer-events-none"
+      >
+        <motion.div className="relative">
+          {/* Glow effect */}
+          <div className="absolute inset-0 blur-xl bg-red-500/50 rounded-full scale-150" />
+          {/* X icon with border */}
+          <div className="relative border-[5px] border-red-500 text-red-500 px-5 py-3 rounded-2xl font-black text-3xl bg-black/30 backdrop-blur-sm flex items-center gap-2 rotate-[15deg] shadow-[0_0_30px_rgba(239,68,68,0.5)]">
+            <X className="w-8 h-8 stroke-[3]" />
+            <span>NOPE</span>
+          </div>
+        </motion.div>
+      </motion.div>
       
       {/* Photo navigation dots */}
       {hasMultiplePhotos && (
@@ -307,27 +377,6 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
         </div>
       </div>
       
-      {/* ✅ Swipe indicators */}
-      <motion.div
-        className="absolute top-20 left-6 z-30 rotate-[-20deg]"
-        initial={{ opacity: 0, scale: 0.5 }}
-        whileHover={{ opacity: 0.3, scale: 1 }}
-      >
-        <div className="border-4 border-red-500 text-red-500 px-4 py-2 rounded-lg font-bold text-2xl">
-          NOPE
-        </div>
-      </motion.div>
-      
-      <motion.div
-        className="absolute top-20 right-6 z-30 rotate-[20deg]"
-        initial={{ opacity: 0, scale: 0.5 }}
-        whileHover={{ opacity: 0.3, scale: 1 }}
-      >
-        <div className="border-4 border-[#4ade80] text-[#4ade80] px-4 py-2 rounded-lg font-bold text-2xl">
-          LIKE
-        </div>
-      </motion.div>
-      
       {/* ✅ Photo counter badge */}
       {hasMultiplePhotos && (
         <div className="absolute top-3 right-3 z-20 bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">
@@ -336,6 +385,20 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
           </span>
         </div>
       )}
+      
+      {/* ✅ Swipe hint for new users */}
+      <motion.div
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0 }}
+        transition={{ delay: 3, duration: 1 }}
+        className="absolute bottom-32 left-0 right-0 flex justify-center z-20 pointer-events-none"
+      >
+        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-full">
+          <span className="text-red-400 text-sm">👈 Pass</span>
+          <span className="text-white/50">|</span>
+          <span className="text-[#4ade80] text-sm">Like 👉</span>
+        </div>
+      </motion.div>
     </motion.div>
   )
 }
