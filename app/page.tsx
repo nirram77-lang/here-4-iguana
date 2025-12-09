@@ -274,31 +274,62 @@ export default function LandingPage() {
                 <p className="text-gray-400 mb-4">
                   Add I4IGUANA to your home screen for the best experience. Quick access, instant notifications.
                 </p>
-                {/* Install Button */}
-                <button
-                  id="install-app-btn"
-                  onClick={() => {
-                    // @ts-ignore
-                    if (window.deferredPrompt) {
+                {/* Install Button with Tooltip */}
+                <div className="relative group/install">
+                  <button
+                    id="install-app-btn"
+                    onClick={() => {
                       // @ts-ignore
-                      window.deferredPrompt.prompt()
-                      // @ts-ignore
-                      window.deferredPrompt.userChoice.then((choiceResult: any) => {
+                      if (window.deferredPrompt) {
                         // @ts-ignore
-                        window.deferredPrompt = null
-                      })
-                    } else {
-                      // Fallback: redirect to /app
-                      window.location.href = '/app'
-                    }
-                  }}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Install App
-                </button>
+                        window.deferredPrompt.prompt()
+                        // @ts-ignore
+                        window.deferredPrompt.userChoice.then((choiceResult: any) => {
+                          // @ts-ignore
+                          window.deferredPrompt = null
+                        })
+                      } else {
+                        // Fallback: redirect to /app
+                        window.location.href = '/app'
+                      }
+                    }}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Install App
+                  </button>
+                  
+                  {/* Tooltip - appears on hover */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-72 opacity-0 invisible group-hover/install:opacity-100 group-hover/install:visible transition-all duration-300 z-50">
+                    {/* Arrow */}
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] rotate-45 border-r border-b border-green-500/30"></div>
+                    
+                    {/* Content Box */}
+                    <div className="relative bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] border border-green-500/30 rounded-xl p-4 shadow-2xl shadow-green-500/20">
+                      <div className="absolute inset-0 bg-green-500/5 rounded-xl blur-xl"></div>
+                      
+                      <div className="relative">
+                        <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">
+                          <span>💡</span>
+                          Not seeing install prompt?
+                        </h4>
+                        
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                            <span className="text-green-400">🤖</span>
+                            <span className="text-gray-300">Android: <span className="text-white font-medium">⋮</span> → Install app</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                            <span className="text-blue-400">🍎</span>
+                            <span className="text-gray-300">iPhone: <span className="text-white font-medium">⬆️</span> → Add to Home</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div className="mt-4 flex items-center gap-2 text-green-400">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
