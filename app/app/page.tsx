@@ -193,7 +193,7 @@ export default function Page() {
     'signup': 'welcome',
     'phone-verification': null,  // Don't allow back from phone verification
     'onboarding-welcome': null,  // Don't allow back from welcome
-    'onboarding-name': null,  // Don't allow back from name entry
+    'onboarding-name': 'onboarding-welcome',  // ✅ FIXED: Allow back to welcome
     'onboarding-gender': 'onboarding-name',
     // ✅ "She Decides" - Skip orientation, go directly gender → age
     'onboarding-age': 'onboarding-gender',
@@ -208,12 +208,9 @@ export default function Page() {
     'scan': 'home'
   }
 
-  // ✅ Handle hardware back button press
+  // ✅ Handle hardware back button press - SINGLE useEffect for consistency
   useEffect(() => {
-    // Push initial state
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ screen: currentScreen }, '', '')
-    }
+    if (typeof window === 'undefined') return
 
     const handlePopState = (event: PopStateEvent) => {
       console.log('📱 Hardware back button pressed')
@@ -222,28 +219,23 @@ export default function Page() {
       const previousScreen = screenBackMap[currentScreen]
       
       if (previousScreen) {
-        console.log(`   Navigating to: ${previousScreen}`)
+        console.log(`   ✅ Navigating to: ${previousScreen}`)
         setCurrentScreen(previousScreen)
-        // Push new state to prevent exiting app on next back press
-        window.history.pushState({ screen: previousScreen }, '', '')
       } else {
-        console.log('   No previous screen - staying on current screen')
-        // Prevent app exit by pushing state back
-        window.history.pushState({ screen: currentScreen }, '', '')
+        console.log('   ⛔ No previous screen - staying on current screen')
       }
+      
+      // Always push state to prevent app exit
+      event.preventDefault()
     }
+
+    // Push initial state for this screen
+    window.history.pushState({ screen: currentScreen }, '', '')
 
     window.addEventListener('popstate', handlePopState)
 
     return () => {
       window.removeEventListener('popstate', handlePopState)
-    }
-  }, [currentScreen])
-
-  // ✅ Push state when screen changes (for back button to work correctly)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ screen: currentScreen }, '', '')
     }
   }, [currentScreen])
 

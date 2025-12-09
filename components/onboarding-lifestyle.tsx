@@ -411,9 +411,9 @@ export default function OnboardingLifestyle({
               <div className="relative w-full h-2">
                 {/* Background Track */}
                 <div className="absolute inset-0 bg-white/20 rounded-full"></div>
-                {/* Progress Fill */}
+                {/* Progress Fill - NO transition for smooth dragging */}
                 <div 
-                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-full transition-all duration-100"
+                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-full"
                   style={{ width: `${((displayValue - minValue) / (maxValue - minValue)) * 100}%` }}
                 ></div>
                 {/* Invisible Range Input for Interaction */}
@@ -425,9 +425,9 @@ export default function OnboardingLifestyle({
                   onChange={(e) => handleHeightChange(parseInt(e.target.value))} 
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-                {/* Custom Thumb */}
+                {/* Custom Thumb - NO transition for smooth dragging */}
                 <div 
-                  className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-[#4ade80] rounded-full shadow-lg shadow-[#4ade80]/50 border-2 border-white pointer-events-none transition-all duration-100"
+                  className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-[#4ade80] rounded-full shadow-lg shadow-[#4ade80]/50 border-2 border-white pointer-events-none"
                   style={{ left: `calc(${((displayValue - minValue) / (maxValue - minValue)) * 100}% - 10px)` }}
                 ></div>
               </div>
