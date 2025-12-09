@@ -98,7 +98,8 @@ export default function LandingPage() {
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
               <Link 
                 href="/join"
-                className="relative px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black hover:shadow-lg hover:shadow-green-500/50 transition-all animate-pulse"
+                className="relative px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black hover:shadow-lg hover:shadow-green-500/50 transition-all"
+                style={{ animation: 'subtle-glow 2s ease-in-out infinite' }}
               >
                 <span className="flex items-center gap-2">
                   🏢 Join as Venue
@@ -136,7 +137,8 @@ export default function LandingPage() {
               <Link 
                 href="/join"
                 onClick={() => setMenuOpen(false)}
-                className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black animate-pulse"
+                className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black"
+                style={{ animation: 'subtle-glow 2s ease-in-out infinite' }}
               >
                 🏢 Join as Venue
               </Link>
@@ -669,7 +671,8 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <Link 
               href="/join"
-              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-bold text-xl text-black hover:shadow-2xl hover:shadow-green-500/50 hover:scale-105 transition-all animate-pulse"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-bold text-xl text-black hover:shadow-2xl hover:shadow-green-500/50 hover:scale-105 transition-all"
+              style={{ animation: 'subtle-glow 2s ease-in-out infinite' }}
             >
               <span className="text-2xl">🦎</span>
               <span>הצטרפו עכשיו - חינם!</span>
@@ -885,6 +888,14 @@ export default function LandingPage() {
         }
         html {
           scroll-behavior: smooth;
+        }
+        @keyframes subtle-glow {
+          0%, 100% { 
+            box-shadow: 0 0 5px rgba(74, 222, 128, 0.3);
+          }
+          50% { 
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.6), 0 0 30px rgba(74, 222, 128, 0.3);
+          }
         }
       `}</style>
     </div>
