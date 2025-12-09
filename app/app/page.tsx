@@ -913,9 +913,10 @@ export default function Page() {
         }
       } catch (error: any) {
         console.error('⚠️ Error checking profile:', error.message)
-        // ✅ On timeout or error, assume new user → go to onboarding
-        console.log('🆕 Timeout/Error → WELCOME ONBOARDING (safe default)')
-        setCurrentScreen("onboarding-welcome")
+        // ✅ FIXED: On timeout or error, go to phone-verification (safer default)
+        // This ensures returning users after DELETE go through verification
+        console.log('⚠️ Timeout/Error → PHONE VERIFICATION (safe default)')
+        setCurrentScreen("phone-verification")
       }
     }
 
