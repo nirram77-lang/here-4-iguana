@@ -58,8 +58,20 @@ export default function StickerGeneratorPage() {
     const venueQrApi = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(venueQrUrl)}&color=0d2920`
     const iguanaImg = 'https://i4iguana-app.vercel.app/notification-icon-192.png'
     
+    // vCard QR for business card
+    const vCardData = `BEGIN:VCARD
+VERSION:3.0
+FN:Nir Ram
+ORG:I4IGUANA
+TITLE:Founder & CEO
+TEL;TYPE=CELL:052-265-3170
+EMAIL:nir@i4iguana.com
+URL:https://i4iguana.com
+END:VCARD`
+    const vCardQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(vCardData)}&color=0d2920`
+    
     // ═══════════════════════════════════════════════════════════════════════════
-    // HEBREW VERSION - ORIGINAL DESIGN EXACT
+    // HEBREW VERSION - EXACT ORIGINAL DESIGN
     // ═══════════════════════════════════════════════════════════════════════════
     if (lang === 'hebrew') {
       return `<!DOCTYPE html>
@@ -73,7 +85,7 @@ export default function StickerGeneratorPage() {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Heebo', sans-serif;
-      background: #f5f5f5;
+      background: #f0f0f0;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -82,11 +94,11 @@ export default function StickerGeneratorPage() {
     }
     
     .sticker {
-      width: 20cm;
-      height: 20cm;
+      width: 15cm;
+      height: 21cm;
       background: white;
-      border-radius: 24px;
-      padding: 0.7cm;
+      border-radius: 20px;
+      padding: 0.5cm;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -99,46 +111,45 @@ export default function StickerGeneratorPage() {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
       border: 4px solid #4ade80;
-      border-radius: 24px;
+      border-radius: 20px;
       pointer-events: none;
     }
     
     .corner {
       position: absolute;
-      width: 40px;
-      height: 40px;
+      width: 35px;
+      height: 35px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 15px; left: 15px; border-right: none; border-bottom: none; border-radius: 10px 0 0 0; }
-    .corner-tr { top: 15px; right: 15px; border-left: none; border-bottom: none; border-radius: 0 10px 0 0; }
-    .corner-bl { bottom: 15px; left: 15px; border-right: none; border-top: none; border-radius: 0 0 0 10px; }
-    .corner-br { bottom: 15px; right: 15px; border-left: none; border-top: none; border-radius: 0 0 10px 0; }
+    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
+    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
+    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
     
     /* ═══ TOP SECTION ═══ */
     .top-section {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.2cm 0.4cm;
+      padding: 0.3cm 0.4cm;
       z-index: 1;
     }
     
-    /* Business Card - LEFT in RTL = actually on left side */
+    /* Business Card with QR - LEFT SIDE */
     .business-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      border: 2px solid #4ade80;
-      border-radius: 14px;
-      padding: 10px 14px;
+      gap: 8px;
+      border: 1.5px solid #4ade80;
+      border-radius: 12px;
+      padding: 8px 10px;
       background: white;
     }
     
-    .business-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      object-fit: contain;
+    .business-qr {
+      width: 55px;
+      height: 55px;
+      border-radius: 6px;
     }
     
     .business-info {
@@ -146,51 +157,58 @@ export default function StickerGeneratorPage() {
     }
     
     .business-name {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       color: #0d2920;
     }
     
     .business-title {
-      font-size: 10px;
+      font-size: 9px;
       color: #4ade80;
       font-weight: 600;
     }
     
     .business-contact {
-      font-size: 9px;
-      color: #666;
+      font-size: 8px;
+      color: #555;
       margin-top: 1px;
     }
     
-    /* Venue Badge - RIGHT in RTL */
+    .business-label {
+      font-size: 7px;
+      color: #999;
+      margin-top: 2px;
+    }
+    
+    /* Venue Badge - RIGHT SIDE */
     .venue-badge {
       display: flex;
       align-items: center;
-      gap: 6px;
-      background: #f0fdf4;
-      border: 2px solid #4ade80;
-      border-radius: 25px;
-      padding: 10px 18px;
+      gap: 4px;
+      background: white;
+      border: 1.5px solid #4ade80;
+      border-radius: 20px;
+      padding: 8px 14px;
     }
     
     .venue-badge span {
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 600;
       color: #166534;
     }
     
     /* ═══ LOGO SECTION ═══ */
     .logo-section {
       text-align: center;
-      margin: 0.4cm 0 0.2cm;
+      margin: 0.3cm 0 0.2cm;
       z-index: 1;
+      flex-shrink: 0;
     }
     
     .iguana-container {
-      width: 5.8cm;
-      height: 5.8cm;
-      border: 4px solid #4ade80;
+      width: 5.5cm;
+      height: 5.5cm;
+      border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -200,10 +218,11 @@ export default function StickerGeneratorPage() {
     }
     
     .iguana-inner {
-      width: 4.8cm;
-      height: 4.8cm;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #0d2920, #1a4a3a);
+      width: 4.5cm;
+      height: 4.5cm;
+      border-radius: 12px;
+      border: 2px solid #4ade80;
+      background: linear-gradient(135deg, #0a1f18, #143028);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -214,43 +233,43 @@ export default function StickerGeneratorPage() {
     .iguana-inner::before {
       content: '(((';
       position: absolute;
-      left: 5px;
+      left: 4px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.7;
+      opacity: 0.8;
       letter-spacing: -4px;
     }
     
     .iguana-inner::after {
       content: ')))';
       position: absolute;
-      right: 5px;
+      right: 4px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.7;
+      opacity: 0.8;
       letter-spacing: -4px;
     }
     
     .iguana-img {
-      width: 3.5cm;
-      height: 3.5cm;
+      width: 3.2cm;
+      height: 3.2cm;
       object-fit: contain;
       position: relative;
       z-index: 1;
     }
     
     .app-name {
-      font-size: 34px;
+      font-size: 28px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 3px;
-      margin-top: 0.25cm;
+      letter-spacing: 2px;
+      margin-top: 0.2cm;
     }
     
     .app-name span {
@@ -262,10 +281,11 @@ export default function StickerGeneratorPage() {
       text-align: center;
       margin: 0.15cm 0;
       z-index: 1;
+      flex-shrink: 0;
     }
     
     .main-tagline {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 900;
       color: #0d2920;
     }
@@ -275,27 +295,27 @@ export default function StickerGeneratorPage() {
     }
     
     .sub-tagline {
-      font-size: 14px;
+      font-size: 12px;
       color: #666;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     
     .realtime-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 8px 22px;
-      border-radius: 30px;
-      font-size: 13px;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-size: 11px;
       font-weight: 700;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     
     .pulse-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       background: #0d2920;
       border-radius: 50%;
       animation: pulse 2s infinite;
@@ -306,63 +326,65 @@ export default function StickerGeneratorPage() {
       50% { opacity: 0.5; transform: scale(1.3); }
     }
     
-    /* ═══ QR SECTION - ONLY 2 QR CODES ═══ */
+    /* ═══ QR SECTION ═══ */
     .qr-section {
       display: flex;
       justify-content: center;
-      gap: 1cm;
-      margin: 0.35cm 0;
+      gap: 0.8cm;
+      margin: 0.3cm 0;
       z-index: 1;
+      flex-grow: 1;
+      align-items: center;
     }
     
     .qr-box {
       text-align: center;
       background: #fafafa;
-      padding: 0.35cm;
-      border-radius: 16px;
-      border: 2px solid #e8e8e8;
+      padding: 0.3cm;
+      border-radius: 14px;
+      border: 1.5px solid #e5e5e5;
     }
     
     .qr-box img {
-      width: 3.8cm;
-      height: 3.8cm;
-      border-radius: 10px;
+      width: 4cm;
+      height: 4cm;
+      border-radius: 8px;
     }
     
     .qr-label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 0.15cm;
+      margin-top: 0.12cm;
     }
     
     .qr-step {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 800;
       color: white;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.35cm auto 0.1cm;
-      box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
+      margin: -0.3cm auto 0.08cm;
+      box-shadow: 0 2px 8px rgba(74, 222, 128, 0.4);
     }
     
     /* ═══ FOOTER ═══ */
     .footer {
       text-align: center;
-      margin-top: auto;
-      padding-bottom: 0.15cm;
+      padding: 0.15cm 0;
       z-index: 1;
+      flex-shrink: 0;
     }
     
     .footer-text {
-      font-size: 11px;
+      font-size: 10px;
       color: #aaa;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
     }
     
     @media print {
@@ -382,15 +404,16 @@ export default function StickerGeneratorPage() {
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
-    <!-- TOP: Business Card (left) + Venue (right) in RTL -->
+    <!-- TOP: Business Card (left) + Venue (right) -->
     <div class="top-section">
       <div class="business-card">
-        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
+        <img src="${vCardQrUrl}" alt="Contact QR" class="business-qr">
         <div class="business-info">
           <div class="business-name">Nir Ram</div>
           <div class="business-title">Founder & CEO</div>
           <div class="business-contact">052-265-3170</div>
           <div class="business-contact">nir@i4iguana.com</div>
+          <div class="business-label">סרוק להוספת איש קשר</div>
         </div>
       </div>
       <div class="venue-badge">
@@ -408,17 +431,17 @@ export default function StickerGeneratorPage() {
       <div class="app-name"><span>I4</span>IGUANA</div>
     </div>
     
-    <!-- TAGLINE - "מחליטה" IN GREEN -->
+    <!-- TAGLINE -->
     <div class="tagline-section">
       <div class="main-tagline">היא <span class="highlight">מחליטה</span> ראשונה!</div>
       <div class="sub-tagline">מצאו מישהו כאן, עכשיו.</div>
       <div class="realtime-badge">
-        ✨ הכרויות בזמן אמת
+        ✨ זיווגים בזמן אמת
         <div class="pulse-dot"></div>
       </div>
     </div>
     
-    <!-- QR CODES - ONLY 2 -->
+    <!-- QR CODES -->
     <div class="qr-section">
       <div class="qr-box">
         <div class="qr-step">1</div>
@@ -455,7 +478,7 @@ export default function StickerGeneratorPage() {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif;
-      background: #f5f5f5;
+      background: #f0f0f0;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -464,11 +487,11 @@ export default function StickerGeneratorPage() {
     }
     
     .sticker {
-      width: 20cm;
-      height: 20cm;
+      width: 15cm;
+      height: 21cm;
       background: white;
-      border-radius: 24px;
-      padding: 0.7cm;
+      border-radius: 20px;
+      padding: 0.5cm;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -481,44 +504,43 @@ export default function StickerGeneratorPage() {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
       border: 4px solid #4ade80;
-      border-radius: 24px;
+      border-radius: 20px;
       pointer-events: none;
     }
     
     .corner {
       position: absolute;
-      width: 40px;
-      height: 40px;
+      width: 35px;
+      height: 35px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 15px; left: 15px; border-right: none; border-bottom: none; border-radius: 10px 0 0 0; }
-    .corner-tr { top: 15px; right: 15px; border-left: none; border-bottom: none; border-radius: 0 10px 0 0; }
-    .corner-bl { bottom: 15px; left: 15px; border-right: none; border-top: none; border-radius: 0 0 0 10px; }
-    .corner-br { bottom: 15px; right: 15px; border-left: none; border-top: none; border-radius: 0 0 10px 0; }
+    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
+    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
+    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
     
     .top-section {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.2cm 0.4cm;
+      padding: 0.3cm 0.4cm;
       z-index: 1;
     }
     
     .business-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      border: 2px solid #4ade80;
-      border-radius: 14px;
-      padding: 10px 14px;
+      gap: 8px;
+      border: 1.5px solid #4ade80;
+      border-radius: 12px;
+      padding: 8px 10px;
       background: white;
     }
     
-    .business-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      object-fit: contain;
+    .business-qr {
+      width: 55px;
+      height: 55px;
+      border-radius: 6px;
     }
     
     .business-info {
@@ -526,49 +548,56 @@ export default function StickerGeneratorPage() {
     }
     
     .business-name {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       color: #0d2920;
     }
     
     .business-title {
-      font-size: 10px;
+      font-size: 9px;
       color: #4ade80;
       font-weight: 600;
     }
     
     .business-contact {
-      font-size: 9px;
-      color: #666;
+      font-size: 8px;
+      color: #555;
       margin-top: 1px;
+    }
+    
+    .business-label {
+      font-size: 7px;
+      color: #999;
+      margin-top: 2px;
     }
     
     .venue-badge {
       display: flex;
       align-items: center;
-      gap: 6px;
-      background: #f0fdf4;
-      border: 2px solid #4ade80;
-      border-radius: 25px;
-      padding: 10px 18px;
+      gap: 4px;
+      background: white;
+      border: 1.5px solid #4ade80;
+      border-radius: 20px;
+      padding: 8px 14px;
     }
     
     .venue-badge span {
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 600;
       color: #166534;
     }
     
     .logo-section {
       text-align: center;
-      margin: 0.4cm 0 0.2cm;
+      margin: 0.3cm 0 0.2cm;
       z-index: 1;
+      flex-shrink: 0;
     }
     
     .iguana-container {
-      width: 5.8cm;
-      height: 5.8cm;
-      border: 4px solid #4ade80;
+      width: 5.5cm;
+      height: 5.5cm;
+      border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -578,10 +607,11 @@ export default function StickerGeneratorPage() {
     }
     
     .iguana-inner {
-      width: 4.8cm;
-      height: 4.8cm;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #0d2920, #1a4a3a);
+      width: 4.5cm;
+      height: 4.5cm;
+      border-radius: 12px;
+      border: 2px solid #4ade80;
+      background: linear-gradient(135deg, #0a1f18, #143028);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -592,43 +622,43 @@ export default function StickerGeneratorPage() {
     .iguana-inner::before {
       content: '(((';
       position: absolute;
-      left: 5px;
+      left: 4px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.7;
+      opacity: 0.8;
       letter-spacing: -4px;
     }
     
     .iguana-inner::after {
       content: ')))';
       position: absolute;
-      right: 5px;
+      right: 4px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.7;
+      opacity: 0.8;
       letter-spacing: -4px;
     }
     
     .iguana-img {
-      width: 3.5cm;
-      height: 3.5cm;
+      width: 3.2cm;
+      height: 3.2cm;
       object-fit: contain;
       position: relative;
       z-index: 1;
     }
     
     .app-name {
-      font-size: 34px;
+      font-size: 28px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 3px;
-      margin-top: 0.25cm;
+      letter-spacing: 2px;
+      margin-top: 0.2cm;
     }
     
     .app-name span {
@@ -639,10 +669,11 @@ export default function StickerGeneratorPage() {
       text-align: center;
       margin: 0.15cm 0;
       z-index: 1;
+      flex-shrink: 0;
     }
     
     .main-tagline {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 900;
       color: #0d2920;
     }
@@ -652,27 +683,27 @@ export default function StickerGeneratorPage() {
     }
     
     .sub-tagline {
-      font-size: 14px;
+      font-size: 12px;
       color: #666;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     
     .realtime-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 8px 22px;
-      border-radius: 30px;
-      font-size: 13px;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-size: 11px;
       font-weight: 700;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     
     .pulse-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       background: #0d2920;
       border-radius: 50%;
       animation: pulse 2s infinite;
@@ -686,58 +717,60 @@ export default function StickerGeneratorPage() {
     .qr-section {
       display: flex;
       justify-content: center;
-      gap: 1cm;
-      margin: 0.35cm 0;
+      gap: 0.8cm;
+      margin: 0.3cm 0;
       z-index: 1;
+      flex-grow: 1;
+      align-items: center;
     }
     
     .qr-box {
       text-align: center;
       background: #fafafa;
-      padding: 0.35cm;
-      border-radius: 16px;
-      border: 2px solid #e8e8e8;
+      padding: 0.3cm;
+      border-radius: 14px;
+      border: 1.5px solid #e5e5e5;
     }
     
     .qr-box img {
-      width: 3.8cm;
-      height: 3.8cm;
-      border-radius: 10px;
+      width: 4cm;
+      height: 4cm;
+      border-radius: 8px;
     }
     
     .qr-label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 0.15cm;
+      margin-top: 0.12cm;
     }
     
     .qr-step {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 800;
       color: white;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.35cm auto 0.1cm;
-      box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
+      margin: -0.3cm auto 0.08cm;
+      box-shadow: 0 2px 8px rgba(74, 222, 128, 0.4);
     }
     
     .footer {
       text-align: center;
-      margin-top: auto;
-      padding-bottom: 0.15cm;
+      padding: 0.15cm 0;
       z-index: 1;
+      flex-shrink: 0;
     }
     
     .footer-text {
-      font-size: 11px;
+      font-size: 10px;
       color: #aaa;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
     }
     
     @media print {
@@ -759,12 +792,13 @@ export default function StickerGeneratorPage() {
     
     <div class="top-section">
       <div class="business-card">
-        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
+        <img src="${vCardQrUrl}" alt="Contact QR" class="business-qr">
         <div class="business-info">
           <div class="business-name">Nir Ram</div>
           <div class="business-title">Founder & CEO</div>
           <div class="business-contact">052-265-3170</div>
           <div class="business-contact">nir@i4iguana.com</div>
+          <div class="business-label">Scan to save contact</div>
         </div>
       </div>
       <div class="venue-badge">
@@ -944,7 +978,7 @@ export default function StickerGeneratorPage() {
             </div>
             
             <p className="text-white/40 text-sm mt-4 text-center">
-              Sticker size: 20×20 cm
+              Sticker size: 15×21 cm (A5)
             </p>
           </div>
         </div>
@@ -953,7 +987,7 @@ export default function StickerGeneratorPage() {
           <h2 className="text-lg font-bold text-white mb-4">Preview</h2>
           
           {selectedVenueData ? (
-            <div className="bg-gray-200 rounded-xl overflow-hidden aspect-square">
+            <div className="bg-gray-200 rounded-xl overflow-hidden" style={{ aspectRatio: '15/21' }}>
               <iframe
                 ref={iframeRef}
                 srcDoc={previewHTML}
@@ -962,7 +996,7 @@ export default function StickerGeneratorPage() {
               />
             </div>
           ) : (
-            <div className="bg-[#0d2920] rounded-xl aspect-square flex items-center justify-center">
+            <div className="bg-[#0d2920] rounded-xl flex items-center justify-center" style={{ aspectRatio: '15/21' }}>
               <div className="text-center text-white/40">
                 <QrCode className="w-16 h-16 mx-auto mb-4 opacity-50" />
                 <p>Select a venue to preview</p>
