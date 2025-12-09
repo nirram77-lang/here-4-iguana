@@ -7,7 +7,6 @@ import { Crown, Sparkles, X, Clock, Rocket, Star, Zap, Check, Heart, Gift } from
 import { onSnapshot, doc, collection, query, where, getDoc } from "firebase/firestore"  // ✅ NEW
 import { db } from "@/lib/firebase"  // ✅ NEW
 import SplashScreen from "@/components/splash-screen"
-import WelcomeScreen from "@/components/welcome-screen"
 import OnboardingWelcomeScreen from "@/components/onboarding-welcome-screen"
 import LoginScreen from "@/components/login-screen"
 import NameEntryScreen from "@/components/name-entry-screen"
@@ -2319,20 +2318,23 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Splash Screen */}
+      {/* Splash Screen - Loading mode (user logged in) */}
       {currentScreen === "splash" && (
-        <SplashScreen onComplete={() => {
-          // ✅ FIX: Mark splash as complete - useEffect will handle navigation
-          console.log('🚀 Splash animation complete')
-          setSplashComplete(true)
-        }} />
+        <SplashScreen 
+          onComplete={() => {
+            console.log('🚀 Splash animation complete')
+            setSplashComplete(true)
+          }} 
+        />
       )}
       
-      {/* Welcome Screen */}
+      {/* Welcome Screen - Same splash but with buttons (no user) */}
       {currentScreen === "welcome" && (
-        <WelcomeScreen 
+        <SplashScreen 
+          showButtons={true}
           onLogin={() => setCurrentScreen("login")} 
           onSignUp={() => setCurrentScreen("login")}
+          onComplete={() => {}}
         />
       )}
       
