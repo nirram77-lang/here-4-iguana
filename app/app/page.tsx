@@ -750,9 +750,13 @@ export default function Page() {
             deleted: false, 
             onboardingComplete: false,
             phoneVerified: false,
-            isAvailable: true  // ✅ FIX: Reset to visible!
+            isAvailable: true,  // ✅ FIX: Reset to visible!
+            // ✅ CRITICAL FIX: Reset swipes for fresh matching!
+            swipedRight: [],
+            swipedLeft: [],
+            matches: []
           })
-          console.log('✅ Reset deleted flag - going to phone verification')
+          console.log('✅ Reset deleted flag + swipes - going to phone verification')
           
           // ✅ CRITICAL FIX: After delete account, MUST verify phone again!
           setCurrentScreen("phone-verification")
@@ -865,9 +869,13 @@ export default function Page() {
             deleted: false, 
             onboardingComplete: false,
             phoneVerified: false,
-            isAvailable: true  // ✅ FIX: Reset to visible!
+            isAvailable: true,  // ✅ FIX: Reset to visible!
+            // ✅ CRITICAL FIX: Reset swipes for fresh matching!
+            swipedRight: [],
+            swipedLeft: [],
+            matches: []
           })
-          console.log('✅ Reset deleted flag - going to phone verification')
+          console.log('✅ Reset deleted flag + swipes - going to phone verification')
           
           // ✅ CRITICAL FIX: After delete account, MUST verify phone again!
           setCurrentScreen("phone-verification")

@@ -946,23 +946,40 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                 Height: <span className="text-[#4ade80] text-2xl font-bold">{displayValue}</span> <span className="text-white/60">{heightUnit}</span>
               </label>
               <div className="space-y-4">
-                <input
-                  type="range"
-                  min={minValue}
-                  max={maxValue}
-                  value={displayValue}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value)
-                    if (heightUnit === 'inch') {
-                      setHeightValue(inchToCm(val))
-                      setProfileData({ ...profileData, height: `${val}"` })
-                    } else {
-                      setHeightValue(val)
-                      setProfileData({ ...profileData, height: `${val}cm` })
-                    }
-                  }}
-                  className="w-full h-3 bg-white/20 rounded-lg appearance-none cursor-pointer slider-thumb"
-                />
+                {/* ✅ Custom Slider with Progress Bar - NO transition for smooth dragging */}
+                <div className="relative w-full h-3">
+                  {/* Background Track */}
+                  <div className="absolute inset-0 bg-white/20 rounded-full"></div>
+                  {/* Progress Fill */}
+                  <div 
+                    className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-full"
+                    style={{ width: `${((displayValue - minValue) / (maxValue - minValue)) * 100}%` }}
+                  ></div>
+                  {/* Invisible Range Input for Interaction */}
+                  <input
+                    type="range"
+                    min={minValue}
+                    max={maxValue}
+                    value={displayValue}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value)
+                      if (heightUnit === 'inch') {
+                        setHeightValue(inchToCm(val))
+                        setProfileData({ ...profileData, height: `${val}"` })
+                      } else {
+                        setHeightValue(val)
+                        setProfileData({ ...profileData, height: `${val}cm` })
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  {/* Custom Thumb */}
+                  <div 
+                    className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-[#4ade80] rounded-full shadow-lg shadow-[#4ade80]/50 border-2 border-white pointer-events-none"
+                    style={{ left: `calc(${((displayValue - minValue) / (maxValue - minValue)) * 100}% - 10px)` }}
+                  ></div>
+                </div>
+                
                 <div className="flex gap-2">
                   <button
                     onClick={() => setHeightUnit('cm')}

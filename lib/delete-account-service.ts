@@ -195,14 +195,14 @@ export const deleteUserAccount = async (userId: string): Promise<{
     console.log(`✅ ${notificationsSnapshot.size} notifications deleted`)
     
     // 3e. Delete all user's chat messages (in all chats they participated in)
-    // ✅ CRITICAL FIX: Must delete messages subcollection BEFORE deleting chat document
+    // ✅ CRITICAL FIX: Delete messages separately to avoid batch overflow (500 limit)
     const chatsQuery = query(
       collection(db, 'chats'),
       where('participants', 'array-contains', userId)
     )
     const chatsSnapshot = await getDocs(chatsQuery)
     
-    // First, delete all messages in each chat (subcollection)
+    // First, delete all messages in each chat (in separate batches to avoid 500 limit)
     for (const chatDoc of chatsSnapshot.docs) {
       const chatId = chatDoc.id
       console.log(`🗑️ Deleting messages for chat: ${chatId}`)
@@ -211,10 +211,26 @@ export const deleteUserAccount = async (userId: string): Promise<{
       const messagesRef = collection(db, 'chats', chatId, 'messages')
       const messagesSnapshot = await getDocs(messagesRef)
       
-      // Delete each message
+      // Delete messages in mini-batches of 100
+      let messagesBatch = writeBatch(db)
+      let batchCount = 0
+      
       for (const messageDoc of messagesSnapshot.docs) {
-        batch.delete(messageDoc.ref)
+        messagesBatch.delete(messageDoc.ref)
+        batchCount++
+        
+        if (batchCount >= 100) {
+          await messagesBatch.commit()
+          messagesBatch = writeBatch(db)
+          batchCount = 0
+        }
       }
+      
+      // Commit remaining messages
+      if (batchCount > 0) {
+        await messagesBatch.commit()
+      }
+      
       console.log(`   ✅ ${messagesSnapshot.size} messages deleted from chat ${chatId}`)
       
       // Now delete the chat document itself
@@ -231,9 +247,23 @@ export const deleteUserAccount = async (userId: string): Promise<{
       const matchMessagesRef = collection(db, 'matches', matchId, 'messages')
       const matchMessagesSnapshot = await getDocs(matchMessagesRef)
       
-      // Delete each message
+      // Delete in mini-batches
+      let matchMsgBatch = writeBatch(db)
+      let matchBatchCount = 0
+      
       for (const messageDoc of matchMessagesSnapshot.docs) {
-        batch.delete(messageDoc.ref)
+        matchMsgBatch.delete(messageDoc.ref)
+        matchBatchCount++
+        
+        if (matchBatchCount >= 100) {
+          await matchMsgBatch.commit()
+          matchMsgBatch = writeBatch(db)
+          matchBatchCount = 0
+        }
+      }
+      
+      if (matchBatchCount > 0) {
+        await matchMsgBatch.commit()
       }
       
       if (matchMessagesSnapshot.size > 0) {
