@@ -70,7 +70,7 @@ const createMatchId = (userId1: string, userId2: string) => {
 
 export default function Page() {
   const { user, loading: authLoading } = useAuth()
-  const [currentScreen, setCurrentScreen] = useState<Screen>("welcome")
+  const [currentScreen, setCurrentScreen] = useState<Screen>("splash")
   const [matchedUser, setMatchedUser] = useState<any>(null)
   const [selectedMatch, setSelectedMatch] = useState<any>(null)
   const [currentMatchId, setCurrentMatchId] = useState<string>("")
@@ -136,6 +136,9 @@ export default function Page() {
   
   // ✅ NEW: Push Notification Permission Modal
   const [showNotificationModal, setShowNotificationModal] = useState(false)
+  
+  // ✅ NEW: Track if splash animation completed
+  const [splashComplete, setSplashComplete] = useState(false)
   
   // ✅ NEW: In-App Notification for messages
   const [inAppNotification, setInAppNotification] = useState<{
@@ -637,15 +640,36 @@ export default function Page() {
         return
       }
 
-      console.log('🔍 Auth check:', user?.email || 'No user')
+      console.log('🔍 Auth check:', user?.email || 'No user', 'splash:', currentScreen === 'splash', 'splashComplete:', splashComplete)
       
-      // No user → stay on/go to welcome (unless already in auth flow)
+      // ✅ Wait for splash animation to complete before navigating
+      if (currentScreen === "splash" && !splashComplete) {
+        console.log('⏳ Waiting for splash animation...')
+        return
+      }
+      
+      // No user → go to welcome (from splash or other non-auth screens)
       if (!user) {
-        const authFlowScreens = ["splash", "welcome", "login", "onboarding-welcome", "onboarding-name", "onboarding-gender", "onboarding-age", "onboarding-hobbies", "onboarding-lifestyle", "onboarding-photos"]
+        const authFlowScreens = ["welcome", "login", "onboarding-welcome", "onboarding-name", "onboarding-gender", "onboarding-age", "onboarding-hobbies", "onboarding-lifestyle", "onboarding-photos"]
+        if (currentScreen === "splash" && splashComplete) {
+          // ✅ Splash finished, no user → go to welcome
+          console.log('🚀 Splash done, no user → WELCOME')
+          setCurrentScreen("welcome")
+          return
+        }
         if (!authFlowScreens.includes(currentScreen)) {
           console.log('❌ No user → WELCOME')
           setCurrentScreen("welcome")
         }
+        return
+      }
+      
+      // ✅ User exists - if on splash and splash complete, continue to check profile and navigate
+      if (currentScreen === "splash" && splashComplete) {
+        console.log('🚀 User logged in, splash done → checking profile...')
+        // Don't return - continue to profile check below
+      } else if (currentScreen === "splash") {
+        // Splash not complete yet - wait
         return
       }
       
@@ -860,7 +884,7 @@ export default function Page() {
     }
 
     checkAuth()
-  }, [user, authLoading, currentScreen])
+  }, [user, authLoading, currentScreen, splashComplete])
 
   // ✅ NEW: Load check-in status when user logs in
   // ✅ Load check-in status on app start and when returning to home
@@ -2277,7 +2301,11 @@ export default function Page() {
     <div className="min-h-screen bg-background">
       {/* Splash Screen */}
       {currentScreen === "splash" && (
-        <SplashScreen onComplete={() => setCurrentScreen("welcome")} />
+        <SplashScreen onComplete={() => {
+          // ✅ FIX: Mark splash as complete - useEffect will handle navigation
+          console.log('🚀 Splash animation complete')
+          setSplashComplete(true)
+        }} />
       )}
       
       {/* Welcome Screen */}
