@@ -43,7 +43,7 @@ export default function StickerGeneratorPage() {
         venuesList.sort((a, b) => (a.displayName || a.name).localeCompare(b.displayName || b.name))
         setVenues(venuesList)
       } catch (error) {
-        console.error('❌ Error loading venues:', error)
+        console.error('Error loading venues:', error)
       } finally {
         setLoading(false)
       }
@@ -58,21 +58,6 @@ export default function StickerGeneratorPage() {
     const venueQrApi = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(venueQrUrl)}&color=0d2920`
     const iguanaImg = 'https://i4iguana-app.vercel.app/notification-icon-192.png'
     
-    // vCard QR for business card
-    const vCardData = `BEGIN:VCARD
-VERSION:3.0
-FN:Nir Ram
-ORG:I4IGUANA
-TITLE:Founder & CEO
-TEL;TYPE=CELL:052-265-3170
-EMAIL:nir@i4iguana.com
-URL:https://i4iguana.com
-END:VCARD`
-    const vCardQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(vCardData)}&color=0d2920`
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // HEBREW VERSION - EXACT ORIGINAL DESIGN
-    // ═══════════════════════════════════════════════════════════════════════════
     if (lang === 'hebrew') {
       return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -94,11 +79,11 @@ END:VCARD`
     }
     
     .sticker {
-      width: 15cm;
-      height: 21cm;
+      width: 20cm;
+      height: 20cm;
       background: white;
       border-radius: 20px;
-      padding: 0.5cm;
+      padding: 0.6cm;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -126,30 +111,29 @@ END:VCARD`
     .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
     .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
     
-    /* ═══ TOP SECTION ═══ */
     .top-section {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.3cm 0.4cm;
+      padding: 0.3cm 0.5cm;
       z-index: 1;
     }
     
-    /* Business Card with QR - LEFT SIDE */
     .business-card {
       display: flex;
       align-items: center;
-      gap: 8px;
-      border: 1.5px solid #4ade80;
-      border-radius: 12px;
-      padding: 8px 10px;
+      gap: 10px;
+      border: 2px solid #4ade80;
+      border-radius: 14px;
+      padding: 10px 14px;
       background: white;
     }
     
-    .business-qr {
-      width: 55px;
-      height: 55px;
-      border-radius: 6px;
+    .business-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      object-fit: contain;
     }
     
     .business-info {
@@ -157,57 +141,48 @@ END:VCARD`
     }
     
     .business-name {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       color: #0d2920;
     }
     
     .business-title {
-      font-size: 9px;
+      font-size: 11px;
       color: #4ade80;
       font-weight: 600;
     }
     
     .business-contact {
-      font-size: 8px;
+      font-size: 10px;
       color: #555;
-      margin-top: 1px;
-    }
-    
-    .business-label {
-      font-size: 7px;
-      color: #999;
       margin-top: 2px;
     }
     
-    /* Venue Badge - RIGHT SIDE */
     .venue-badge {
       display: flex;
       align-items: center;
       gap: 4px;
       background: white;
-      border: 1.5px solid #4ade80;
+      border: 2px solid #4ade80;
       border-radius: 20px;
-      padding: 8px 14px;
+      padding: 10px 16px;
     }
     
     .venue-badge span {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       color: #166534;
     }
     
-    /* ═══ LOGO SECTION ═══ */
     .logo-section {
       text-align: center;
-      margin: 0.3cm 0 0.2cm;
+      margin: 0.4cm 0 0.3cm;
       z-index: 1;
-      flex-shrink: 0;
     }
     
     .iguana-container {
-      width: 5.5cm;
-      height: 5.5cm;
+      width: 6.5cm;
+      height: 6.5cm;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
@@ -218,9 +193,9 @@ END:VCARD`
     }
     
     .iguana-inner {
-      width: 4.5cm;
-      height: 4.5cm;
-      border-radius: 12px;
+      width: 5.5cm;
+      height: 5.5cm;
+      border-radius: 14px;
       border: 2px solid #4ade80;
       background: linear-gradient(135deg, #0a1f18, #143028);
       display: flex;
@@ -233,10 +208,10 @@ END:VCARD`
     .iguana-inner::before {
       content: '(((';
       position: absolute;
-      left: 4px;
+      left: 6px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 300;
       color: #4ade80;
       opacity: 0.8;
@@ -246,10 +221,10 @@ END:VCARD`
     .iguana-inner::after {
       content: ')))';
       position: absolute;
-      right: 4px;
+      right: 6px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 300;
       color: #4ade80;
       opacity: 0.8;
@@ -257,35 +232,33 @@ END:VCARD`
     }
     
     .iguana-img {
-      width: 3.2cm;
-      height: 3.2cm;
+      width: 4cm;
+      height: 4cm;
       object-fit: contain;
       position: relative;
       z-index: 1;
     }
     
     .app-name {
-      font-size: 28px;
+      font-size: 36px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 2px;
-      margin-top: 0.2cm;
+      letter-spacing: 3px;
+      margin-top: 0.25cm;
     }
     
     .app-name span {
       color: #4ade80;
     }
     
-    /* ═══ TAGLINE SECTION ═══ */
     .tagline-section {
       text-align: center;
-      margin: 0.15cm 0;
+      margin: 0.2cm 0;
       z-index: 1;
-      flex-shrink: 0;
     }
     
     .main-tagline {
-      font-size: 24px;
+      font-size: 30px;
       font-weight: 900;
       color: #0d2920;
     }
@@ -295,27 +268,27 @@ END:VCARD`
     }
     
     .sub-tagline {
-      font-size: 12px;
+      font-size: 14px;
       color: #666;
-      margin-top: 3px;
+      margin-top: 4px;
     }
     
     .realtime-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 6px 18px;
-      border-radius: 20px;
-      font-size: 11px;
+      padding: 8px 20px;
+      border-radius: 25px;
+      font-size: 13px;
       font-weight: 700;
-      margin-top: 8px;
+      margin-top: 10px;
     }
     
     .pulse-dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       background: #0d2920;
       border-radius: 50%;
       animation: pulse 2s infinite;
@@ -326,65 +299,61 @@ END:VCARD`
       50% { opacity: 0.5; transform: scale(1.3); }
     }
     
-    /* ═══ QR SECTION ═══ */
     .qr-section {
       display: flex;
       justify-content: center;
-      gap: 0.8cm;
-      margin: 0.3cm 0;
+      gap: 1cm;
+      margin: 0.35cm 0;
       z-index: 1;
-      flex-grow: 1;
-      align-items: center;
     }
     
     .qr-box {
       text-align: center;
       background: #fafafa;
-      padding: 0.3cm;
-      border-radius: 14px;
-      border: 1.5px solid #e5e5e5;
+      padding: 0.35cm;
+      border-radius: 16px;
+      border: 2px solid #e5e5e5;
     }
     
     .qr-box img {
       width: 4cm;
       height: 4cm;
-      border-radius: 8px;
+      border-radius: 10px;
     }
     
     .qr-label {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 0.12cm;
+      margin-top: 0.15cm;
     }
     
     .qr-step {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 800;
       color: white;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.3cm auto 0.08cm;
-      box-shadow: 0 2px 8px rgba(74, 222, 128, 0.4);
+      margin: -0.35cm auto 0.1cm;
+      box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
     }
     
-    /* ═══ FOOTER ═══ */
     .footer {
       text-align: center;
-      padding: 0.15cm 0;
+      margin-top: auto;
+      padding-bottom: 0.2cm;
       z-index: 1;
-      flex-shrink: 0;
     }
     
     .footer-text {
-      font-size: 10px;
+      font-size: 11px;
       color: #aaa;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
     }
     
     @media print {
@@ -404,16 +373,15 @@ END:VCARD`
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
-    <!-- TOP: Business Card (left) + Venue (right) -->
     <div class="top-section">
       <div class="business-card">
-        <img src="${vCardQrUrl}" alt="Contact QR" class="business-qr">
+        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
         <div class="business-info">
           <div class="business-name">Nir Ram</div>
           <div class="business-title">Founder & CEO</div>
-          <div class="business-contact">052-265-3170</div>
-          <div class="business-contact">nir@i4iguana.com</div>
-          <div class="business-label">סרוק להוספת איש קשר</div>
+          <div class="business-contact">📞 052-265-3170</div>
+          <div class="business-contact">✉️ nir@i4iguana.com</div>
+          <div class="business-contact">🌐 i4iguana.com</div>
         </div>
       </div>
       <div class="venue-badge">
@@ -421,7 +389,6 @@ END:VCARD`
       </div>
     </div>
     
-    <!-- LOGO -->
     <div class="logo-section">
       <div class="iguana-container">
         <div class="iguana-inner">
@@ -431,7 +398,6 @@ END:VCARD`
       <div class="app-name"><span>I4</span>IGUANA</div>
     </div>
     
-    <!-- TAGLINE -->
     <div class="tagline-section">
       <div class="main-tagline">היא <span class="highlight">מחליטה</span> ראשונה!</div>
       <div class="sub-tagline">מצאו מישהו כאן, עכשיו.</div>
@@ -441,7 +407,6 @@ END:VCARD`
       </div>
     </div>
     
-    <!-- QR CODES -->
     <div class="qr-section">
       <div class="qr-box">
         <div class="qr-step">1</div>
@@ -455,7 +420,6 @@ END:VCARD`
       </div>
     </div>
     
-    <!-- FOOTER -->
     <div class="footer">
       <div class="footer-text">Dating App for Real Meetings</div>
     </div>
@@ -464,9 +428,6 @@ END:VCARD`
 </html>`
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ENGLISH VERSION
-    // ═══════════════════════════════════════════════════════════════════════════
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -487,11 +448,11 @@ END:VCARD`
     }
     
     .sticker {
-      width: 15cm;
-      height: 21cm;
+      width: 20cm;
+      height: 20cm;
       background: white;
       border-radius: 20px;
-      padding: 0.5cm;
+      padding: 0.6cm;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -523,24 +484,25 @@ END:VCARD`
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.3cm 0.4cm;
+      padding: 0.3cm 0.5cm;
       z-index: 1;
     }
     
     .business-card {
       display: flex;
       align-items: center;
-      gap: 8px;
-      border: 1.5px solid #4ade80;
-      border-radius: 12px;
-      padding: 8px 10px;
+      gap: 10px;
+      border: 2px solid #4ade80;
+      border-radius: 14px;
+      padding: 10px 14px;
       background: white;
     }
     
-    .business-qr {
-      width: 55px;
-      height: 55px;
-      border-radius: 6px;
+    .business-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      object-fit: contain;
     }
     
     .business-info {
@@ -548,26 +510,20 @@ END:VCARD`
     }
     
     .business-name {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       color: #0d2920;
     }
     
     .business-title {
-      font-size: 9px;
+      font-size: 11px;
       color: #4ade80;
       font-weight: 600;
     }
     
     .business-contact {
-      font-size: 8px;
+      font-size: 10px;
       color: #555;
-      margin-top: 1px;
-    }
-    
-    .business-label {
-      font-size: 7px;
-      color: #999;
       margin-top: 2px;
     }
     
@@ -576,27 +532,26 @@ END:VCARD`
       align-items: center;
       gap: 4px;
       background: white;
-      border: 1.5px solid #4ade80;
+      border: 2px solid #4ade80;
       border-radius: 20px;
-      padding: 8px 14px;
+      padding: 10px 16px;
     }
     
     .venue-badge span {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       color: #166534;
     }
     
     .logo-section {
       text-align: center;
-      margin: 0.3cm 0 0.2cm;
+      margin: 0.4cm 0 0.3cm;
       z-index: 1;
-      flex-shrink: 0;
     }
     
     .iguana-container {
-      width: 5.5cm;
-      height: 5.5cm;
+      width: 6.5cm;
+      height: 6.5cm;
       border: 3px solid #4ade80;
       border-radius: 50%;
       display: flex;
@@ -607,9 +562,9 @@ END:VCARD`
     }
     
     .iguana-inner {
-      width: 4.5cm;
-      height: 4.5cm;
-      border-radius: 12px;
+      width: 5.5cm;
+      height: 5.5cm;
+      border-radius: 14px;
       border: 2px solid #4ade80;
       background: linear-gradient(135deg, #0a1f18, #143028);
       display: flex;
@@ -622,10 +577,10 @@ END:VCARD`
     .iguana-inner::before {
       content: '(((';
       position: absolute;
-      left: 4px;
+      left: 6px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 300;
       color: #4ade80;
       opacity: 0.8;
@@ -635,10 +590,10 @@ END:VCARD`
     .iguana-inner::after {
       content: ')))';
       position: absolute;
-      right: 4px;
+      right: 6px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 300;
       color: #4ade80;
       opacity: 0.8;
@@ -646,19 +601,19 @@ END:VCARD`
     }
     
     .iguana-img {
-      width: 3.2cm;
-      height: 3.2cm;
+      width: 4cm;
+      height: 4cm;
       object-fit: contain;
       position: relative;
       z-index: 1;
     }
     
     .app-name {
-      font-size: 28px;
+      font-size: 36px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 2px;
-      margin-top: 0.2cm;
+      letter-spacing: 3px;
+      margin-top: 0.25cm;
     }
     
     .app-name span {
@@ -667,13 +622,12 @@ END:VCARD`
     
     .tagline-section {
       text-align: center;
-      margin: 0.15cm 0;
+      margin: 0.2cm 0;
       z-index: 1;
-      flex-shrink: 0;
     }
     
     .main-tagline {
-      font-size: 24px;
+      font-size: 30px;
       font-weight: 900;
       color: #0d2920;
     }
@@ -683,27 +637,27 @@ END:VCARD`
     }
     
     .sub-tagline {
-      font-size: 12px;
+      font-size: 14px;
       color: #666;
-      margin-top: 3px;
+      margin-top: 4px;
     }
     
     .realtime-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 6px 18px;
-      border-radius: 20px;
-      font-size: 11px;
+      padding: 8px 20px;
+      border-radius: 25px;
+      font-size: 13px;
       font-weight: 700;
-      margin-top: 8px;
+      margin-top: 10px;
     }
     
     .pulse-dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       background: #0d2920;
       border-radius: 50%;
       animation: pulse 2s infinite;
@@ -717,60 +671,58 @@ END:VCARD`
     .qr-section {
       display: flex;
       justify-content: center;
-      gap: 0.8cm;
-      margin: 0.3cm 0;
+      gap: 1cm;
+      margin: 0.35cm 0;
       z-index: 1;
-      flex-grow: 1;
-      align-items: center;
     }
     
     .qr-box {
       text-align: center;
       background: #fafafa;
-      padding: 0.3cm;
-      border-radius: 14px;
-      border: 1.5px solid #e5e5e5;
+      padding: 0.35cm;
+      border-radius: 16px;
+      border: 2px solid #e5e5e5;
     }
     
     .qr-box img {
       width: 4cm;
       height: 4cm;
-      border-radius: 8px;
+      border-radius: 10px;
     }
     
     .qr-label {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       color: #0d2920;
-      margin-top: 0.12cm;
+      margin-top: 0.15cm;
     }
     
     .qr-step {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 800;
       color: white;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.3cm auto 0.08cm;
-      box-shadow: 0 2px 8px rgba(74, 222, 128, 0.4);
+      margin: -0.35cm auto 0.1cm;
+      box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
     }
     
     .footer {
       text-align: center;
-      padding: 0.15cm 0;
+      margin-top: auto;
+      padding-bottom: 0.2cm;
       z-index: 1;
-      flex-shrink: 0;
     }
     
     .footer-text {
-      font-size: 10px;
+      font-size: 11px;
       color: #aaa;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
     }
     
     @media print {
@@ -792,13 +744,13 @@ END:VCARD`
     
     <div class="top-section">
       <div class="business-card">
-        <img src="${vCardQrUrl}" alt="Contact QR" class="business-qr">
+        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
         <div class="business-info">
           <div class="business-name">Nir Ram</div>
           <div class="business-title">Founder & CEO</div>
-          <div class="business-contact">052-265-3170</div>
-          <div class="business-contact">nir@i4iguana.com</div>
-          <div class="business-label">Scan to save contact</div>
+          <div class="business-contact">📞 052-265-3170</div>
+          <div class="business-contact">✉️ nir@i4iguana.com</div>
+          <div class="business-contact">🌐 i4iguana.com</div>
         </div>
       </div>
       <div class="venue-badge">
@@ -889,7 +841,7 @@ END:VCARD`
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white">Sticker Generator</h1>
-            <p className="text-white/60">Create printable venue stickers</p>
+            <p className="text-white/60">Create printable venue stickers (20×20 cm)</p>
           </div>
         </div>
       </div>
@@ -978,7 +930,7 @@ END:VCARD`
             </div>
             
             <p className="text-white/40 text-sm mt-4 text-center">
-              Sticker size: 15×21 cm (A5)
+              Sticker size: 20×20 cm
             </p>
           </div>
         </div>
@@ -987,7 +939,7 @@ END:VCARD`
           <h2 className="text-lg font-bold text-white mb-4">Preview</h2>
           
           {selectedVenueData ? (
-            <div className="bg-gray-200 rounded-xl overflow-hidden" style={{ aspectRatio: '15/21' }}>
+            <div className="bg-gray-200 rounded-xl overflow-hidden aspect-square">
               <iframe
                 ref={iframeRef}
                 srcDoc={previewHTML}
@@ -996,7 +948,7 @@ END:VCARD`
               />
             </div>
           ) : (
-            <div className="bg-[#0d2920] rounded-xl flex items-center justify-center" style={{ aspectRatio: '15/21' }}>
+            <div className="bg-[#0d2920] rounded-xl aspect-square flex items-center justify-center">
               <div className="text-center text-white/40">
                 <QrCode className="w-16 h-16 mx-auto mb-4 opacity-50" />
                 <p>Select a venue to preview</p>
