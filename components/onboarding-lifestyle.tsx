@@ -406,8 +406,33 @@ export default function OnboardingLifestyle({
                 <span className="text-3xl font-bold text-[#4ade80]">{displayValue}</span>
                 <span className="text-white/60 text-sm ml-1">{heightUnit}</span>
               </div>
-              <input type="range" min={minValue} max={maxValue} value={displayValue} onChange={(e) => handleHeightChange(parseInt(e.target.value))} className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#4ade80]" />
-              <div className="flex justify-between text-white/40 text-xs mt-1">
+              
+              {/* ✅ Custom Slider with Progress Bar */}
+              <div className="relative w-full h-2">
+                {/* Background Track */}
+                <div className="absolute inset-0 bg-white/20 rounded-full"></div>
+                {/* Progress Fill */}
+                <div 
+                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-full transition-all duration-100"
+                  style={{ width: `${((displayValue - minValue) / (maxValue - minValue)) * 100}%` }}
+                ></div>
+                {/* Invisible Range Input for Interaction */}
+                <input 
+                  type="range" 
+                  min={minValue} 
+                  max={maxValue} 
+                  value={displayValue} 
+                  onChange={(e) => handleHeightChange(parseInt(e.target.value))} 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                {/* Custom Thumb */}
+                <div 
+                  className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-[#4ade80] rounded-full shadow-lg shadow-[#4ade80]/50 border-2 border-white pointer-events-none transition-all duration-100"
+                  style={{ left: `calc(${((displayValue - minValue) / (maxValue - minValue)) * 100}% - 10px)` }}
+                ></div>
+              </div>
+              
+              <div className="flex justify-between text-white/40 text-xs mt-2">
                 <span>{minValue}{heightUnit}</span>
                 <span>{maxValue}{heightUnit}</span>
               </div>
