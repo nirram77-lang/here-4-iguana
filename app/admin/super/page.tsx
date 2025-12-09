@@ -14,7 +14,8 @@ import {
   Trash2,
   LogOut,
   Bell,
-  RefreshCw
+  RefreshCw,
+  FileText
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -24,7 +25,7 @@ import {
 } from '@/lib/venue-service'
 import { getAdminData, adminLogout } from '@/lib/admin-auth'
 import { auth, db } from '@/lib/firebase'
-import { collection, onSnapshot, doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore'
+import { collection, onSnapshot, doc, getDoc, updateDoc, arrayRemove, query, where } from 'firebase/firestore'
 import AddVenueModal from '@/components/add-venue-modal'
 
 // ✅ NEW: Auto-cleanup expired check-ins
@@ -107,6 +108,21 @@ export default function SuperAdminPanel() {
   const [showAddVenue, setShowAddVenue] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [cleaning, setCleaning] = useState(false)
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+  
+  // Listen for pending venue requests
+  useEffect(() => {
+    const q = query(
+      collection(db, 'venueRequests'),
+      where('status', '==', 'pending')
+    )
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPendingRequestsCount(snapshot.size)
+    })
+    
+    return () => unsubscribe()
+  }, [])
   
   // Manual cleanup handler
   const handleCleanup = async () => {
@@ -269,6 +285,20 @@ export default function SuperAdminPanel() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Venue Requests Button with Badge */}
+              <Button
+                onClick={() => router.push('/admin/super/requests')}
+                variant="outline"
+                className="border-orange-500/50 text-orange-400 hover:bg-orange-500/20 relative"
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                Requests
+                {pendingRequestsCount > 0 && (
+                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {pendingRequestsCount}
+                  </span>
+                )}
+              </Button>
               <Button
                 onClick={() => router.push('/admin/super/db')}
                 variant="outline"
