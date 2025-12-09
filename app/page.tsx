@@ -97,6 +97,14 @@ export default function LandingPage() {
               <a href="#partners" className="text-gray-300 hover:text-green-400 transition-colors">For Venues</a>
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
               <Link 
+                href="/join"
+                className="relative px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black hover:shadow-lg hover:shadow-green-500/50 transition-all animate-pulse"
+              >
+                <span className="flex items-center gap-2">
+                  🏢 Join as Venue
+                </span>
+              </Link>
+              <Link 
                 href="/app"
                 className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
               >
@@ -125,6 +133,13 @@ export default function LandingPage() {
               <a href="#partners" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">For Venues</a>
               <a href="#download" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Download</a>
               <a href="#contact" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Contact</a>
+              <Link 
+                href="/join"
+                onClick={() => setMenuOpen(false)}
+                className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black animate-pulse"
+              >
+                🏢 Join as Venue
+              </Link>
               <Link 
                 href="/app"
                 onClick={() => setMenuOpen(false)}
@@ -650,6 +665,19 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* CTA Button */}
+          <div className="text-center mb-16">
+            <Link 
+              href="/join"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-bold text-xl text-black hover:shadow-2xl hover:shadow-green-500/50 hover:scale-105 transition-all animate-pulse"
+            >
+              <span className="text-2xl">🦎</span>
+              <span>הצטרפו עכשיו - חינם!</span>
+              <span className="text-2xl">→</span>
+            </Link>
+            <p className="text-gray-400 text-sm mt-4">מלאו טופס קצר ונחזור אליכם תוך 24 שעות</p>
+          </div>
+
           {/* Business Card */}
           <div className="max-w-md mx-auto">
             <div className="bg-gradient-to-br from-[#0d2920] to-[#1a4d3e] rounded-3xl p-8 border border-green-500/30 shadow-2xl shadow-green-500/10 relative overflow-hidden">
@@ -709,10 +737,16 @@ export default function LandingPage() {
                 </div>
                 
                 {/* CTA */}
-                <div className="mt-8">
+                <div className="mt-8 space-y-3">
+                  <a 
+                    href="/join"
+                    className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-center font-bold text-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
+                  >
+                    📝 הצטרף עכשיו - טופס דיגיטלי
+                  </a>
                   <a 
                     href="tel:+972522653170"
-                    className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-center font-bold text-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
+                    className="block w-full py-4 bg-white/10 border border-white/20 rounded-xl text-center font-bold text-lg hover:bg-white/20 transition-all"
                   >
                     📞 Let's Talk Partnership
                   </a>
