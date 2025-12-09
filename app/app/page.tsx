@@ -824,12 +824,13 @@ export default function Page() {
         setCurrentScreen("phone-verification")
         return
       }
-        
-        // ✅ CRITICAL FIX: Check for active match FIRST - before phone verification!
-        // This prevents the phone-verification screen from flashing for 1 second
-        console.log('🔍 Checking for active match FIRST...')
-        try {
-          const activeMatch = await getActiveMatchForUser(user.uid)
+      
+      // ✅ Profile exists and is not deleted - continue with normal flow
+      // ✅ CRITICAL FIX: Check for active match FIRST - before phone verification!
+      // This prevents the phone-verification screen from flashing for 1 second
+      console.log('🔍 Checking for active match FIRST...')
+      try {
+        const activeMatch = await getActiveMatchForUser(user.uid)
           
           if (activeMatch && activeMatch.matchedUser && activeMatch.expiresAt) {
             console.log('🎯 ACTIVE MATCH FOUND! Skipping phone verification check')
@@ -869,9 +870,10 @@ export default function Page() {
           // Continue with normal flow
         }
         
-        // ✅ NEW: Check if phone is verified (only if no active match)
-        // Skip verification if: phoneVerified === true AND phoneNumber exists
-        const hasVerifiedPhone = profile?.phoneVerified === true && profile?.phoneNumber
+        try {
+          // ✅ NEW: Check if phone is verified (only if no active match)
+          // Skip verification if: phoneVerified === true AND phoneNumber exists
+          const hasVerifiedPhone = profile?.phoneVerified === true && profile?.phoneNumber
         
         // ✅ CRITICAL FIX: Also check localStorage cache for verified phone
         // This prevents the bug where refresh sends user back to phone-verification
