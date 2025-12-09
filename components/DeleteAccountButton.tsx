@@ -66,12 +66,17 @@ export default function DeleteAccountButton() {
         `oneSignalLinked_${user.uid}`,
         'hasScannedQR',
         'i4iguana_checkin',
-        'lastVenueId'
+        'lastVenueId',
+        'i4iguana_phone_verified'
       ];
       keysToRemove.forEach(key => {
         localStorage.removeItem(key);
         console.log(`   ✓ Removed: ${key}`);
       });
+      
+      // ✅ NEW: Set force flag to show notification modal on re-registration
+      localStorage.setItem('force_notification_setup', 'true');
+      console.log('   ✓ Set: force_notification_setup');
       
       // Show success message
       setShowSuccess(true);

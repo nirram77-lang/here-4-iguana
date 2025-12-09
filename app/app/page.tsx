@@ -797,6 +797,8 @@ export default function Page() {
           localStorage.removeItem(`oneSignalLinked_${user.uid}`)
           localStorage.removeItem('i4iguana_checkin')
           localStorage.removeItem('lastVenueId')
+          // ✅ NEW: Set flag to FORCE notification modal after re-registration
+          localStorage.setItem('force_notification_setup', 'true')
           sessionStorage.clear()
           
           // ✅ Reset deleted flag - user is re-registering
@@ -941,6 +943,20 @@ export default function Page() {
       const oneSignalLinkedKey = `oneSignalLinked_${user.uid}`
       const modalShown = localStorage.getItem(modalShownKey)
       const oneSignalLinked = localStorage.getItem(oneSignalLinkedKey)
+      
+      // ✅ NEW: Check for force notification setup flag (set after account deletion)
+      const forceNotificationSetup = localStorage.getItem('force_notification_setup')
+      if (forceNotificationSetup === 'true') {
+        console.log('🔔 FORCE: Showing notification modal after account re-registration')
+        localStorage.removeItem('force_notification_setup')
+        localStorage.setItem(modalShownKey, 'true')
+        
+        // Wait a bit for the home screen to fully render
+        setTimeout(() => {
+          setShowNotificationModal(true)
+        }, 2000)
+        return
+      }
       
       // If permission granted and OneSignal is subscribed, just link user
       if (permission === 'granted' && isOneSignalSubscribed) {

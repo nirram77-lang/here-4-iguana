@@ -21,6 +21,10 @@ interface ProfileData {
   photoURL: string
   photos: string[]
   hobbies: string[]
+  // Location
+  city?: string  // ✅ NEW: City of residence
+  // Languages
+  languages?: string[]  // ✅ NEW: Languages spoken
   // Lifestyle
   drinking: 'never' | 'social' | 'regular'
   smoking: 'no' | 'social' | 'yes'
@@ -47,6 +51,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     photoURL: '',
     photos: [],
     hobbies: [],
+    city: '',
+    languages: ['he'],
     drinking: 'social',
     smoking: 'no',
     height: '',
@@ -220,6 +226,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
           photoURL: data.photoURL || '',
           photos: photos,
           hobbies: data.hobbies || [],
+          city: data.city || '',  // ✅ NEW: Load city
+          languages: data.languages || ['he'],  // ✅ NEW: Load languages
           drinking: data.drinking || 'social',
           smoking: data.smoking || 'no',
           height: data.height || '',
@@ -451,6 +459,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
         photoURL: profileData.photos[0] || profileData.photoURL,
         photos: profileData.photos,
         hobbies: profileData.hobbies,
+        city: profileData.city || '',  // ✅ NEW: Save city
+        languages: profileData.languages || ['he'],  // ✅ NEW: Save languages
         drinking: profileData.drinking,
         smoking: profileData.smoking,
         height: profileData.height,
@@ -1017,6 +1027,74 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                 placeholder="Your education"
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
               />
+            </div>
+
+            {/* ✅ NEW: City Field */}
+            <div>
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
+                <Home className="h-4 w-4 text-[#4ade80]" />
+                City / עיר
+              </label>
+              <Input
+                value={profileData.city || ''}
+                onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
+                placeholder="Where do you live? / איפה אתה גר?"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
+              />
+            </div>
+
+            {/* ✅ NEW: Languages Field */}
+            <div>
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-[#4ade80]" />
+                Languages / שפות
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(profileData.languages || []).map((lang, index) => (
+                  <span 
+                    key={index}
+                    className="bg-[#4ade80]/20 text-[#4ade80] px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                  >
+                    {lang === 'he' ? '🇮🇱 עברית' : 
+                     lang === 'en' ? '🇺🇸 English' : 
+                     lang === 'ru' ? '🇷🇺 Русский' : 
+                     lang === 'ar' ? '🇸🇦 العربية' : 
+                     lang === 'fr' ? '🇫🇷 Français' : 
+                     lang === 'es' ? '🇪🇸 Español' : lang}
+                    <button
+                      onClick={() => setProfileData({
+                        ...profileData,
+                        languages: (profileData.languages || []).filter((_, i) => i !== index)
+                      })}
+                      className="hover:text-red-400"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <Select
+                onValueChange={(value) => {
+                  if (!(profileData.languages || []).includes(value)) {
+                    setProfileData({
+                      ...profileData,
+                      languages: [...(profileData.languages || []), value]
+                    })
+                  }
+                }}
+              >
+                <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-xl">
+                  <SelectValue placeholder="הוסף שפה / Add language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="he">🇮🇱 עברית</SelectItem>
+                  <SelectItem value="en">🇺🇸 English</SelectItem>
+                  <SelectItem value="ru">🇷🇺 Русский</SelectItem>
+                  <SelectItem value="ar">🇸🇦 العربية</SelectItem>
+                  <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                  <SelectItem value="es">🇪🇸 Español</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
