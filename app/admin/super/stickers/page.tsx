@@ -22,7 +22,6 @@ export default function StickerGeneratorPage() {
   const [loading, setLoading] = useState(true)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  // Load venues from Firestore
   useEffect(() => {
     const loadVenues = async () => {
       try {
@@ -41,11 +40,8 @@ export default function StickerGeneratorPage() {
           })
         })
         
-        // Sort by name
         venuesList.sort((a, b) => (a.displayName || a.name).localeCompare(b.displayName || b.name))
-        
         setVenues(venuesList)
-        console.log(`✅ Loaded ${venuesList.length} venues`)
       } catch (error) {
         console.error('❌ Error loading venues:', error)
       } finally {
@@ -56,32 +52,14 @@ export default function StickerGeneratorPage() {
     loadVenues()
   }, [])
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STICKER HTML GENERATOR - ORIGINAL DESIGN WITH LARGER BUSINESS CARD QR
-  // ═══════════════════════════════════════════════════════════════════════════
-  
   const generateStickerHTML = (venue: Venue, lang: 'hebrew' | 'english') => {
     const venueQrUrl = `https://i4iguana-app.vercel.app/checkin/${venue.id}`
     const appQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://i4iguana-app.vercel.app&color=0d2920'
     const venueQrApi = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(venueQrUrl)}&color=0d2920`
-    
-    // vCard data for contact QR - LARGER SIZE for better scanning
-    const vCardData = `BEGIN:VCARD
-VERSION:3.0
-FN:Nir Ram
-ORG:I4IGUANA
-TITLE:Founder & CEO
-TEL;TYPE=CELL:052-265-3170
-EMAIL:nir@i4iguana.com
-URL:https://i4iguana.com
-END:VCARD`
-    const vCardQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(vCardData)}&color=0d2920`
-    
-    // Iguana logo
     const iguanaImg = 'https://i4iguana-app.vercel.app/notification-icon-192.png'
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // HEBREW VERSION
+    // HEBREW VERSION - ORIGINAL DESIGN EXACT
     // ═══════════════════════════════════════════════════════════════════════════
     if (lang === 'hebrew') {
       return `<!DOCTYPE html>
@@ -107,8 +85,8 @@ END:VCARD`
       width: 20cm;
       height: 20cm;
       background: white;
-      border-radius: 20px;
-      padding: 0.6cm;
+      border-radius: 24px;
+      padding: 0.7cm;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -119,48 +97,48 @@ END:VCARD`
     .sticker::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       border: 4px solid #4ade80;
-      border-radius: 20px;
+      border-radius: 24px;
       pointer-events: none;
     }
     
     .corner {
       position: absolute;
-      width: 35px;
-      height: 35px;
+      width: 40px;
+      height: 40px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
-    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
-    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
-    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+    .corner-tl { top: 15px; left: 15px; border-right: none; border-bottom: none; border-radius: 10px 0 0 0; }
+    .corner-tr { top: 15px; right: 15px; border-left: none; border-bottom: none; border-radius: 0 10px 0 0; }
+    .corner-bl { bottom: 15px; left: 15px; border-right: none; border-top: none; border-radius: 0 0 0 10px; }
+    .corner-br { bottom: 15px; right: 15px; border-left: none; border-top: none; border-radius: 0 0 10px 0; }
     
+    /* ═══ TOP SECTION ═══ */
     .top-section {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.3cm 0.5cm;
+      padding: 0.2cm 0.4cm;
       z-index: 1;
     }
     
+    /* Business Card - LEFT in RTL = actually on left side */
     .business-card {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       border: 2px solid #4ade80;
       border-radius: 14px;
       padding: 10px 14px;
       background: white;
     }
     
-    .business-qr {
-      width: 1.8cm;
-      height: 1.8cm;
-      border-radius: 8px;
+    .business-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      object-fit: contain;
     }
     
     .business-info {
@@ -182,23 +160,18 @@ END:VCARD`
     .business-contact {
       font-size: 9px;
       color: #666;
-      margin-top: 2px;
+      margin-top: 1px;
     }
     
-    .business-label {
-      font-size: 8px;
-      color: #999;
-      margin-top: 3px;
-    }
-    
+    /* Venue Badge - RIGHT in RTL */
     .venue-badge {
       display: flex;
       align-items: center;
       gap: 6px;
       background: #f0fdf4;
       border: 2px solid #4ade80;
-      border-radius: 20px;
-      padding: 8px 16px;
+      border-radius: 25px;
+      padding: 10px 18px;
     }
     
     .venue-badge span {
@@ -207,75 +180,87 @@ END:VCARD`
       color: #166534;
     }
     
+    /* ═══ LOGO SECTION ═══ */
     .logo-section {
       text-align: center;
-      margin: 0.4cm 0;
+      margin: 0.4cm 0 0.2cm;
       z-index: 1;
     }
     
     .iguana-container {
-      width: 5.5cm;
-      height: 5.5cm;
-      border: 3px solid #4ade80;
-      border-radius: 20px;
+      width: 5.8cm;
+      height: 5.8cm;
+      border: 4px solid #4ade80;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto;
+      background: white;
+    }
+    
+    .iguana-inner {
+      width: 4.8cm;
+      height: 4.8cm;
+      border-radius: 14px;
       background: linear-gradient(135deg, #0d2920, #1a4a3a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       position: relative;
       overflow: hidden;
     }
     
-    .iguana-container::before {
+    .iguana-inner::before {
       content: '(((';
       position: absolute;
-      left: 8px;
+      left: 5px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.6;
-      letter-spacing: -3px;
+      opacity: 0.7;
+      letter-spacing: -4px;
     }
     
-    .iguana-container::after {
+    .iguana-inner::after {
       content: ')))';
       position: absolute;
-      right: 8px;
+      right: 5px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.6;
-      letter-spacing: -3px;
+      opacity: 0.7;
+      letter-spacing: -4px;
     }
     
     .iguana-img {
-      width: 4cm;
-      height: 4cm;
+      width: 3.5cm;
+      height: 3.5cm;
       object-fit: contain;
       position: relative;
       z-index: 1;
     }
     
     .app-name {
-      font-size: 32px;
+      font-size: 34px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 2px;
-      margin-top: 0.3cm;
+      letter-spacing: 3px;
+      margin-top: 0.25cm;
     }
     
     .app-name span {
       color: #4ade80;
     }
     
+    /* ═══ TAGLINE SECTION ═══ */
     .tagline-section {
       text-align: center;
-      margin: 0.3cm 0;
+      margin: 0.15cm 0;
       z-index: 1;
     }
     
@@ -286,7 +271,7 @@ END:VCARD`
     }
     
     .main-tagline .highlight {
-      color: #ef4444;
+      color: #4ade80;
     }
     
     .sub-tagline {
@@ -301,8 +286,8 @@ END:VCARD`
       gap: 8px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 8px 20px;
-      border-radius: 25px;
+      padding: 8px 22px;
+      border-radius: 30px;
       font-size: 13px;
       font-weight: 700;
       margin-top: 10px;
@@ -321,20 +306,21 @@ END:VCARD`
       50% { opacity: 0.5; transform: scale(1.3); }
     }
     
+    /* ═══ QR SECTION - ONLY 2 QR CODES ═══ */
     .qr-section {
       display: flex;
       justify-content: center;
       gap: 1cm;
-      margin: 0.4cm 0;
+      margin: 0.35cm 0;
       z-index: 1;
     }
     
     .qr-box {
       text-align: center;
       background: #fafafa;
-      padding: 0.4cm;
+      padding: 0.35cm;
       border-radius: 16px;
-      border: 2px solid #e5e5e5;
+      border: 2px solid #e8e8e8;
     }
     
     .qr-box img {
@@ -351,38 +337,32 @@ END:VCARD`
     }
     
     .qr-step {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 800;
       color: white;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.35cm auto 0.15cm;
+      margin: -0.35cm auto 0.1cm;
       box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
     }
     
+    /* ═══ FOOTER ═══ */
     .footer {
       text-align: center;
       margin-top: auto;
-      padding-bottom: 0.3cm;
+      padding-bottom: 0.15cm;
       z-index: 1;
     }
     
     .footer-text {
       font-size: 11px;
-      color: #999;
+      color: #aaa;
       letter-spacing: 1px;
-    }
-    
-    .footer-link {
-      font-size: 14px;
-      color: #4ade80;
-      font-weight: 700;
-      margin-top: 2px;
     }
     
     @media print {
@@ -402,29 +382,33 @@ END:VCARD`
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     
+    <!-- TOP: Business Card (left) + Venue (right) in RTL -->
     <div class="top-section">
       <div class="business-card">
-        <img src="${vCardQrUrl}" alt="Contact" class="business-qr">
+        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
         <div class="business-info">
           <div class="business-name">Nir Ram</div>
           <div class="business-title">Founder & CEO</div>
           <div class="business-contact">052-265-3170</div>
           <div class="business-contact">nir@i4iguana.com</div>
-          <div class="business-label">סרוק להוספת איש קשר</div>
         </div>
       </div>
       <div class="venue-badge">
-        <span>📍 ${venue.displayName || venue.name}</span>
+        <span>Archie Bar - Ashkelon 📍</span>
       </div>
     </div>
     
+    <!-- LOGO -->
     <div class="logo-section">
       <div class="iguana-container">
-        <img src="${iguanaImg}" alt="I4IGUANA" class="iguana-img">
+        <div class="iguana-inner">
+          <img src="${iguanaImg}" alt="I4IGUANA" class="iguana-img">
+        </div>
       </div>
       <div class="app-name"><span>I4</span>IGUANA</div>
     </div>
     
+    <!-- TAGLINE - "מחליטה" IN GREEN -->
     <div class="tagline-section">
       <div class="main-tagline">היא <span class="highlight">מחליטה</span> ראשונה!</div>
       <div class="sub-tagline">מצאו מישהו כאן, עכשיו.</div>
@@ -434,6 +418,7 @@ END:VCARD`
       </div>
     </div>
     
+    <!-- QR CODES - ONLY 2 -->
     <div class="qr-section">
       <div class="qr-box">
         <div class="qr-step">1</div>
@@ -447,9 +432,9 @@ END:VCARD`
       </div>
     </div>
     
+    <!-- FOOTER -->
     <div class="footer">
       <div class="footer-text">Dating App for Real Meetings</div>
-      <div class="footer-link">i4iguana.com</div>
     </div>
   </div>
 </body>
@@ -482,8 +467,8 @@ END:VCARD`
       width: 20cm;
       height: 20cm;
       background: white;
-      border-radius: 20px;
-      padding: 0.6cm;
+      border-radius: 24px;
+      padding: 0.7cm;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -494,48 +479,46 @@ END:VCARD`
     .sticker::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       border: 4px solid #4ade80;
-      border-radius: 20px;
+      border-radius: 24px;
       pointer-events: none;
     }
     
     .corner {
       position: absolute;
-      width: 35px;
-      height: 35px;
+      width: 40px;
+      height: 40px;
       border: 3px solid #4ade80;
     }
-    .corner-tl { top: 12px; left: 12px; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
-    .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
-    .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
-    .corner-br { bottom: 12px; right: 12px; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+    .corner-tl { top: 15px; left: 15px; border-right: none; border-bottom: none; border-radius: 10px 0 0 0; }
+    .corner-tr { top: 15px; right: 15px; border-left: none; border-bottom: none; border-radius: 0 10px 0 0; }
+    .corner-bl { bottom: 15px; left: 15px; border-right: none; border-top: none; border-radius: 0 0 0 10px; }
+    .corner-br { bottom: 15px; right: 15px; border-left: none; border-top: none; border-radius: 0 0 10px 0; }
     
     .top-section {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.3cm 0.5cm;
+      padding: 0.2cm 0.4cm;
       z-index: 1;
     }
     
     .business-card {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       border: 2px solid #4ade80;
       border-radius: 14px;
       padding: 10px 14px;
       background: white;
     }
     
-    .business-qr {
-      width: 1.8cm;
-      height: 1.8cm;
-      border-radius: 8px;
+    .business-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      object-fit: contain;
     }
     
     .business-info {
@@ -557,13 +540,7 @@ END:VCARD`
     .business-contact {
       font-size: 9px;
       color: #666;
-      margin-top: 2px;
-    }
-    
-    .business-label {
-      font-size: 8px;
-      color: #999;
-      margin-top: 3px;
+      margin-top: 1px;
     }
     
     .venue-badge {
@@ -572,8 +549,8 @@ END:VCARD`
       gap: 6px;
       background: #f0fdf4;
       border: 2px solid #4ade80;
-      border-radius: 20px;
-      padding: 8px 16px;
+      border-radius: 25px;
+      padding: 10px 18px;
     }
     
     .venue-badge span {
@@ -584,64 +561,74 @@ END:VCARD`
     
     .logo-section {
       text-align: center;
-      margin: 0.4cm 0;
+      margin: 0.4cm 0 0.2cm;
       z-index: 1;
     }
     
     .iguana-container {
-      width: 5.5cm;
-      height: 5.5cm;
-      border: 3px solid #4ade80;
-      border-radius: 20px;
+      width: 5.8cm;
+      height: 5.8cm;
+      border: 4px solid #4ade80;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto;
+      background: white;
+    }
+    
+    .iguana-inner {
+      width: 4.8cm;
+      height: 4.8cm;
+      border-radius: 14px;
       background: linear-gradient(135deg, #0d2920, #1a4a3a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       position: relative;
       overflow: hidden;
     }
     
-    .iguana-container::before {
+    .iguana-inner::before {
       content: '(((';
       position: absolute;
-      left: 8px;
+      left: 5px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.6;
-      letter-spacing: -3px;
+      opacity: 0.7;
+      letter-spacing: -4px;
     }
     
-    .iguana-container::after {
+    .iguana-inner::after {
       content: ')))';
       position: absolute;
-      right: 8px;
+      right: 5px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 300;
       color: #4ade80;
-      opacity: 0.6;
-      letter-spacing: -3px;
+      opacity: 0.7;
+      letter-spacing: -4px;
     }
     
     .iguana-img {
-      width: 4cm;
-      height: 4cm;
+      width: 3.5cm;
+      height: 3.5cm;
       object-fit: contain;
       position: relative;
       z-index: 1;
     }
     
     .app-name {
-      font-size: 32px;
+      font-size: 34px;
       font-weight: 900;
       color: #0d2920;
-      letter-spacing: 2px;
-      margin-top: 0.3cm;
+      letter-spacing: 3px;
+      margin-top: 0.25cm;
     }
     
     .app-name span {
@@ -650,7 +637,7 @@ END:VCARD`
     
     .tagline-section {
       text-align: center;
-      margin: 0.3cm 0;
+      margin: 0.15cm 0;
       z-index: 1;
     }
     
@@ -661,7 +648,7 @@ END:VCARD`
     }
     
     .main-tagline .highlight {
-      color: #ef4444;
+      color: #4ade80;
     }
     
     .sub-tagline {
@@ -676,8 +663,8 @@ END:VCARD`
       gap: 8px;
       background: linear-gradient(135deg, #4ade80, #22c55e);
       color: #0d2920;
-      padding: 8px 20px;
-      border-radius: 25px;
+      padding: 8px 22px;
+      border-radius: 30px;
       font-size: 13px;
       font-weight: 700;
       margin-top: 10px;
@@ -700,16 +687,16 @@ END:VCARD`
       display: flex;
       justify-content: center;
       gap: 1cm;
-      margin: 0.4cm 0;
+      margin: 0.35cm 0;
       z-index: 1;
     }
     
     .qr-box {
       text-align: center;
       background: #fafafa;
-      padding: 0.4cm;
+      padding: 0.35cm;
       border-radius: 16px;
-      border: 2px solid #e5e5e5;
+      border: 2px solid #e8e8e8;
     }
     
     .qr-box img {
@@ -726,38 +713,31 @@ END:VCARD`
     }
     
     .qr-step {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 800;
       color: white;
       background: linear-gradient(135deg, #4ade80, #22c55e);
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -0.35cm auto 0.15cm;
+      margin: -0.35cm auto 0.1cm;
       box-shadow: 0 3px 10px rgba(74, 222, 128, 0.4);
     }
     
     .footer {
       text-align: center;
       margin-top: auto;
-      padding-bottom: 0.3cm;
+      padding-bottom: 0.15cm;
       z-index: 1;
     }
     
     .footer-text {
       font-size: 11px;
-      color: #999;
+      color: #aaa;
       letter-spacing: 1px;
-    }
-    
-    .footer-link {
-      font-size: 14px;
-      color: #4ade80;
-      font-weight: 700;
-      margin-top: 2px;
     }
     
     @media print {
@@ -779,13 +759,12 @@ END:VCARD`
     
     <div class="top-section">
       <div class="business-card">
-        <img src="${vCardQrUrl}" alt="Contact" class="business-qr">
+        <img src="${iguanaImg}" alt="I4IGUANA" class="business-icon">
         <div class="business-info">
           <div class="business-name">Nir Ram</div>
           <div class="business-title">Founder & CEO</div>
           <div class="business-contact">052-265-3170</div>
           <div class="business-contact">nir@i4iguana.com</div>
-          <div class="business-label">Scan to save contact</div>
         </div>
       </div>
       <div class="venue-badge">
@@ -795,7 +774,9 @@ END:VCARD`
     
     <div class="logo-section">
       <div class="iguana-container">
-        <img src="${iguanaImg}" alt="I4IGUANA" class="iguana-img">
+        <div class="iguana-inner">
+          <img src="${iguanaImg}" alt="I4IGUANA" class="iguana-img">
+        </div>
       </div>
       <div class="app-name"><span>I4</span>IGUANA</div>
     </div>
@@ -824,7 +805,6 @@ END:VCARD`
     
     <div class="footer">
       <div class="footer-text">Dating App for Real Meetings</div>
-      <div class="footer-link">i4iguana.com</div>
     </div>
   </div>
 </body>
@@ -835,7 +815,6 @@ END:VCARD`
 
   const handlePrint = () => {
     if (!selectedVenueData) return
-    
     const html = generateStickerHTML(selectedVenueData, language)
     const printWindow = window.open('', '_blank')
     if (printWindow) {
@@ -847,7 +826,6 @@ END:VCARD`
 
   const handleDownload = () => {
     if (!selectedVenueData) return
-    
     const html = generateStickerHTML(selectedVenueData, language)
     const blob = new Blob([html], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
@@ -858,14 +836,10 @@ END:VCARD`
     URL.revokeObjectURL(url)
   }
 
-  // Preview HTML
-  const previewHTML = selectedVenueData 
-    ? generateStickerHTML(selectedVenueData, language)
-    : ''
+  const previewHTML = selectedVenueData ? generateStickerHTML(selectedVenueData, language) : ''
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0d2920] to-[#1a4d3e] p-4 md:p-8">
-      {/* Header */}
       <div className="max-w-6xl mx-auto mb-8">
         <Link 
           href="/admin/super/control"
@@ -881,16 +855,13 @@ END:VCARD`
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white">Sticker Generator</h1>
-            <p className="text-white/60">Create printable venue stickers • White background saves ink!</p>
+            <p className="text-white/60">Create printable venue stickers</p>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
-        {/* Controls */}
         <div className="space-y-6">
-          {/* Venue Selection */}
           <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-[#4ade80]" />
@@ -916,12 +887,9 @@ END:VCARD`
               </select>
             )}
             
-            <p className="text-white/40 text-sm mt-2">
-              {venues.length} venues available
-            </p>
+            <p className="text-white/40 text-sm mt-2">{venues.length} venues available</p>
           </div>
 
-          {/* Language Selection */}
           <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#4ade80]" />
@@ -952,7 +920,6 @@ END:VCARD`
             </div>
           </div>
 
-          {/* Actions */}
           <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
             <h2 className="text-lg font-bold text-white mb-4">Actions</h2>
             
@@ -977,12 +944,11 @@ END:VCARD`
             </div>
             
             <p className="text-white/40 text-sm mt-4 text-center">
-              Sticker size: 20×20 cm • Print on A4 sticker paper
+              Sticker size: 20×20 cm
             </p>
           </div>
         </div>
 
-        {/* Preview */}
         <div className="bg-[#1a4d3e]/50 rounded-2xl p-6 border border-[#4ade80]/20">
           <h2 className="text-lg font-bold text-white mb-4">Preview</h2>
           
