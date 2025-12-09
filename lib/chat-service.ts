@@ -13,6 +13,7 @@ import {
   setDoc
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { sendMessageNotification } from './push-helper'
 
 export interface Message {
   id: string
@@ -25,7 +26,7 @@ export interface Message {
 
 /**
  * Send a message in a match
- * ✅ FIXED: Added otherUserId to create notification for recipient
+ * ✅ FIXED: Added push notification for when app is closed
  */
 export async function sendMessage(
   matchId: string,
@@ -50,7 +51,7 @@ export async function sendMessage(
       lastMessageAt: Timestamp.now()
     })
     
-    // ✅ NEW: Create notification for the receiver
+    // ✅ Create in-app notification for the receiver
     try {
       // Get sender's profile for notification
       const senderDoc = await getDoc(doc(db, 'users', senderId))
@@ -60,7 +61,7 @@ export async function sendMessage(
         const senderName = senderData.name || senderData.displayName || 'Someone'
         const senderPhoto = senderData.photos?.[0] || senderData.photoURL || ''
         
-        // Create notification
+        // Create in-app notification
         const notificationsRef = collection(db, 'users', receiverId, 'notifications')
         await addDoc(notificationsRef, {
           type: 'message',
@@ -76,7 +77,18 @@ export async function sendMessage(
           isRead: false
         })
         
-        console.log(`🔔 Message notification sent to ${receiverId}`)
+        console.log(`🔔 In-app notification sent to ${receiverId}`)
+        
+        // ✅ NEW: Send push notification (for when app is closed)
+        await sendMessageNotification(
+          receiverId,
+          senderName,
+          senderPhoto,
+          text,
+          matchId,
+          senderId
+        )
+        console.log(`📲 Push notification sent to ${receiverId}`)
       }
     } catch (notifError) {
       console.error('⚠️ Error creating message notification:', notifError)
