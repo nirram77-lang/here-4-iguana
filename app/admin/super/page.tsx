@@ -278,6 +278,21 @@ export default function SuperAdminPanel() {
                 DB Manager
               </Button>
               <Button
+                onClick={() => router.push('/admin/super/tests')}
+                variant="outline"
+                className="border-purple-500/50 text-purple-400 hover:bg-purple-500/20"
+              >
+                <TrendingUp className="mr-2 h-5 w-5" />
+                Tests Dashboard
+              </Button>
+              <Button
+                onClick={() => router.push('/admin/super/stickers')}
+                variant="outline"
+                className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/20"
+              >
+                🎨 Stickers
+              </Button>
+              <Button
                 onClick={handleLogout}
                 variant="ghost"
                 className="text-white hover:bg-white/10"
