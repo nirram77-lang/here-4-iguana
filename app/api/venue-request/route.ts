@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const data = await req.json()
     
     // Validate required fields
-    const requiredFields = ['venueName', 'venueType', 'address', 'city', 'latitude', 'longitude', 'ownerName', 'phone', 'email']
+    const requiredFields = ['venueName', 'venueType', 'address', 'city', 'latitude', 'longitude', 'ownerName', 'phone', 'email', 'capacity']
     for (const field of requiredFields) {
       if (!data[field]) {
         return NextResponse.json(
@@ -64,8 +64,10 @@ export async function POST(req: NextRequest) {
       // Venue Info
       venueName: data.venueName,
       venueType: data.venueType,
-      address: data.address,
+      country: data.country || 'Israel',
       city: data.city,
+      address: data.address,
+      postalCode: data.postalCode || '',
       location: {
         latitude: lat,
         longitude: lng
@@ -80,10 +82,12 @@ export async function POST(req: NextRequest) {
       website: data.website || '',
       instagram: data.instagram || '',
       facebook: data.facebook || '',
-      openingHours: data.openingHours || '',
+      openingHours: data.openingHours || '20:00',
+      closingHours: data.closingHours || '03:00',
       capacity: data.capacity ? parseInt(data.capacity) : null,
       description: data.description || '',
       logoUrl: '',
+      language: data.language || 'en',
       
       // Meta
       status: 'pending', // pending, approved, rejected

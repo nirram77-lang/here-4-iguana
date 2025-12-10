@@ -29,12 +29,13 @@ import Link from 'next/link'
 interface FormData {
   venueName: string
   venueType: string
+  country: string
+  city: string
+  address: string
+  postalCode: string
   ownerName: string
   email: string
   phone: string
-  address: string
-  country: string
-  city: string
   latitude: string
   longitude: string
   website: string
@@ -42,6 +43,7 @@ interface FormData {
   facebook: string
   capacity: string
   openingHours: string
+  closingHours: string
   description: string
   agreedToTerms: boolean
 }
@@ -49,19 +51,21 @@ interface FormData {
 const initialFormData: FormData = {
   venueName: '',
   venueType: 'bar',
+  country: 'Israel',
+  city: '',
+  address: '',
+  postalCode: '',
   ownerName: '',
   email: '',
   phone: '',
-  address: '',
-  country: 'Israel',
-  city: '',
   latitude: '',
   longitude: '',
   website: '',
   instagram: '',
   facebook: '',
   capacity: '',
-  openingHours: '',
+  openingHours: '20:00',
+  closingHours: '03:00',
   description: '',
   agreedToTerms: false
 }
@@ -101,22 +105,30 @@ const israeliCities = [
   'אחר / Other'
 ]
 
-// Common countries
+// Common countries with phone codes
 const countries = [
-  { value: 'Israel', label: '🇮🇱 Israel / ישראל' },
-  { value: 'USA', label: '🇺🇸 United States' },
-  { value: 'UK', label: '🇬🇧 United Kingdom' },
-  { value: 'Germany', label: '🇩🇪 Germany' },
-  { value: 'France', label: '🇫🇷 France' },
-  { value: 'Spain', label: '🇪🇸 Spain' },
-  { value: 'Italy', label: '🇮🇹 Italy' },
-  { value: 'Netherlands', label: '🇳🇱 Netherlands' },
-  { value: 'Greece', label: '🇬🇷 Greece' },
-  { value: 'Cyprus', label: '🇨🇾 Cyprus' },
-  { value: 'Portugal', label: '🇵🇹 Portugal' },
-  { value: 'Australia', label: '🇦🇺 Australia' },
-  { value: 'Canada', label: '🇨🇦 Canada' },
-  { value: 'Other', label: '🌍 Other' },
+  { value: 'Israel', label: '🇮🇱 Israel / ישראל', phoneCode: '+972', phoneLength: 9 },
+  { value: 'USA', label: '🇺🇸 United States', phoneCode: '+1', phoneLength: 10 },
+  { value: 'UK', label: '🇬🇧 United Kingdom', phoneCode: '+44', phoneLength: 10 },
+  { value: 'Germany', label: '🇩🇪 Germany', phoneCode: '+49', phoneLength: 11 },
+  { value: 'France', label: '🇫🇷 France', phoneCode: '+33', phoneLength: 9 },
+  { value: 'Spain', label: '🇪🇸 Spain', phoneCode: '+34', phoneLength: 9 },
+  { value: 'Italy', label: '🇮🇹 Italy', phoneCode: '+39', phoneLength: 10 },
+  { value: 'Netherlands', label: '🇳🇱 Netherlands', phoneCode: '+31', phoneLength: 9 },
+  { value: 'Greece', label: '🇬🇷 Greece', phoneCode: '+30', phoneLength: 10 },
+  { value: 'Cyprus', label: '🇨🇾 Cyprus', phoneCode: '+357', phoneLength: 8 },
+  { value: 'Portugal', label: '🇵🇹 Portugal', phoneCode: '+351', phoneLength: 9 },
+  { value: 'Australia', label: '🇦🇺 Australia', phoneCode: '+61', phoneLength: 9 },
+  { value: 'Canada', label: '🇨🇦 Canada', phoneCode: '+1', phoneLength: 10 },
+  { value: 'Other', label: '🌍 Other', phoneCode: '+', phoneLength: 7 },
+]
+
+// Hours for dropdown
+const hours = [
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+  '20:00', '21:00', '22:00', '23:00', '00:00', '01:00', '02:00',
+  '03:00', '04:00', '05:00'
 ]
 
 // Translations
@@ -147,12 +159,17 @@ const translations = {
       { value: 'beach_bar', label: '🏖️ Beach Bar' },
       { value: 'other', label: '✨ Other' },
     ],
-    address: 'Full Address',
-    addressPlaceholder: 'Street, Number',
+    address: 'Street Address',
+    addressPlaceholder: 'Street name, Number',
     country: 'Country',
     city: 'City',
     cityPlaceholder: 'e.g. New York',
     selectCity: 'Select city...',
+    postalCode: 'Postal Code',
+    postalCodePlaceholder: 'Optional',
+    openingTime: 'Opens at',
+    closingTime: 'Closes at',
+    invalidPhone: 'Invalid phone number',
     coordinatesTitle: 'GPS Coordinates',
     coordinatesHelp: 'How to find?',
     coordinatesDesc: 'Coordinates are essential for the app to identify users inside your venue!',
@@ -243,12 +260,17 @@ const translations = {
       { value: 'beach_bar', label: '🏖️ בר חוף' },
       { value: 'other', label: '✨ אחר' },
     ],
-    address: 'כתובת מלאה',
-    addressPlaceholder: 'רחוב, מספר',
+    address: 'כתובת (רחוב ומספר)',
+    addressPlaceholder: 'שם רחוב, מספר',
     country: 'מדינה',
     city: 'עיר',
     cityPlaceholder: 'לדוגמה: ניו יורק',
     selectCity: 'בחר עיר...',
+    postalCode: 'מיקוד',
+    postalCodePlaceholder: 'אופציונלי',
+    openingTime: 'שעת פתיחה',
+    closingTime: 'שעת סגירה',
+    invalidPhone: 'מספר טלפון לא תקין',
     coordinatesTitle: 'קואורדינטות GPS',
     coordinatesHelp: 'איך למצוא?',
     coordinatesDesc: 'הקואורדינטות חיוניות כדי שהאפליקציה תזהה משתמשים בתוך המקום שלך!',
@@ -335,6 +357,15 @@ export default function VenueJoinPage() {
     }
   }
 
+  const getSelectedCountry = () => countries.find(c => c.value === formData.country) || countries[0]
+
+  const validatePhone = (phone: string): boolean => {
+    const digitsOnly = phone.replace(/\D/g, '')
+    const country = getSelectedCountry()
+    // Allow some flexibility: between min length and +3
+    return digitsOnly.length >= country.phoneLength && digitsOnly.length <= country.phoneLength + 3
+  }
+
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {}
     
@@ -343,8 +374,10 @@ export default function VenueJoinPage() {
     if (!formData.email.trim()) newErrors.email = t.required
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.invalidEmail
     if (!formData.phone.trim()) newErrors.phone = t.required
+    else if (!validatePhone(formData.phone)) newErrors.phone = t.invalidPhone
     if (!formData.address.trim()) newErrors.address = t.required
     if (!formData.city.trim()) newErrors.city = t.required
+    if (!formData.capacity.trim()) newErrors.capacity = t.required
     if (!formData.latitude.trim()) newErrors.latitude = t.required
     else if (isNaN(parseFloat(formData.latitude)) || parseFloat(formData.latitude) < -90 || parseFloat(formData.latitude) > 90) {
       newErrors.latitude = t.invalidLat
@@ -538,6 +571,7 @@ export default function VenueJoinPage() {
               {t.venueSection}
             </h3>
             
+            {/* 1. Venue Name */}
             <div className={errors.venueName ? 'error-field' : ''}>
               <label className="block text-white/80 text-sm mb-1">{t.venueName} *</label>
               <Input
@@ -550,12 +584,13 @@ export default function VenueJoinPage() {
               {errors.venueName && <p className="text-red-400 text-xs mt-1">{errors.venueName}</p>}
             </div>
 
+            {/* 2. Venue Type */}
             <div>
               <label className="block text-white/80 text-sm mb-1">{t.venueType} *</label>
               <select
                 value={formData.venueType}
                 onChange={(e) => handleInputChange('venueType', e.target.value)}
-                className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2"
+                className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2.5 cursor-pointer hover:bg-white/15 transition-colors"
                 dir="auto"
               >
                 {t.venueTypes.map(type => (
@@ -566,19 +601,7 @@ export default function VenueJoinPage() {
               </select>
             </div>
 
-            <div className={errors.address ? 'error-field' : ''}>
-              <label className="block text-white/80 text-sm mb-1">{t.address} *</label>
-              <Input
-                value={formData.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder={t.addressPlaceholder}
-                className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.address ? 'border-red-500' : ''}`}
-                dir="auto"
-              />
-              {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
-            </div>
-
-            {/* Country Selection */}
+            {/* 3. Country Selection */}
             <div>
               <label className="block text-white/80 text-sm mb-1">{t.country} *</label>
               <select
@@ -587,7 +610,7 @@ export default function VenueJoinPage() {
                   handleInputChange('country', e.target.value)
                   handleInputChange('city', '') // Reset city when country changes
                 }}
-                className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2"
+                className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2.5 cursor-pointer hover:bg-white/15 transition-colors"
               >
                 {countries.map(c => (
                   <option key={c.value} value={c.value} className="bg-[#1a4d3e] text-white">
@@ -597,14 +620,14 @@ export default function VenueJoinPage() {
               </select>
             </div>
 
-            {/* City - Dropdown for Israel, Text for others */}
+            {/* 4. City - Dropdown for Israel, Text for others */}
             <div className={errors.city ? 'error-field' : ''}>
               <label className="block text-white/80 text-sm mb-1">{t.city} *</label>
               {formData.country === 'Israel' ? (
                 <select
                   value={formData.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
-                  className={`w-full bg-white/10 border border-white/20 text-white rounded-md p-2 ${errors.city ? 'border-red-500' : ''}`}
+                  className={`w-full bg-white/10 border border-white/20 text-white rounded-md p-2.5 cursor-pointer hover:bg-white/15 transition-colors ${errors.city ? 'border-red-500' : ''}`}
                 >
                   <option value="" className="bg-[#1a4d3e] text-white/50">{t.selectCity}</option>
                   {israeliCities.map(city => (
@@ -625,7 +648,32 @@ export default function VenueJoinPage() {
               {errors.city && <p className="text-red-400 text-xs mt-1">{errors.city}</p>}
             </div>
 
-            {/* Coordinates */}
+            {/* 5. Street Address */}
+            <div className={errors.address ? 'error-field' : ''}>
+              <label className="block text-white/80 text-sm mb-1">{t.address} *</label>
+              <Input
+                value={formData.address}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+                placeholder={t.addressPlaceholder}
+                className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.address ? 'border-red-500' : ''}`}
+                dir="auto"
+              />
+              {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
+            </div>
+
+            {/* 6. Postal Code (Optional) */}
+            <div>
+              <label className="block text-white/80 text-sm mb-1">{t.postalCode}</label>
+              <Input
+                value={formData.postalCode}
+                onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                placeholder={t.postalCodePlaceholder}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                dir="ltr"
+              />
+            </div>
+
+            {/* 7. GPS Coordinates */}
             <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-white font-bold flex items-center gap-2">
@@ -670,31 +718,80 @@ export default function VenueJoinPage() {
               </div>
             </div>
 
-            {/* Capacity & Hours */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-white/80 text-sm mb-1">{t.capacity}</label>
-                <Input
-                  value={formData.capacity}
-                  onChange={(e) => handleInputChange('capacity', e.target.value)}
-                  placeholder="200"
-                  type="number"
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                  dir="ltr"
-                />
+            {/* 8. Capacity & Opening Hours - Hollywood Style */}
+            <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl p-4">
+              <h4 className="text-white font-bold flex items-center gap-2 mb-4">
+                <Users className="w-4 h-4 text-amber-400" />
+                {lang === 'he' ? 'קיבולת ושעות פעילות' : 'Capacity & Hours'}
+              </h4>
+              
+              {/* Capacity */}
+              <div className={`mb-4 ${errors.capacity ? 'error-field' : ''}`}>
+                <label className="block text-white/80 text-sm mb-2">{t.capacity} *</label>
+                <div className="relative">
+                  <Input
+                    value={formData.capacity}
+                    onChange={(e) => handleInputChange('capacity', e.target.value)}
+                    placeholder="200"
+                    type="number"
+                    min="1"
+                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 text-center text-xl font-bold pr-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.capacity ? 'border-red-500' : ''}`}
+                    dir="ltr"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('capacity', String(Math.max(1, parseInt(formData.capacity || '0') + 10)))}
+                      className="w-8 h-6 bg-amber-500/30 hover:bg-amber-500/50 rounded text-white text-xs font-bold transition-colors"
+                    >
+                      +10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('capacity', String(Math.max(1, parseInt(formData.capacity || '0') - 10)))}
+                      className="w-8 h-6 bg-amber-500/20 hover:bg-amber-500/40 rounded text-white text-xs font-bold transition-colors"
+                    >
+                      -10
+                    </button>
+                  </div>
+                </div>
+                {errors.capacity && <p className="text-red-400 text-xs mt-1">{errors.capacity}</p>}
               </div>
-              <div>
-                <label className="block text-white/80 text-sm mb-1">{t.openingHours}</label>
-                <Input
-                  value={formData.openingHours}
-                  onChange={(e) => handleInputChange('openingHours', e.target.value)}
-                  placeholder={t.openingHoursPlaceholder}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
-                  dir="ltr"
-                />
+
+              {/* Opening Hours with Dropdowns */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-white/80 text-sm mb-2">{t.openingTime} *</label>
+                  <select
+                    value={formData.openingHours}
+                    onChange={(e) => handleInputChange('openingHours', e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2.5 cursor-pointer hover:bg-white/15 transition-colors text-center font-mono"
+                  >
+                    {hours.map(hour => (
+                      <option key={`open-${hour}`} value={hour} className="bg-[#1a4d3e] text-white">
+                        🕐 {hour}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-white/80 text-sm mb-2">{t.closingTime} *</label>
+                  <select
+                    value={formData.closingHours}
+                    onChange={(e) => handleInputChange('closingHours', e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2.5 cursor-pointer hover:bg-white/15 transition-colors text-center font-mono"
+                  >
+                    {hours.map(hour => (
+                      <option key={`close-${hour}`} value={hour} className="bg-[#1a4d3e] text-white">
+                        🕐 {hour}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
+            {/* 9. Description */}
             <div>
               <label className="block text-white/80 text-sm mb-1">{t.description}</label>
               <textarea
@@ -742,15 +839,29 @@ export default function VenueJoinPage() {
 
             <div className={errors.phone ? 'error-field' : ''}>
               <label className="block text-white/80 text-sm mb-1">{t.phone} *</label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder={t.phonePlaceholder}
-                type="tel"
-                className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.phone ? 'border-red-500' : ''}`}
-                dir="ltr"
-              />
+              <div className="flex gap-2">
+                {/* Country Code Display */}
+                <div className="flex items-center justify-center bg-white/10 border border-white/20 rounded-md px-3 min-w-[80px] text-white font-mono">
+                  {getSelectedCountry().phoneCode}
+                </div>
+                {/* Phone Input */}
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => {
+                    // Allow only numbers, spaces, and dashes
+                    const cleaned = e.target.value.replace(/[^\d\s-]/g, '')
+                    handleInputChange('phone', cleaned)
+                  }}
+                  placeholder={formData.country === 'Israel' ? '52-265-3170' : '555-123-4567'}
+                  type="tel"
+                  className={`flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono ${errors.phone ? 'border-red-500' : ''}`}
+                  dir="ltr"
+                />
+              </div>
               {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+              <p className="text-white/40 text-xs mt-1">
+                {lang === 'he' ? `מינימום ${getSelectedCountry().phoneLength} ספרות` : `Minimum ${getSelectedCountry().phoneLength} digits`}
+              </p>
             </div>
           </div>
 
