@@ -738,9 +738,9 @@ export default function VenueJoinPage() {
                     className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono text-center ${errors.latitude ? 'border-red-500' : ''}`}
                     dir="ltr"
                   />
-                  {formData.latitude && !errors.latitude && (
-                    <p className={`text-xs mt-1 ${formData.latitude.includes('.') && formData.latitude.split('.')[1]?.length >= 4 ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {formData.latitude.includes('.') && formData.latitude.split('.')[1]?.length >= 4 
+                  {formData.latitude && !errors.latitude && formData.latitude.includes('.') && (
+                    <p className={`text-xs mt-1 ${(formData.latitude.split('.')[1] || '').length >= 4 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {(formData.latitude.split('.')[1] || '').length >= 4 
                         ? (lang === 'he' ? '✓ דיוק מעולה' : '✓ Great precision')
                         : (lang === 'he' ? '⚠ הוסף עוד ספרות לדיוק' : '⚠ Add more digits for accuracy')}
                     </p>
@@ -760,9 +760,9 @@ export default function VenueJoinPage() {
                     className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono text-center ${errors.longitude ? 'border-red-500' : ''}`}
                     dir="ltr"
                   />
-                  {formData.longitude && !errors.longitude && (
-                    <p className={`text-xs mt-1 ${formData.longitude.includes('.') && formData.longitude.split('.')[1]?.length >= 4 ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {formData.longitude.includes('.') && formData.longitude.split('.')[1]?.length >= 4 
+                  {formData.longitude && !errors.longitude && formData.longitude.includes('.') && (
+                    <p className={`text-xs mt-1 ${(formData.longitude.split('.')[1] || '').length >= 4 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {(formData.longitude.split('.')[1] || '').length >= 4 
                         ? (lang === 'he' ? '✓ דיוק מעולה' : '✓ Great precision')
                         : (lang === 'he' ? '⚠ הוסף עוד ספרות לדיוק' : '⚠ Add more digits for accuracy')}
                     </p>
