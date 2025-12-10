@@ -631,6 +631,13 @@ export default function DatabaseManager() {
 
             <div className="flex items-center gap-3">
               <Button
+                onClick={() => router.push('/admin/super/simulator')}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+              >
+                🧪 Simulator
+              </Button>
+              
+              <Button
                 onClick={() => router.push('/admin/super/stickers')}
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
               >
