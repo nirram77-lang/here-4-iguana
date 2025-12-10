@@ -671,6 +671,14 @@ export default function SimulatorPage() {
               </select>
 
               <Button
+                onClick={() => router.push('/admin/super/simulator/visual')}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold"
+              >
+                <Smartphone className="h-4 w-4 mr-2" />
+                📱 Visual Mode
+              </Button>
+
+              <Button
                 onClick={() => setShowCreatePanel(true)}
                 className="bg-[#4ade80] hover:bg-[#3bc970] text-black font-bold"
               >
