@@ -192,8 +192,9 @@ export default function SuperAdminPanel() {
       collection(db, 'venues'),
       (snapshot) => {
         const updatedVenues: Venue[] = []
-        snapshot.forEach((doc) => {
-          updatedVenues.push(doc.data() as Venue)
+        snapshot.forEach((docSnap) => {
+          // Include document ID in venue data
+          updatedVenues.push({ ...docSnap.data(), id: docSnap.id } as Venue)
         })
         setVenues(updatedVenues)
         
