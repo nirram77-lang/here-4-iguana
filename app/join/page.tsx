@@ -15,7 +15,6 @@ import {
   Send,
   Navigation,
   ExternalLink,
-  Clock,
   Users,
   HelpCircle,
   X,
@@ -65,23 +64,210 @@ const initialFormData: FormData = {
   agreedToTerms: false
 }
 
-const venueTypes = [
-  { value: 'bar', label: '🍺 בר' },
-  { value: 'club', label: '🎉 מועדון' },
-  { value: 'lounge', label: '🛋️ לאונג\'' },
-  { value: 'pub', label: '🍻 פאב' },
-  { value: 'restaurant_bar', label: '🍽️ מסעדה-בר' },
-  { value: 'rooftop', label: '🌃 רופטופ' },
-  { value: 'beach_bar', label: '🏖️ בר חוף' },
-  { value: 'other', label: '✨ אחר' },
-]
+// Translations
+const translations = {
+  en: {
+    dir: 'ltr' as const,
+    langToggle: 'עברית',
+    heroTitle: 'Join ',
+    heroTitleHighlight: 'I4IGUANA',
+    heroSubtitle: 'Turn your venue into a hotspot for singles looking to connect!',
+    benefits: [
+      { title: 'New Audience', desc: 'Users looking for places to go out' },
+      { title: 'Free Marketing', desc: 'Exposure in our app' },
+      { title: 'Easy Start', desc: 'Simple joining process' },
+    ],
+    formTitle: '📝 Registration Form',
+    venueSection: 'Venue Details',
+    venueName: 'Venue Name',
+    venueNamePlaceholder: 'e.g. The Iguana Bar',
+    venueType: 'Venue Type',
+    venueTypes: [
+      { value: 'bar', label: '🍺 Bar' },
+      { value: 'club', label: '🎉 Club' },
+      { value: 'lounge', label: '🛋️ Lounge' },
+      { value: 'pub', label: '🍻 Pub' },
+      { value: 'restaurant_bar', label: '🍽️ Restaurant-Bar' },
+      { value: 'rooftop', label: '🌃 Rooftop' },
+      { value: 'beach_bar', label: '🏖️ Beach Bar' },
+      { value: 'other', label: '✨ Other' },
+    ],
+    address: 'Full Address',
+    addressPlaceholder: 'Street, Number',
+    city: 'City',
+    cityPlaceholder: 'e.g. Tel Aviv',
+    coordinatesTitle: 'GPS Coordinates',
+    coordinatesHelp: 'How to find?',
+    coordinatesDesc: 'Coordinates are essential for the app to identify users inside your venue!',
+    latitude: 'Latitude',
+    longitude: 'Longitude',
+    capacity: 'Capacity (people)',
+    openingHours: 'Opening Hours',
+    openingHoursPlaceholder: '20:00-03:00',
+    description: 'Venue Description',
+    descriptionPlaceholder: 'Tell us about your venue...',
+    ownerSection: 'Owner Details',
+    ownerName: 'Full Name',
+    ownerNamePlaceholder: 'John Smith',
+    email: 'Email',
+    phone: 'Phone',
+    phonePlaceholder: '+1-555-000-0000',
+    socialSection: 'Digital Presence (Optional)',
+    website: 'Website',
+    submitButton: 'Submit Request',
+    submitting: 'Submitting...',
+    termsText: 'I agree to the',
+    termsLink: 'Terms of Service',
+    privacyLink: 'Privacy Policy',
+    and: 'and',
+    questions: 'Questions?',
+    required: 'Required',
+    invalidEmail: 'Invalid email',
+    invalidLat: 'Invalid (must be -90 to 90)',
+    invalidLng: 'Invalid (must be -180 to 180)',
+    mustAgree: 'You must agree to the terms',
+    successTitle: 'Request Submitted! 🎉',
+    successSubtitle: 'Thank you for joining the I4IGUANA family!',
+    successDesc: 'Our team will contact you within 24-48 hours.',
+    whatsNext: "What's next?",
+    nextSteps: [
+      '✅ Your request was received',
+      '📞 We will contact you to coordinate',
+      '🎨 We will prepare a unique QR sticker for you',
+      '🚀 Your venue will go live!',
+    ],
+    backHome: 'Back to Home',
+    coordHelpTitle: 'How to find coordinates?',
+    method1Title: 'Method 1: WhatsApp (Easiest!)',
+    method1Steps: [
+      'Stand physically at your venue',
+      'Open WhatsApp and send your location to yourself',
+      'Click on the sent location',
+      'Google Maps will open',
+      'You will see the coordinates in the address bar',
+      '⚡ Tip: Coordinates appear for a second! Copy quickly!',
+    ],
+    method2Title: 'Method 2: Google Maps on Computer',
+    method2Steps: [
+      'Open Google Maps on your computer',
+      'Search for your venue address',
+      'Right-click on the exact location',
+      'The coordinates will appear - click to copy',
+    ],
+    importantNote: '⚠️ Important!',
+    importantText: 'Coordinates must be accurate for the app to correctly identify users inside your venue. Stand in the center of your venue when getting the coordinates.',
+    openMaps: 'Open Google Maps',
+    exampleUrl: 'Example from URL:',
+    firstIsLat: '↑ First number = Latitude, Second = Longitude',
+  },
+  he: {
+    dir: 'rtl' as const,
+    langToggle: 'English',
+    heroTitle: 'הצטרפו ל-',
+    heroTitleHighlight: 'I4IGUANA',
+    heroSubtitle: 'הפכו את המועדון שלכם למוקד משיכה לרווקים ורווקות!',
+    benefits: [
+      { title: 'קהל חדש', desc: 'משתמשים מחפשים מקומות לצאת' },
+      { title: 'שיווק חינמי', desc: 'חשיפה באפליקציה שלנו' },
+      { title: 'קל להתחיל', desc: 'תהליך הצטרפות פשוט' },
+    ],
+    formTitle: '📝 טופס הצטרפות',
+    venueSection: 'פרטי המקום',
+    venueName: 'שם המקום',
+    venueNamePlaceholder: 'לדוגמה: בר האיגואנה',
+    venueType: 'סוג המקום',
+    venueTypes: [
+      { value: 'bar', label: '🍺 בר' },
+      { value: 'club', label: '🎉 מועדון' },
+      { value: 'lounge', label: '🛋️ לאונג\'' },
+      { value: 'pub', label: '🍻 פאב' },
+      { value: 'restaurant_bar', label: '🍽️ מסעדה-בר' },
+      { value: 'rooftop', label: '🌃 רופטופ' },
+      { value: 'beach_bar', label: '🏖️ בר חוף' },
+      { value: 'other', label: '✨ אחר' },
+    ],
+    address: 'כתובת מלאה',
+    addressPlaceholder: 'רחוב, מספר',
+    city: 'עיר',
+    cityPlaceholder: 'לדוגמה: תל אביב',
+    coordinatesTitle: 'קואורדינטות GPS',
+    coordinatesHelp: 'איך למצוא?',
+    coordinatesDesc: 'הקואורדינטות חיוניות כדי שהאפליקציה תזהה משתמשים בתוך המקום שלך!',
+    latitude: 'Latitude (קו רוחב)',
+    longitude: 'Longitude (קו אורך)',
+    capacity: 'קיבולת (מספר אנשים)',
+    openingHours: 'שעות פעילות',
+    openingHoursPlaceholder: '20:00-03:00',
+    description: 'תיאור המקום',
+    descriptionPlaceholder: 'ספרו לנו על המקום שלכם...',
+    ownerSection: 'פרטי בעל המקום',
+    ownerName: 'שם מלא',
+    ownerNamePlaceholder: 'ישראל ישראלי',
+    email: 'אימייל',
+    phone: 'טלפון',
+    phonePlaceholder: '050-0000000',
+    socialSection: 'נוכחות דיגיטלית (אופציונלי)',
+    website: 'אתר אינטרנט',
+    submitButton: 'שליחת הבקשה',
+    submitting: 'שולח...',
+    termsText: 'אני מאשר/ת שקראתי והסכמתי ל',
+    termsLink: 'תנאי השימוש',
+    privacyLink: 'מדיניות הפרטיות',
+    and: 'ול',
+    questions: 'שאלות?',
+    required: 'שדה חובה',
+    invalidEmail: 'אימייל לא תקין',
+    invalidLat: 'ערך לא תקין (בין -90 ל-90)',
+    invalidLng: 'ערך לא תקין (בין -180 ל-180)',
+    mustAgree: 'יש לאשר את התנאים',
+    successTitle: 'הטופס נשלח בהצלחה! 🎉',
+    successSubtitle: 'תודה רבה על ההצטרפות למשפחת I4IGUANA!',
+    successDesc: 'צוות שלנו יצור איתך קשר תוך 24-48 שעות.',
+    whatsNext: 'מה קורה עכשיו?',
+    nextSteps: [
+      '✅ הבקשה שלך התקבלה',
+      '📞 ניצור קשר לתיאום',
+      '🎨 נכין עבורך סטיקר QR ייחודי',
+      '🚀 המועדון שלך יעלה לאוויר!',
+    ],
+    backHome: 'חזרה לדף הבית',
+    coordHelpTitle: 'איך למצוא קואורדינטות?',
+    method1Title: 'שיטה 1: וואטסאפ (הכי קלה!)',
+    method1Steps: [
+      'עמדו פיזית במועדון שלכם',
+      'פתחו וואטסאפ ושלחו מיקום לעצמכם',
+      'לחצו על המיקום שנשלח',
+      'ייפתח Google Maps',
+      'בשורת הכתובת למעלה תראו את הקואורדינטות',
+      '⚡ טיפ: הקואורדינטות מופיעות לשנייה! העתיקו מהר!',
+    ],
+    method2Title: 'שיטה 2: Google Maps במחשב',
+    method2Steps: [
+      'פתחו Google Maps במחשב',
+      'חפשו את הכתובת של המקום',
+      'לחצו קליק ימני על המיקום המדויק',
+      'הקואורדינטות יופיעו - לחצו להעתקה',
+    ],
+    importantNote: '⚠️ חשוב!',
+    importantText: 'הקואורדינטות צריכות להיות מדויקות כדי שהאפליקציה תזהה נכון משתמשים שנמצאים בתוך המקום שלכם. מומלץ לעמוד באמצע המקום כשמוציאים את הקואורדינטות.',
+    openMaps: 'פתח את Google Maps',
+    exampleUrl: 'דוגמה מ-URL:',
+    firstIsLat: '↑ הראשון = Latitude, השני = Longitude',
+  }
+}
+
+type Language = 'en' | 'he'
 
 export default function VenueJoinPage() {
+  const [lang, setLang] = useState<Language>('en')
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [showCoordinatesHelp, setShowCoordinatesHelp] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+
+  const t = translations[lang]
+  const benefitIcons = [Users, Target, Zap]
 
   const handleInputChange = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -93,22 +279,22 @@ export default function VenueJoinPage() {
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {}
     
-    if (!formData.venueName.trim()) newErrors.venueName = 'שדה חובה'
-    if (!formData.ownerName.trim()) newErrors.ownerName = 'שדה חובה'
-    if (!formData.email.trim()) newErrors.email = 'שדה חובה'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'אימייל לא תקין'
-    if (!formData.phone.trim()) newErrors.phone = 'שדה חובה'
-    if (!formData.address.trim()) newErrors.address = 'שדה חובה'
-    if (!formData.city.trim()) newErrors.city = 'שדה חובה'
-    if (!formData.latitude.trim()) newErrors.latitude = 'שדה חובה'
+    if (!formData.venueName.trim()) newErrors.venueName = t.required
+    if (!formData.ownerName.trim()) newErrors.ownerName = t.required
+    if (!formData.email.trim()) newErrors.email = t.required
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.invalidEmail
+    if (!formData.phone.trim()) newErrors.phone = t.required
+    if (!formData.address.trim()) newErrors.address = t.required
+    if (!formData.city.trim()) newErrors.city = t.required
+    if (!formData.latitude.trim()) newErrors.latitude = t.required
     else if (isNaN(parseFloat(formData.latitude)) || parseFloat(formData.latitude) < -90 || parseFloat(formData.latitude) > 90) {
-      newErrors.latitude = 'ערך לא תקין (בין -90 ל-90)'
+      newErrors.latitude = t.invalidLat
     }
-    if (!formData.longitude.trim()) newErrors.longitude = 'שדה חובה'
+    if (!formData.longitude.trim()) newErrors.longitude = t.required
     else if (isNaN(parseFloat(formData.longitude)) || parseFloat(formData.longitude) < -180 || parseFloat(formData.longitude) > 180) {
-      newErrors.longitude = 'ערך לא תקין (בין -180 ל-180)'
+      newErrors.longitude = t.invalidLng
     }
-    if (!formData.agreedToTerms) newErrors.agreedToTerms = 'יש לאשר את התנאים'
+    if (!formData.agreedToTerms) newErrors.agreedToTerms = t.mustAgree
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -129,17 +315,17 @@ export default function VenueJoinPage() {
       const response = await fetch('/api/venue-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, language: lang })
       })
       
       if (response.ok) {
         setIsSubmitted(true)
       } else {
-        alert('אירעה שגיאה, נסה שוב')
+        alert(lang === 'he' ? 'אירעה שגיאה, נסה שוב' : 'An error occurred, please try again')
       }
     } catch (error) {
       console.error('Submit error:', error)
-      alert('אירעה שגיאה, נסה שוב')
+      alert(lang === 'he' ? 'אירעה שגיאה, נסה שוב' : 'An error occurred, please try again')
     }
     
     setIsSubmitting(false)
@@ -153,6 +339,7 @@ export default function VenueJoinPage() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="bg-gradient-to-br from-[#1a4d3e]/80 to-[#0d2920]/90 backdrop-blur-xl border-2 border-[#4ade80]/50 rounded-3xl p-8 max-w-md w-full text-center"
+          dir={t.dir}
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -163,29 +350,22 @@ export default function VenueJoinPage() {
             <CheckCircle className="w-14 h-14 text-white" />
           </motion.div>
           
-          <h2 className="text-3xl font-black text-white mb-4">
-            הטופס נשלח בהצלחה! 🎉
-          </h2>
+          <h2 className="text-3xl font-black text-white mb-4">{t.successTitle}</h2>
+          <p className="text-white/70 mb-2">{t.successSubtitle}</p>
+          <p className="text-white/70 mb-6">{t.successDesc}</p>
           
-          <p className="text-white/70 mb-6">
-            תודה רבה על ההצטרפות למשפחת I4IGUANA!
-            <br />
-            צוות שלנו יצור איתך קשר תוך 24-48 שעות.
-          </p>
-          
-          <div className="bg-white/10 rounded-xl p-4 mb-6 text-right" dir="rtl">
-            <p className="text-[#4ade80] font-bold mb-2">מה קורה עכשיו?</p>
+          <div className={`bg-white/10 rounded-xl p-4 mb-6 ${lang === 'he' ? 'text-right' : 'text-left'}`}>
+            <p className="text-[#4ade80] font-bold mb-2">{t.whatsNext}</p>
             <ul className="text-white/60 text-sm space-y-2">
-              <li>✅ הבקשה שלך התקבלה</li>
-              <li>📞 ניצור קשר לתיאום</li>
-              <li>🎨 נכין עבורך סטיקר QR ייחודי</li>
-              <li>🚀 המועדון שלך יעלה לאוויר!</li>
+              {t.nextSteps.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
             </ul>
           </div>
           
           <Link href="/">
             <Button className="bg-[#4ade80] hover:bg-[#22c55e] text-black font-bold">
-              חזרה לדף הבית
+              {t.backHome}
             </Button>
           </Link>
         </motion.div>
@@ -195,8 +375,19 @@ export default function VenueJoinPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920]">
+      {/* Language Toggle */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white font-medium transition-all flex items-center gap-2"
+        >
+          <Globe className="w-4 h-4" />
+          {t.langToggle}
+        </button>
+      </div>
+
       {/* Hero Header */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden" dir={t.dir}>
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-[#4ade80]/20 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#22c55e]/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
@@ -224,7 +415,7 @@ export default function VenueJoinPage() {
             transition={{ delay: 0.3 }}
             className="text-4xl md:text-5xl font-black text-white mb-4"
           >
-            הצטרפו ל-<span className="text-[#4ade80]">I4IGUANA</span>
+            {t.heroTitle}<span className="text-[#4ade80]">{t.heroTitleHighlight}</span>
           </motion.h1>
           
           <motion.p
@@ -233,7 +424,7 @@ export default function VenueJoinPage() {
             transition={{ delay: 0.4 }}
             className="text-xl text-white/70 mb-8"
           >
-            הפכו את המועדון שלכם למוקד משיכה לרווקים ורווקות!
+            {t.heroSubtitle}
           </motion.p>
           
           {/* Benefits */}
@@ -243,17 +434,16 @@ export default function VenueJoinPage() {
             transition={{ delay: 0.5 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto"
           >
-            {[
-              { icon: Users, title: 'קהל חדש', desc: 'משתמשים מחפשים מקומות לצאת' },
-              { icon: Target, title: 'שיווק חינמי', desc: 'חשיפה באפליקציה שלנו' },
-              { icon: Zap, title: 'קל להתחיל', desc: 'תהליך הצטרפות פשוט' },
-            ].map((benefit, i) => (
-              <div key={i} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                <benefit.icon className="w-8 h-8 text-[#4ade80] mx-auto mb-2" />
-                <h3 className="text-white font-bold">{benefit.title}</h3>
-                <p className="text-white/60 text-sm">{benefit.desc}</p>
-              </div>
-            ))}
+            {t.benefits.map((benefit, i) => {
+              const Icon = benefitIcons[i]
+              return (
+                <div key={i} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <Icon className="w-8 h-8 text-[#4ade80] mx-auto mb-2" />
+                  <h3 className="text-white font-bold">{benefit.title}</h3>
+                  <p className="text-white/60 text-sm">{benefit.desc}</p>
+                </div>
+              )
+            })}
           </motion.div>
         </div>
       </div>
@@ -266,36 +456,38 @@ export default function VenueJoinPage() {
           transition={{ delay: 0.6 }}
           onSubmit={handleSubmit}
           className="bg-gradient-to-br from-[#1a4d3e]/60 to-[#0d2920]/80 backdrop-blur-xl border-2 border-[#4ade80]/30 rounded-3xl p-8"
-          dir="rtl"
+          dir={t.dir}
         >
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">📝 טופס הצטרפות</h2>
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">{t.formTitle}</h2>
 
           {/* Venue Info */}
           <div className="space-y-4 mb-8">
             <h3 className="text-lg font-bold text-[#4ade80] flex items-center gap-2">
               <Building2 className="w-5 h-5" />
-              פרטי המקום
+              {t.venueSection}
             </h3>
             
             <div className={errors.venueName ? 'error-field' : ''}>
-              <label className="block text-white/80 text-sm mb-1">שם המקום *</label>
+              <label className="block text-white/80 text-sm mb-1">{t.venueName} *</label>
               <Input
                 value={formData.venueName}
                 onChange={(e) => handleInputChange('venueName', e.target.value)}
-                placeholder="לדוגמה: בר האיגואנה"
+                placeholder={t.venueNamePlaceholder}
                 className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.venueName ? 'border-red-500' : ''}`}
+                dir="auto"
               />
               {errors.venueName && <p className="text-red-400 text-xs mt-1">{errors.venueName}</p>}
             </div>
 
             <div>
-              <label className="block text-white/80 text-sm mb-1">סוג המקום *</label>
+              <label className="block text-white/80 text-sm mb-1">{t.venueType} *</label>
               <select
                 value={formData.venueType}
                 onChange={(e) => handleInputChange('venueType', e.target.value)}
                 className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2"
+                dir="auto"
               >
-                {venueTypes.map(type => (
+                {t.venueTypes.map(type => (
                   <option key={type.value} value={type.value} className="bg-[#1a4d3e] text-white">
                     {type.label}
                   </option>
@@ -304,23 +496,25 @@ export default function VenueJoinPage() {
             </div>
 
             <div className={errors.address ? 'error-field' : ''}>
-              <label className="block text-white/80 text-sm mb-1">כתובת מלאה *</label>
+              <label className="block text-white/80 text-sm mb-1">{t.address} *</label>
               <Input
                 value={formData.address}
                 onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="רחוב, מספר"
+                placeholder={t.addressPlaceholder}
                 className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.address ? 'border-red-500' : ''}`}
+                dir="auto"
               />
               {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
             </div>
 
             <div className={errors.city ? 'error-field' : ''}>
-              <label className="block text-white/80 text-sm mb-1">עיר *</label>
+              <label className="block text-white/80 text-sm mb-1">{t.city} *</label>
               <Input
                 value={formData.city}
                 onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="לדוגמה: תל אביב"
+                placeholder={t.cityPlaceholder}
                 className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.city ? 'border-red-500' : ''}`}
+                dir="auto"
               />
               {errors.city && <p className="text-red-400 text-xs mt-1">{errors.city}</p>}
             </div>
@@ -330,7 +524,7 @@ export default function VenueJoinPage() {
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-white font-bold flex items-center gap-2">
                   <Navigation className="w-4 h-4 text-purple-400" />
-                  קואורדינטות GPS
+                  {t.coordinatesTitle}
                 </h4>
                 <button
                   type="button"
@@ -338,32 +532,32 @@ export default function VenueJoinPage() {
                   className="text-purple-400 hover:text-purple-300 flex items-center gap-1 text-sm"
                 >
                   <HelpCircle className="w-4 h-4" />
-                  איך למצוא?
+                  {t.coordinatesHelp}
                 </button>
               </div>
               
-              <p className="text-white/60 text-sm mb-3">
-                הקואורדינטות חיוניות כדי שהאפליקציה תזהה משתמשים בתוך המקום שלך!
-              </p>
+              <p className="text-white/60 text-sm mb-3">{t.coordinatesDesc}</p>
               
               <div className="grid grid-cols-2 gap-3">
                 <div className={errors.latitude ? 'error-field' : ''}>
-                  <label className="block text-white/80 text-xs mb-1">Latitude (קו רוחב) *</label>
+                  <label className="block text-white/80 text-xs mb-1">{t.latitude} *</label>
                   <Input
                     value={formData.latitude}
                     onChange={(e) => handleInputChange('latitude', e.target.value)}
                     placeholder="31.794505"
                     className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono ${errors.latitude ? 'border-red-500' : ''}`}
+                    dir="ltr"
                   />
                   {errors.latitude && <p className="text-red-400 text-xs mt-1">{errors.latitude}</p>}
                 </div>
                 <div className={errors.longitude ? 'error-field' : ''}>
-                  <label className="block text-white/80 text-xs mb-1">Longitude (קו אורך) *</label>
+                  <label className="block text-white/80 text-xs mb-1">{t.longitude} *</label>
                   <Input
                     value={formData.longitude}
                     onChange={(e) => handleInputChange('longitude', e.target.value)}
                     placeholder="34.632057"
                     className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono ${errors.longitude ? 'border-red-500' : ''}`}
+                    dir="ltr"
                   />
                   {errors.longitude && <p className="text-red-400 text-xs mt-1">{errors.longitude}</p>}
                 </div>
@@ -373,34 +567,37 @@ export default function VenueJoinPage() {
             {/* Capacity & Hours */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-white/80 text-sm mb-1">קיבולת (מספר אנשים)</label>
+                <label className="block text-white/80 text-sm mb-1">{t.capacity}</label>
                 <Input
                   value={formData.capacity}
                   onChange={(e) => handleInputChange('capacity', e.target.value)}
                   placeholder="200"
                   type="number"
                   className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  dir="ltr"
                 />
               </div>
               <div>
-                <label className="block text-white/80 text-sm mb-1">שעות פעילות</label>
+                <label className="block text-white/80 text-sm mb-1">{t.openingHours}</label>
                 <Input
                   value={formData.openingHours}
                   onChange={(e) => handleInputChange('openingHours', e.target.value)}
-                  placeholder="20:00-03:00"
+                  placeholder={t.openingHoursPlaceholder}
                   className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                  dir="ltr"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-white/80 text-sm mb-1">תיאור המקום</label>
+              <label className="block text-white/80 text-sm mb-1">{t.description}</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="ספרו לנו על המקום שלכם..."
+                placeholder={t.descriptionPlaceholder}
                 rows={3}
                 className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/40 rounded-md p-2 resize-none"
+                dir="auto"
               />
             </div>
           </div>
@@ -409,40 +606,43 @@ export default function VenueJoinPage() {
           <div className="space-y-4 mb-8">
             <h3 className="text-lg font-bold text-[#4ade80] flex items-center gap-2">
               <User className="w-5 h-5" />
-              פרטי בעל המקום
+              {t.ownerSection}
             </h3>
 
             <div className={errors.ownerName ? 'error-field' : ''}>
-              <label className="block text-white/80 text-sm mb-1">שם מלא *</label>
+              <label className="block text-white/80 text-sm mb-1">{t.ownerName} *</label>
               <Input
                 value={formData.ownerName}
                 onChange={(e) => handleInputChange('ownerName', e.target.value)}
-                placeholder="ישראל ישראלי"
+                placeholder={t.ownerNamePlaceholder}
                 className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.ownerName ? 'border-red-500' : ''}`}
+                dir="auto"
               />
               {errors.ownerName && <p className="text-red-400 text-xs mt-1">{errors.ownerName}</p>}
             </div>
 
             <div className={errors.email ? 'error-field' : ''}>
-              <label className="block text-white/80 text-sm mb-1">אימייל *</label>
+              <label className="block text-white/80 text-sm mb-1">{t.email} *</label>
               <Input
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="email@example.com"
                 type="email"
                 className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.email ? 'border-red-500' : ''}`}
+                dir="ltr"
               />
               {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
             </div>
 
             <div className={errors.phone ? 'error-field' : ''}>
-              <label className="block text-white/80 text-sm mb-1">טלפון *</label>
+              <label className="block text-white/80 text-sm mb-1">{t.phone} *</label>
               <Input
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="050-0000000"
+                placeholder={t.phonePlaceholder}
                 type="tel"
                 className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.phone ? 'border-red-500' : ''}`}
+                dir="ltr"
               />
               {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
             </div>
@@ -452,42 +652,45 @@ export default function VenueJoinPage() {
           <div className="space-y-4 mb-8">
             <h3 className="text-lg font-bold text-[#4ade80] flex items-center gap-2">
               <Globe className="w-5 h-5" />
-              נוכחות דיגיטלית (אופציונלי)
+              {t.socialSection}
             </h3>
 
             <div>
               <label className="block text-white/80 text-sm mb-1 flex items-center gap-2">
-                <Globe className="w-4 h-4" /> אתר אינטרנט
+                <Globe className="w-4 h-4" /> {t.website}
               </label>
               <Input
                 value={formData.website}
                 onChange={(e) => handleInputChange('website', e.target.value)}
                 placeholder="https://www.example.com"
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                dir="ltr"
               />
             </div>
 
             <div>
               <label className="block text-white/80 text-sm mb-1 flex items-center gap-2">
-                <Instagram className="w-4 h-4" /> אינסטגרם
+                <Instagram className="w-4 h-4" /> Instagram
               </label>
               <Input
                 value={formData.instagram}
                 onChange={(e) => handleInputChange('instagram', e.target.value)}
                 placeholder="@yourvenue"
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                dir="ltr"
               />
             </div>
 
             <div>
               <label className="block text-white/80 text-sm mb-1 flex items-center gap-2">
-                <Facebook className="w-4 h-4" /> פייסבוק
+                <Facebook className="w-4 h-4" /> Facebook
               </label>
               <Input
                 value={formData.facebook}
                 onChange={(e) => handleInputChange('facebook', e.target.value)}
                 placeholder="facebook.com/yourvenue"
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                dir="ltr"
               />
             </div>
           </div>
@@ -502,10 +705,10 @@ export default function VenueJoinPage() {
                 className="mt-1 w-5 h-5 rounded bg-white/10 border-white/20"
               />
               <span className="text-white/70 text-sm">
-                אני מאשר/ת שקראתי והסכמתי ל
-                <Link href="/terms" className="text-[#4ade80] hover:underline mx-1">תנאי השימוש</Link>
-                ול
-                <Link href="/privacy" className="text-[#4ade80] hover:underline mx-1">מדיניות הפרטיות</Link>
+                {t.termsText}
+                <Link href="/terms" className="text-[#4ade80] hover:underline mx-1">{t.termsLink}</Link>
+                {t.and}
+                <Link href="/privacy" className="text-[#4ade80] hover:underline mx-1">{t.privacyLink}</Link>
               </span>
             </label>
             {errors.agreedToTerms && <p className="text-red-400 text-xs mt-1">{errors.agreedToTerms}</p>}
@@ -520,18 +723,18 @@ export default function VenueJoinPage() {
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>⏳</motion.div>
-                שולח...
+                {t.submitting}
               </span>
             ) : (
               <span className="flex items-center gap-2">
                 <Send className="w-5 h-5" />
-                שליחת הבקשה
+                {t.submitButton}
               </span>
             )}
           </Button>
 
           <p className="text-center text-white/50 text-sm mt-4">
-            שאלות? <a href="mailto:venues@i4iguana.com" className="text-[#4ade80] hover:underline">venues@i4iguana.com</a>
+            {t.questions} <a href="mailto:venues@i4iguana.com" className="text-[#4ade80] hover:underline">venues@i4iguana.com</a>
           </p>
         </motion.form>
       </div>
@@ -552,36 +755,34 @@ export default function VenueJoinPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-lg max-h-[85vh] overflow-y-auto bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] rounded-2xl z-50 border-2 border-purple-500/50"
+              dir={t.dir}
             >
               <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-blue-600 p-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Navigation className="w-6 h-6" />
-                  איך למצוא קואורדינטות?
+                  {t.coordHelpTitle}
                 </h2>
                 <button onClick={() => setShowCoordinatesHelp(false)} className="p-2 hover:bg-white/20 rounded-full">
                   <X className="w-5 h-5 text-white" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-6" dir="rtl">
+              <div className="p-6 space-y-6">
                 {/* WhatsApp Method */}
                 <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4">
                   <h3 className="text-lg font-bold text-green-400 mb-3 flex items-center gap-2">
                     <MessageCircle className="w-5 h-5" />
-                    שיטה 1: וואטסאפ (הכי קלה!)
+                    {t.method1Title}
                   </h3>
                   <ol className="text-white/80 text-sm space-y-2 list-decimal list-inside">
-                    <li>עמדו פיזית במועדון שלכם</li>
-                    <li>פתחו וואטסאפ ושלחו מיקום לעצמכם</li>
-                    <li>לחצו על המיקום שנשלח</li>
-                    <li>ייפתח Google Maps</li>
-                    <li>בשורת הכתובת למעלה תראו את הקואורדינטות</li>
-                    <li className="text-yellow-400 font-bold">⚡ טיפ: הקואורדינטות מופיעות לשנייה! העתיקו מהר!</li>
+                    {t.method1Steps.map((step, i) => (
+                      <li key={i} className={step.includes('⚡') ? 'text-yellow-400 font-bold' : ''}>{step}</li>
+                    ))}
                   </ol>
-                  <div className="mt-3 bg-black/30 rounded-lg p-3 font-mono text-sm text-white/70">
-                    <p>דוגמה מ-URL:</p>
+                  <div className="mt-3 bg-black/30 rounded-lg p-3 font-mono text-sm text-white/70" dir="ltr">
+                    <p>{t.exampleUrl}</p>
                     <p className="text-green-400">maps.google.com/?q=<span className="text-yellow-400">31.794505</span>,<span className="text-yellow-400">34.632057</span></p>
-                    <p className="mt-2 text-white/50">↑ הראשון = Latitude, השני = Longitude</p>
+                    <p className="mt-2 text-white/50">{t.firstIsLat}</p>
                   </div>
                 </div>
 
@@ -589,24 +790,19 @@ export default function VenueJoinPage() {
                 <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4">
                   <h3 className="text-lg font-bold text-blue-400 mb-3 flex items-center gap-2">
                     <MapPin className="w-5 h-5" />
-                    שיטה 2: Google Maps במחשב
+                    {t.method2Title}
                   </h3>
                   <ol className="text-white/80 text-sm space-y-2 list-decimal list-inside">
-                    <li>פתחו Google Maps במחשב</li>
-                    <li>חפשו את הכתובת של המקום</li>
-                    <li>לחצו קליק ימני על המיקום המדויק</li>
-                    <li>הקואורדינטות יופיעו - לחצו להעתקה</li>
+                    {t.method2Steps.map((step, i) => (
+                      <li key={i}>{step}</li>
+                    ))}
                   </ol>
                 </div>
 
                 {/* Important Note */}
                 <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4">
-                  <h3 className="text-lg font-bold text-yellow-400 mb-2">⚠️ חשוב!</h3>
-                  <p className="text-white/80 text-sm">
-                    הקואורדינטות צריכות להיות <span className="text-yellow-400 font-bold">מדויקות</span> כדי שהאפליקציה תזהה נכון משתמשים שנמצאים בתוך המקום שלכם.
-                    <br /><br />
-                    מומלץ לעמוד <span className="text-yellow-400 font-bold">באמצע המקום</span> כשמוציאים את הקואורדינטות.
-                  </p>
+                  <h3 className="text-lg font-bold text-yellow-400 mb-2">{t.importantNote}</h3>
+                  <p className="text-white/80 text-sm">{t.importantText}</p>
                 </div>
 
                 <a
@@ -616,7 +812,7 @@ export default function VenueJoinPage() {
                   className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white p-3 rounded-xl transition-colors"
                 >
                   <ExternalLink className="w-5 h-5" />
-                  פתח את Google Maps
+                  {t.openMaps}
                 </a>
               </div>
             </motion.div>
