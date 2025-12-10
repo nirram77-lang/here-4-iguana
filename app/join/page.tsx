@@ -401,6 +401,11 @@ export default function VenueJoinPage() {
       newErrors.longitude = lang === 'he' ? 'נדרשות לפחות 4 ספרות אחרי הנקודה' : 'At least 4 digits after decimal required'
     }
     
+    // At least one social media required
+    if (!formData.website.trim() && !formData.instagram.trim() && !formData.facebook.trim()) {
+      newErrors.website = lang === 'he' ? 'נדרש לפחות שדה אחד' : 'At least one field required'
+    }
+    
     if (!formData.agreedToTerms) newErrors.agreedToTerms = t.mustAgree
     
     setErrors(newErrors)
@@ -789,32 +794,58 @@ export default function VenueJoinPage() {
               {/* Capacity */}
               <div className={`mb-4 ${errors.capacity ? 'error-field' : ''}`}>
                 <label className="block text-white/80 text-sm mb-2">{t.capacity} *</label>
-                <div className="relative">
-                  <Input
-                    value={formData.capacity}
-                    onChange={(e) => handleInputChange('capacity', e.target.value)}
-                    placeholder="200"
-                    type="number"
-                    min="1"
-                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 text-center text-xl font-bold pr-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.capacity ? 'border-red-500' : ''}`}
-                    dir="ltr"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                  {/* Quick -10 button */}
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('capacity', String(Math.max(1, parseInt(formData.capacity || '0') - 10)))}
+                    className="w-12 h-12 bg-amber-500/20 hover:bg-amber-500/40 border border-amber-500/30 rounded-lg text-amber-300 font-bold text-sm transition-all hover:scale-105"
+                  >
+                    -10
+                  </button>
+                  
+                  {/* Main input with built-in arrows */}
+                  <div className="flex-1 relative">
                     <button
                       type="button"
-                      onClick={() => handleInputChange('capacity', String(Math.max(1, parseInt(formData.capacity || '0') + 10)))}
-                      className="w-8 h-6 bg-amber-500/30 hover:bg-amber-500/50 rounded text-white text-xs font-bold transition-colors"
+                      onClick={() => handleInputChange('capacity', String(Math.max(1, parseInt(formData.capacity || '0') - 1)))}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-md text-white/70 hover:text-white transition-colors flex items-center justify-center"
                     >
-                      +10
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                      </svg>
                     </button>
+                    <Input
+                      value={formData.capacity}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '')
+                        handleInputChange('capacity', val)
+                      }}
+                      placeholder="200"
+                      type="text"
+                      inputMode="numeric"
+                      className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 text-center text-2xl font-bold px-12 ${errors.capacity ? 'border-red-500' : ''}`}
+                      dir="ltr"
+                    />
                     <button
                       type="button"
-                      onClick={() => handleInputChange('capacity', String(Math.max(1, parseInt(formData.capacity || '0') - 10)))}
-                      className="w-8 h-6 bg-amber-500/20 hover:bg-amber-500/40 rounded text-white text-xs font-bold transition-colors"
+                      onClick={() => handleInputChange('capacity', String(parseInt(formData.capacity || '0') + 1))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-md text-white/70 hover:text-white transition-colors flex items-center justify-center"
                     >
-                      -10
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
                     </button>
                   </div>
+                  
+                  {/* Quick +10 button */}
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('capacity', String(parseInt(formData.capacity || '0') + 10))}
+                    className="w-12 h-12 bg-amber-500/30 hover:bg-amber-500/50 border border-amber-500/40 rounded-lg text-amber-200 font-bold text-sm transition-all hover:scale-105"
+                  >
+                    +10
+                  </button>
                 </div>
                 {errors.capacity && <p className="text-red-400 text-xs mt-1">{errors.capacity}</p>}
               </div>
@@ -909,20 +940,27 @@ export default function VenueJoinPage() {
                 <Input
                   value={formData.phone}
                   onChange={(e) => {
-                    // Allow only numbers, spaces, and dashes
-                    const cleaned = e.target.value.replace(/[^\d\s-]/g, '')
-                    handleInputChange('phone', cleaned)
+                    // Allow only numbers and dashes, limit length
+                    const cleaned = e.target.value.replace(/[^\d-]/g, '')
+                    const digitsOnly = cleaned.replace(/\D/g, '')
+                    const maxDigits = getSelectedCountry().phoneLength + 3
+                    if (digitsOnly.length <= maxDigits) {
+                      handleInputChange('phone', cleaned)
+                    }
                   }}
                   placeholder={formData.country === 'Israel' ? '52-265-3170' : '555-123-4567'}
                   type="tel"
+                  maxLength={15}
                   className={`flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono ${errors.phone ? 'border-red-500' : ''}`}
                   dir="ltr"
                 />
               </div>
               {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
-              <p className="text-white/40 text-xs mt-1">
-                {lang === 'he' ? `מינימום ${getSelectedCountry().phoneLength} ספרות` : `Minimum ${getSelectedCountry().phoneLength} digits`}
-              </p>
+              {formData.phone && !errors.phone && (
+                <p className="text-green-400 text-xs mt-1">
+                  ✓ {formData.phone.replace(/\D/g, '').length} {lang === 'he' ? 'ספרות' : 'digits'}
+                </p>
+              )}
             </div>
           </div>
 
@@ -930,10 +968,13 @@ export default function VenueJoinPage() {
           <div className="space-y-4 mb-8">
             <h3 className="text-lg font-bold text-[#4ade80] flex items-center gap-2">
               <Globe className="w-5 h-5" />
-              {t.socialSection}
+              {lang === 'he' ? 'נוכחות דיגיטלית' : 'Digital Presence'}
+              <span className="text-xs font-normal text-white/50">
+                ({lang === 'he' ? 'לפחות אחד נדרש' : 'at least one required'})
+              </span>
             </h3>
 
-            <div>
+            <div className={errors.website ? 'error-field' : ''}>
               <label className="block text-white/80 text-sm mb-1 flex items-center gap-2">
                 <Globe className="w-4 h-4" /> {t.website}
               </label>
@@ -941,9 +982,10 @@ export default function VenueJoinPage() {
                 value={formData.website}
                 onChange={(e) => handleInputChange('website', e.target.value)}
                 placeholder="https://www.example.com"
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.website ? 'border-red-500' : ''}`}
                 dir="ltr"
               />
+              {errors.website && <p className="text-red-400 text-xs mt-1">{errors.website}</p>}
             </div>
 
             <div>
