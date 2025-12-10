@@ -366,6 +366,12 @@ export default function VenueJoinPage() {
     return digitsOnly.length >= country.phoneLength && digitsOnly.length <= country.phoneLength + 3
   }
 
+  const validateCoordinatePrecision = (coord: string): boolean => {
+    if (!coord.includes('.')) return false
+    const decimals = coord.split('.')[1]
+    return decimals && decimals.length >= 4
+  }
+
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {}
     
@@ -378,14 +384,23 @@ export default function VenueJoinPage() {
     if (!formData.address.trim()) newErrors.address = t.required
     if (!formData.city.trim()) newErrors.city = t.required
     if (!formData.capacity.trim()) newErrors.capacity = t.required
+    
+    // Latitude validation with precision check
     if (!formData.latitude.trim()) newErrors.latitude = t.required
     else if (isNaN(parseFloat(formData.latitude)) || parseFloat(formData.latitude) < -90 || parseFloat(formData.latitude) > 90) {
       newErrors.latitude = t.invalidLat
+    } else if (!validateCoordinatePrecision(formData.latitude)) {
+      newErrors.latitude = lang === 'he' ? 'נדרשות לפחות 4 ספרות אחרי הנקודה' : 'At least 4 digits after decimal required'
     }
+    
+    // Longitude validation with precision check
     if (!formData.longitude.trim()) newErrors.longitude = t.required
     else if (isNaN(parseFloat(formData.longitude)) || parseFloat(formData.longitude) < -180 || parseFloat(formData.longitude) > 180) {
       newErrors.longitude = t.invalidLng
+    } else if (!validateCoordinatePrecision(formData.longitude)) {
+      newErrors.longitude = lang === 'he' ? 'נדרשות לפחות 4 ספרות אחרי הנקודה' : 'At least 4 digits after decimal required'
     }
+    
     if (!formData.agreedToTerms) newErrors.agreedToTerms = t.mustAgree
     
     setErrors(newErrors)
@@ -691,30 +706,76 @@ export default function VenueJoinPage() {
               </div>
               
               <p className="text-white/60 text-sm mb-3">{t.coordinatesDesc}</p>
+
+              {/* Critical Accuracy Warning */}
+              <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <p className="text-red-300 font-bold text-sm">
+                      {lang === 'he' ? 'דיוק קריטי!' : 'Critical Accuracy!'}
+                    </p>
+                    <p className="text-red-200/80 text-xs mt-1">
+                      {lang === 'he' 
+                        ? 'הקואורדינטות קובעות אם משתמשים יזוהו במקום שלך. העתק את המספרים בדיוק מ-Google Maps - כולל כל הספרות אחרי הנקודה!'
+                        : 'Coordinates determine if users are detected at your venue. Copy the numbers exactly from Google Maps - including ALL digits after the decimal point!'}
+                    </p>
+                  </div>
+                </div>
+              </div>
               
               <div className="grid grid-cols-2 gap-3">
                 <div className={errors.latitude ? 'error-field' : ''}>
                   <label className="block text-white/80 text-xs mb-1">{t.latitude} *</label>
                   <Input
                     value={formData.latitude}
-                    onChange={(e) => handleInputChange('latitude', e.target.value)}
+                    onChange={(e) => {
+                      // Allow only numbers, one decimal point, and minus sign at start
+                      const val = e.target.value.replace(/[^0-9.-]/g, '').replace(/(?!^)-/g, '').replace(/(\..*)\./g, '$1')
+                      handleInputChange('latitude', val)
+                    }}
                     placeholder="31.794505"
-                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono ${errors.latitude ? 'border-red-500' : ''}`}
+                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono text-center ${errors.latitude ? 'border-red-500' : ''}`}
                     dir="ltr"
                   />
+                  {formData.latitude && !errors.latitude && (
+                    <p className={`text-xs mt-1 ${formData.latitude.includes('.') && formData.latitude.split('.')[1]?.length >= 4 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {formData.latitude.includes('.') && formData.latitude.split('.')[1]?.length >= 4 
+                        ? (lang === 'he' ? '✓ דיוק מעולה' : '✓ Great precision')
+                        : (lang === 'he' ? '⚠ הוסף עוד ספרות לדיוק' : '⚠ Add more digits for accuracy')}
+                    </p>
+                  )}
                   {errors.latitude && <p className="text-red-400 text-xs mt-1">{errors.latitude}</p>}
                 </div>
                 <div className={errors.longitude ? 'error-field' : ''}>
                   <label className="block text-white/80 text-xs mb-1">{t.longitude} *</label>
                   <Input
                     value={formData.longitude}
-                    onChange={(e) => handleInputChange('longitude', e.target.value)}
+                    onChange={(e) => {
+                      // Allow only numbers, one decimal point, and minus sign at start
+                      const val = e.target.value.replace(/[^0-9.-]/g, '').replace(/(?!^)-/g, '').replace(/(\..*)\./g, '$1')
+                      handleInputChange('longitude', val)
+                    }}
                     placeholder="34.632057"
-                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono ${errors.longitude ? 'border-red-500' : ''}`}
+                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono text-center ${errors.longitude ? 'border-red-500' : ''}`}
                     dir="ltr"
                   />
+                  {formData.longitude && !errors.longitude && (
+                    <p className={`text-xs mt-1 ${formData.longitude.includes('.') && formData.longitude.split('.')[1]?.length >= 4 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {formData.longitude.includes('.') && formData.longitude.split('.')[1]?.length >= 4 
+                        ? (lang === 'he' ? '✓ דיוק מעולה' : '✓ Great precision')
+                        : (lang === 'he' ? '⚠ הוסף עוד ספרות לדיוק' : '⚠ Add more digits for accuracy')}
+                    </p>
+                  )}
                   {errors.longitude && <p className="text-red-400 text-xs mt-1">{errors.longitude}</p>}
                 </div>
+              </div>
+
+              {/* Format Example */}
+              <div className="mt-3 text-center">
+                <p className="text-white/40 text-xs">
+                  {lang === 'he' ? 'פורמט נדרש:' : 'Required format:'} <span className="font-mono text-purple-300">31.794505, 34.632057</span>
+                </p>
               </div>
             </div>
 
