@@ -33,6 +33,7 @@ interface FormData {
   email: string
   phone: string
   address: string
+  country: string
   city: string
   latitude: string
   longitude: string
@@ -52,6 +53,7 @@ const initialFormData: FormData = {
   email: '',
   phone: '',
   address: '',
+  country: 'Israel',
   city: '',
   latitude: '',
   longitude: '',
@@ -63,6 +65,59 @@ const initialFormData: FormData = {
   description: '',
   agreedToTerms: false
 }
+
+// Israeli cities list
+const israeliCities = [
+  'תל אביב / Tel Aviv',
+  'ירושלים / Jerusalem',
+  'חיפה / Haifa',
+  'באר שבע / Beer Sheva',
+  'אשדוד / Ashdod',
+  'אשקלון / Ashkelon',
+  'נתניה / Netanya',
+  'הרצליה / Herzliya',
+  'רמת גן / Ramat Gan',
+  'פתח תקווה / Petah Tikva',
+  'ראשון לציון / Rishon LeZion',
+  'חולון / Holon',
+  'בת ים / Bat Yam',
+  'רחובות / Rehovot',
+  'כפר סבא / Kfar Saba',
+  'רעננה / Raanana',
+  'מודיעין / Modiin',
+  'אילת / Eilat',
+  'טבריה / Tiberias',
+  'נהריה / Nahariya',
+  'עכו / Acre',
+  'קריית שמונה / Kiryat Shmona',
+  'צפת / Safed',
+  'נצרת / Nazareth',
+  'כרמיאל / Karmiel',
+  'עפולה / Afula',
+  'בית שאן / Beit Shean',
+  'דימונה / Dimona',
+  'ערד / Arad',
+  'מצפה רמון / Mitzpe Ramon',
+  'אחר / Other'
+]
+
+// Common countries
+const countries = [
+  { value: 'Israel', label: '🇮🇱 Israel / ישראל' },
+  { value: 'USA', label: '🇺🇸 United States' },
+  { value: 'UK', label: '🇬🇧 United Kingdom' },
+  { value: 'Germany', label: '🇩🇪 Germany' },
+  { value: 'France', label: '🇫🇷 France' },
+  { value: 'Spain', label: '🇪🇸 Spain' },
+  { value: 'Italy', label: '🇮🇹 Italy' },
+  { value: 'Netherlands', label: '🇳🇱 Netherlands' },
+  { value: 'Greece', label: '🇬🇷 Greece' },
+  { value: 'Cyprus', label: '🇨🇾 Cyprus' },
+  { value: 'Portugal', label: '🇵🇹 Portugal' },
+  { value: 'Australia', label: '🇦🇺 Australia' },
+  { value: 'Canada', label: '🇨🇦 Canada' },
+  { value: 'Other', label: '🌍 Other' },
+]
 
 // Translations
 const translations = {
@@ -94,8 +149,10 @@ const translations = {
     ],
     address: 'Full Address',
     addressPlaceholder: 'Street, Number',
+    country: 'Country',
     city: 'City',
-    cityPlaceholder: 'e.g. Tel Aviv',
+    cityPlaceholder: 'e.g. New York',
+    selectCity: 'Select city...',
     coordinatesTitle: 'GPS Coordinates',
     coordinatesHelp: 'How to find?',
     coordinatesDesc: 'Coordinates are essential for the app to identify users inside your venue!',
@@ -188,8 +245,10 @@ const translations = {
     ],
     address: 'כתובת מלאה',
     addressPlaceholder: 'רחוב, מספר',
+    country: 'מדינה',
     city: 'עיר',
-    cityPlaceholder: 'לדוגמה: תל אביב',
+    cityPlaceholder: 'לדוגמה: ניו יורק',
+    selectCity: 'בחר עיר...',
     coordinatesTitle: 'קואורדינטות GPS',
     coordinatesHelp: 'איך למצוא?',
     coordinatesDesc: 'הקואורדינטות חיוניות כדי שהאפליקציה תזהה משתמשים בתוך המקום שלך!',
@@ -519,15 +578,50 @@ export default function VenueJoinPage() {
               {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
             </div>
 
+            {/* Country Selection */}
+            <div>
+              <label className="block text-white/80 text-sm mb-1">{t.country} *</label>
+              <select
+                value={formData.country}
+                onChange={(e) => {
+                  handleInputChange('country', e.target.value)
+                  handleInputChange('city', '') // Reset city when country changes
+                }}
+                className="w-full bg-white/10 border border-white/20 text-white rounded-md p-2"
+              >
+                {countries.map(c => (
+                  <option key={c.value} value={c.value} className="bg-[#1a4d3e] text-white">
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* City - Dropdown for Israel, Text for others */}
             <div className={errors.city ? 'error-field' : ''}>
               <label className="block text-white/80 text-sm mb-1">{t.city} *</label>
-              <Input
-                value={formData.city}
-                onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder={t.cityPlaceholder}
-                className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.city ? 'border-red-500' : ''}`}
-                dir="auto"
-              />
+              {formData.country === 'Israel' ? (
+                <select
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  className={`w-full bg-white/10 border border-white/20 text-white rounded-md p-2 ${errors.city ? 'border-red-500' : ''}`}
+                >
+                  <option value="" className="bg-[#1a4d3e] text-white/50">{t.selectCity}</option>
+                  {israeliCities.map(city => (
+                    <option key={city} value={city} className="bg-[#1a4d3e] text-white">
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  placeholder={t.cityPlaceholder}
+                  className={`bg-white/10 border-white/20 text-white placeholder:text-white/40 ${errors.city ? 'border-red-500' : ''}`}
+                  dir="auto"
+                />
+              )}
               {errors.city && <p className="text-red-400 text-xs mt-1">{errors.city}</p>}
             </div>
 
