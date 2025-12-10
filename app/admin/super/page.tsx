@@ -465,7 +465,7 @@ export default function SuperAdminPanel() {
 
                       <div className="flex items-center gap-2 text-white/60 text-sm mb-4">
                         <MapPin className="h-4 w-4" />
-                        {venue.location.address}
+                        {venue.location?.address || venue.address || 'No address'}
                       </div>
 
                       <div className="grid grid-cols-3 gap-4">
