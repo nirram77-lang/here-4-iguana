@@ -169,7 +169,8 @@ const translations = {
     postalCodePlaceholder: 'Optional',
     openingTime: 'Opens at',
     closingTime: 'Closes at',
-    invalidPhone: 'Invalid phone number',
+    invalidPhone: 'Enter 9 digits (e.g. 52-2653170)',
+    invalidEmail: 'Enter a valid email address',
     coordinatesTitle: 'GPS Coordinates',
     coordinatesHelp: 'How to find?',
     coordinatesDesc: 'Coordinates are essential for the app to identify users inside your venue!',
@@ -196,7 +197,6 @@ const translations = {
     and: 'and',
     questions: 'Questions?',
     required: 'Required',
-    invalidEmail: 'Invalid email',
     invalidLat: 'Invalid (must be -90 to 90)',
     invalidLng: 'Invalid (must be -180 to 180)',
     mustAgree: 'You must agree to the terms',
@@ -270,7 +270,8 @@ const translations = {
     postalCodePlaceholder: 'אופציונלי',
     openingTime: 'שעת פתיחה',
     closingTime: 'שעת סגירה',
-    invalidPhone: 'מספר טלפון לא תקין',
+    invalidPhone: 'הזן 9 ספרות (לדוגמה: 52-2653170)',
+    invalidEmail: 'הזן כתובת מייל תקינה',
     coordinatesTitle: 'קואורדינטות GPS',
     coordinatesHelp: 'איך למצוא?',
     coordinatesDesc: 'הקואורדינטות חיוניות כדי שהאפליקציה תזהה משתמשים בתוך המקום שלך!',
@@ -297,7 +298,6 @@ const translations = {
     and: 'ול',
     questions: 'שאלות?',
     required: 'שדה חובה',
-    invalidEmail: 'אימייל לא תקין',
     invalidLat: 'ערך לא תקין (בין -90 ל-90)',
     invalidLng: 'ערך לא תקין (בין -180 ל-180)',
     mustAgree: 'יש לאשר את התנאים',
@@ -362,8 +362,23 @@ export default function VenueJoinPage() {
   const validatePhone = (phone: string): boolean => {
     const digitsOnly = phone.replace(/\D/g, '')
     const country = getSelectedCountry()
-    // Allow some flexibility: between min length and +3
-    return digitsOnly.length >= country.phoneLength && digitsOnly.length <= country.phoneLength + 3
+    
+    if (country.value === 'Israel') {
+      // Israeli phone: exactly 9 digits (e.g., 52-2653170)
+      return digitsOnly.length === 9
+    } else if (country.value === 'USA' || country.value === 'Canada') {
+      // US/Canada: exactly 10 digits
+      return digitsOnly.length === 10
+    } else {
+      // Other countries: between min and max
+      return digitsOnly.length >= country.phoneLength && digitsOnly.length <= country.phoneLength + 3
+    }
+  }
+
+  const validateEmail = (email: string): boolean => {
+    // Standard email validation regex
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    return emailRegex.test(email)
   }
 
   const validateCoordinatePrecision = (coord: string): boolean => {
@@ -378,7 +393,7 @@ export default function VenueJoinPage() {
     if (!formData.venueName.trim()) newErrors.venueName = t.required
     if (!formData.ownerName.trim()) newErrors.ownerName = t.required
     if (!formData.email.trim()) newErrors.email = t.required
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.invalidEmail
+    else if (!validateEmail(formData.email)) newErrors.email = t.invalidEmail
     if (!formData.phone.trim()) newErrors.phone = t.required
     else if (!validatePhone(formData.phone)) newErrors.phone = t.invalidPhone
     if (!formData.address.trim()) newErrors.address = t.required
@@ -940,25 +955,40 @@ export default function VenueJoinPage() {
                 <Input
                   value={formData.phone}
                   onChange={(e) => {
-                    // Allow only numbers and dashes, limit length
-                    const cleaned = e.target.value.replace(/[^\d-]/g, '')
-                    const digitsOnly = cleaned.replace(/\D/g, '')
-                    const maxDigits = getSelectedCountry().phoneLength + 3
-                    if (digitsOnly.length <= maxDigits) {
-                      handleInputChange('phone', cleaned)
+                    const country = getSelectedCountry()
+                    let val = e.target.value.replace(/[^\d]/g, '') // Only digits
+                    
+                    // Auto-format based on country
+                    if (country.value === 'Israel') {
+                      // Israeli format: XX-XXXXXXX (2-7)
+                      if (val.length > 2) {
+                        val = val.slice(0, 2) + '-' + val.slice(2, 9)
+                      }
+                      if (val.length > 10) val = val.slice(0, 10) // Max: XX-XXXXXXX
+                    } else if (country.value === 'USA' || country.value === 'Canada') {
+                      // US/Canada format: XXX-XXX-XXXX
+                      if (val.length > 6) {
+                        val = val.slice(0, 3) + '-' + val.slice(3, 6) + '-' + val.slice(6, 10)
+                      } else if (val.length > 3) {
+                        val = val.slice(0, 3) + '-' + val.slice(3, 6)
+                      }
+                    } else {
+                      // Generic international: just limit length
+                      if (val.length > 12) val = val.slice(0, 12)
                     }
+                    
+                    handleInputChange('phone', val)
                   }}
-                  placeholder={formData.country === 'Israel' ? '52-265-3170' : '555-123-4567'}
+                  placeholder={formData.country === 'Israel' ? '52-2653170' : formData.country === 'USA' || formData.country === 'Canada' ? '555-123-4567' : '123456789'}
                   type="tel"
-                  maxLength={15}
-                  className={`flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono ${errors.phone ? 'border-red-500' : ''}`}
+                  className={`flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono text-lg ${errors.phone ? 'border-red-500' : ''}`}
                   dir="ltr"
                 />
               </div>
               {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
               {formData.phone && !errors.phone && (
                 <p className="text-green-400 text-xs mt-1">
-                  ✓ {formData.phone.replace(/\D/g, '').length} {lang === 'he' ? 'ספרות' : 'digits'}
+                  ✓ {lang === 'he' ? 'מספר תקין' : 'Valid number'}
                 </p>
               )}
             </div>
