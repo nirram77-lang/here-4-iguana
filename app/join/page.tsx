@@ -369,7 +369,7 @@ export default function VenueJoinPage() {
   const validateCoordinatePrecision = (coord: string): boolean => {
     if (!coord.includes('.')) return false
     const decimals = coord.split('.')[1]
-    return decimals && decimals.length >= 4
+    return decimals !== undefined && decimals.length >= 4
   }
 
   const validateForm = (): boolean => {
