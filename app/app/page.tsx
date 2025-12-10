@@ -161,28 +161,61 @@ export default function Page() {
     type: 'info'
   })
 
+  // ✅ LOCALSTORAGE KEY for remembering user preferences
+  const ONBOARDING_STORAGE_KEY = 'i4iguana_onboarding_data'
+
+  // ✅ Load saved onboarding data from localStorage
+  const loadSavedOnboardingData = () => {
+    if (typeof window === 'undefined') return null
+    try {
+      const saved = localStorage.getItem(ONBOARDING_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        console.log('📦 Loaded saved onboarding data from localStorage')
+        return parsed
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not load saved onboarding data:', e)
+    }
+    return null
+  }
+
+  // ✅ Initialize onboardingData with saved data or defaults
+  const savedData = typeof window !== 'undefined' ? loadSavedOnboardingData() : null
+  
   const [onboardingData, setOnboardingData] = useState({
-    gender: 'male' as 'male' | 'female',
+    gender: (savedData?.gender || 'male') as 'male' | 'female',
     // ✅ "She Decides" - lookingFor is automatic (opposite gender)
     // No orientation - straight dating only
-    age: 25,
-    ageRange: [21, 35] as [number, number],
-    minDistance: 50,
-    maxDistance: 500,
-    hobbies: [] as string[],
-    photos: [] as string[],
-    bio: '',
-    name: '',
-    city: '' as string,
-    occupation: '' as string,
-    languages: ['he'] as string[],  // ✅ Languages (Hebrew default)
+    age: savedData?.age || 25,
+    ageRange: (savedData?.ageRange || [21, 35]) as [number, number],
+    minDistance: savedData?.minDistance || 50,
+    maxDistance: savedData?.maxDistance || 500,
+    hobbies: (savedData?.hobbies || []) as string[],
+    photos: (savedData?.photos || []) as string[],
+    bio: savedData?.bio || '',
+    name: savedData?.name || '',
+    city: (savedData?.city || '') as string,
+    occupation: (savedData?.occupation || '') as string,
+    languages: (savedData?.languages || ['he']) as string[],  // ✅ Languages (Hebrew default)
     // ✅ Lifestyle fields
-    drinking: 'social' as string,
-    smoking: 'no' as string,
-    height: '' as string,
-    education: '' as string,
-    relationshipType: 'relationship' as string,
+    drinking: (savedData?.drinking || 'social') as string,
+    smoking: (savedData?.smoking || 'no') as string,
+    height: (savedData?.height || '') as string,
+    education: (savedData?.education || '') as string,
+    relationshipType: (savedData?.relationshipType || 'relationship') as string,
   })
+
+  // ✅ Save onboardingData to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(onboardingData))
+      console.log('💾 Saved onboarding data to localStorage')
+    } catch (e) {
+      console.warn('⚠️ Could not save onboarding data:', e)
+    }
+  }, [onboardingData])
 
   // ✅ HARDWARE BACK BUTTON HANDLER - For Android devices
   // Maps each screen to its previous screen
