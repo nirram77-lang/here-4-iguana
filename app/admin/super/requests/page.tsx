@@ -37,6 +37,7 @@ import {
   deleteDoc,
   Timestamp,
   addDoc,
+  setDoc,
   where
 } from 'firebase/firestore'
 import { createVenue } from '@/lib/venue-service'
@@ -125,41 +126,60 @@ export default function VenueRequestsPage() {
     setIsCreating(true)
     
     try {
-      // Create the venue
+      // Generate unique venue ID
+      const venueId = `venue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      
+      // Create the venue with correct structure
       const venueData = {
-        name: request.venueName,
-        type: request.venueType,
-        address: `${request.address}, ${request.city}`,
-        city: request.city,
-        latitude: request.location.latitude,
-        longitude: request.location.longitude,
+        id: venueId,
+        name: request.venueName.toLowerCase().replace(/\s+/g, '-'),
+        displayName: request.venueName,
+        location: {
+          latitude: request.location.latitude,
+          longitude: request.location.longitude,
+          address: `${request.address}, ${request.city}`
+        },
+        radius: 500,
+        qrCode: '', // Will be generated later
+        qrData: {
+          type: 'iguana_checkin',
+          venueId: venueId,
+          venueName: request.venueName
+        },
+        adminUid: '',
         adminEmail: request.ownerEmail,
-        adminPhone: request.ownerPhone,
+        adminPhone: request.ownerPhone || '',
         ownerName: request.ownerName,
+        checkedInUsers: [],
+        stats: {
+          totalCheckIns: 0,
+          activeNow: 0,
+          notificationsSent: 0,
+          matchesCreated: 0
+        },
         website: request.website || '',
         instagram: request.instagram || '',
         openingHours: request.openingHours || '',
         capacity: request.capacity || 0,
         description: request.description || '',
         logoUrl: request.logoUrl || '',
-        isActive: true,
-        checkedInUsers: [],
-        totalCheckIns: 0,
         createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        active: true,
         createdFromRequest: request.id
       }
 
-      // Add to venues collection
-      const venueRef = await addDoc(collection(db, 'venues'), venueData)
+      // Add to venues collection with the venueId as document ID
+      await setDoc(doc(db, 'venues', venueId), venueData)
       
-      console.log('✅ Venue created:', venueRef.id)
+      console.log('✅ Venue created:', venueId)
 
       // Update request status
       await updateDoc(doc(db, 'venueRequests', request.id), {
         status: 'approved',
         reviewedAt: Timestamp.now(),
         reviewedBy: 'admin',
-        approvedVenueId: venueRef.id,
+        approvedVenueId: venueId,
         updatedAt: Timestamp.now()
       })
 

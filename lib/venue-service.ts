@@ -181,7 +181,8 @@ export async function getVenue(venueId: string): Promise<Venue | null> {
       return null
     }
     
-    return venueDoc.data() as Venue
+    // Include document ID in returned data
+    return { ...venueDoc.data(), id: venueDoc.id } as Venue
   } catch (error) {
     console.error('❌ Error getting venue:', error)
     return null
@@ -196,8 +197,9 @@ export async function getAllVenues(): Promise<Venue[]> {
     const venuesSnapshot = await getDocs(collection(db, 'venues'))
     const venues: Venue[] = []
     
-    venuesSnapshot.forEach(doc => {
-      venues.push(doc.data() as Venue)
+    venuesSnapshot.forEach(docSnap => {
+      // Include document ID in venue data
+      venues.push({ ...docSnap.data(), id: docSnap.id } as Venue)
     })
     
     console.log(`✅ Loaded ${venues.length} venues`)
