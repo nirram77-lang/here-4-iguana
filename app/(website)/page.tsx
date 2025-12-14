@@ -47,7 +47,7 @@ export default function LandingPage() {
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
               <a href="#contact" className="text-gray-300 hover:text-green-400 transition-colors">Contact</a>
               <Link 
-                href="/app"
+                href="/download"
                 className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
               >
                 Open App
@@ -76,7 +76,7 @@ export default function LandingPage() {
               <a href="#contact" className="block text-gray-300 hover:text-green-400">Contact</a>
               <a href="/terms" className="block text-gray-300 hover:text-green-400">Terms of Service</a>
               <Link 
-                href="/app"
+                href="/download"
                 className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold"
               >
                 Open App
@@ -98,6 +98,12 @@ export default function LandingPage() {
           {/* Animated Circles */}
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          
+          {/* Floating Hearts */}
+          <div className="absolute bottom-0 left-[10%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '0s'}}>💕</div>
+          <div className="absolute bottom-0 left-[25%] text-pink-400/20 text-xl animate-floatHeart" style={{animationDelay: '2s'}}>💕</div>
+          <div className="absolute bottom-0 right-[15%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '4s'}}>💕</div>
+          <div className="absolute bottom-0 right-[35%] text-pink-400/20 text-lg animate-floatHeart" style={{animationDelay: '6s'}}>💕</div>
           
           {/* Radar Effect */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px]">
@@ -146,13 +152,13 @@ export default function LandingPage() {
           <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
             No endless swiping. No fake profiles. 
             <br className="hidden md:block" />
-            Meet real people at real places within <span className="text-green-400 font-semibold">10-500 meters</span>.
+            Meet <span className="text-pink-400">real people</span> at real places within <span className="text-green-400 font-semibold">10-500 meters</span>.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
             <Link 
-              href="/app"
+              href="/download"
               className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-2"
             >
               <span>Open App</span>
@@ -368,7 +374,7 @@ export default function LandingPage() {
           {/* App Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link 
-              href="/app"
+              href="/download"
               className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-3"
             >
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
@@ -394,7 +400,7 @@ export default function LandingPage() {
           {/* QR Code */}
           <div className="inline-block p-6 bg-white rounded-2xl">
             <img 
-              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://i4iguana.com/app&bgcolor=ffffff&color=0d2920"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.i4iguana.com/download&bgcolor=ffffff&color=0d2920"
               alt="Scan to download"
               className="w-36 h-36"
             />
@@ -471,6 +477,11 @@ export default function LandingPage() {
             <p className="text-gray-500 text-sm">
               © {new Date().getFullYear()} I4IGUANA. All rights reserved.
             </p>
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <span>Made with</span>
+              <span className="text-pink-400 animate-pulse">💕</span>
+              <span>in Israel</span>
+            </div>
             <div className="flex items-center gap-4">
               <a href="#" className="text-gray-400 hover:text-green-400 transition-colors">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -510,11 +521,20 @@ export default function LandingPage() {
             transform: translateY(0);
           }
         }
+        @keyframes floatHeart {
+          0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-100px) scale(1); opacity: 0; }
+        }
         .animate-fadeIn {
           animation: fadeIn 1s ease-out forwards;
         }
         .animate-fadeInUp {
           animation: fadeInUp 1s ease-out forwards;
+        }
+        .animate-floatHeart {
+          animation: floatHeart 10s ease-in-out infinite;
         }
         html {
           scroll-behavior: smooth;

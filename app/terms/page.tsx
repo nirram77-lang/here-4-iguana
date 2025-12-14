@@ -118,7 +118,66 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">6. Location Services</h2>
+            <h2 className="text-2xl font-bold text-red-400 mb-4">6. ⚠️ Assumption of Risk & User Responsibility</h2>
+            <p className="text-gray-300 leading-relaxed mb-4">
+              <strong className="text-white">BY USING I4IGUANA, YOU ACKNOWLEDGE AND AGREE THAT:</strong>
+            </p>
+            <ul className="list-disc list-inside text-gray-300 space-y-3 ml-4">
+              <li><strong className="text-white">Inherent Risks:</strong> Meeting people you've connected with online involves inherent risks. You assume full responsibility for your interactions with other users, both online and offline.</li>
+              <li><strong className="text-white">No Background Checks:</strong> We do NOT conduct criminal background checks, identity verification, or screening of users. Users may misrepresent themselves.</li>
+              <li><strong className="text-white">Location-Based Risks:</strong> The App uses your location to connect you with nearby users. You understand that sharing your proximity carries risks, including potential stalking, harassment, or unwanted contact.</li>
+              <li><strong className="text-white">User Conduct:</strong> We have no control over and are not responsible for the actions, behavior, or conduct of any user, whether online or in person.</li>
+              <li><strong className="text-white">Meeting Strangers:</strong> Any in-person meetings with other users are at your own risk. We strongly recommend meeting only in public places and informing someone you trust of your plans.</li>
+              <li><strong className="text-white">No Guarantees:</strong> We make no guarantees regarding the identity, character, intentions, or behavior of any user.</li>
+            </ul>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-4">
+              <p className="text-red-300 text-sm">
+                <strong>⚠️ WARNING:</strong> You are solely responsible for your safety when using the App and meeting other users. 
+                I4IGUANA accepts no liability for any harm, injury, harassment, stalking, impersonation, 
+                or any other negative experience resulting from your use of the App or interactions with other users.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">7. Prohibited Conduct & Harassment Policy</h2>
+            <p className="text-gray-300 leading-relaxed mb-4">
+              The following behaviors are strictly prohibited and may result in immediate account termination and reporting to authorities:
+            </p>
+            <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
+              <li><strong className="text-white">Harassment:</strong> Any form of harassment, intimidation, or bullying</li>
+              <li><strong className="text-white">Stalking:</strong> Following, tracking, or monitoring other users</li>
+              <li><strong className="text-white">Impersonation:</strong> Creating fake profiles or pretending to be someone else</li>
+              <li><strong className="text-white">Sexual Harassment:</strong> Unwanted sexual advances, requests, or explicit content</li>
+              <li><strong className="text-white">Threats:</strong> Any threats of violence or harm</li>
+              <li><strong className="text-white">Revenge:</strong> Using location data or personal information to harm, embarrass, or retaliate against users</li>
+              <li><strong className="text-white">Doxxing:</strong> Sharing other users' personal information without consent</li>
+            </ul>
+            <p className="text-gray-400 mt-4 text-sm">
+              If you experience any of the above, please use the in-app report feature immediately. 
+              We encourage victims to also report incidents to local law enforcement.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">8. Indemnification</h2>
+            <p className="text-gray-300 leading-relaxed">
+              You agree to indemnify, defend, and hold harmless I4IGUANA, its owners, officers, directors, employees, 
+              and agents from and against any and all claims, damages, losses, liabilities, costs, and expenses 
+              (including reasonable attorneys' fees) arising out of or relating to:
+            </p>
+            <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4 mt-4">
+              <li>Your use of the App</li>
+              <li>Your violation of these Terms</li>
+              <li>Your interactions with other users</li>
+              <li>Any content you post or share</li>
+              <li>Any harm caused by your conduct to other users</li>
+              <li>Any claims brought by third parties as a result of your actions</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">9. Location Services</h2>
             <p className="text-gray-300 leading-relaxed">
               I4IGUANA uses location services to provide proximity-based features. By using the App, you 
               consent to the collection and use of your location data. Location data is used only to 
@@ -128,7 +187,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">7. Subscriptions and Payments</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">10. Subscriptions and Payments</h2>
             <p className="text-gray-300 leading-relaxed mb-4">
               Some features require a paid subscription. By subscribing, you agree to:
             </p>
@@ -141,7 +200,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">8. Intellectual Property</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">11. Intellectual Property</h2>
             <p className="text-gray-300 leading-relaxed">
               All content, features, and functionality of the App are owned by I4IGUANA and are protected 
               by international copyright, trademark, and other intellectual property laws. You may not 
@@ -150,7 +209,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">9. User Content</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">12. User Content</h2>
             <p className="text-gray-300 leading-relaxed">
               You retain ownership of content you upload to the App. However, by uploading content, you 
               grant I4IGUANA a non-exclusive, worldwide, royalty-free license to use, display, and 
@@ -160,7 +219,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">10. Termination</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">13. Termination</h2>
             <p className="text-gray-300 leading-relaxed">
               We reserve the right to suspend or terminate your account at any time, for any reason, 
               including violation of these Terms. You may also delete your account at any time through 
@@ -169,7 +228,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">11. Disclaimer of Warranties</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">14. Disclaimer of Warranties</h2>
             <p className="text-gray-300 leading-relaxed">
               THE APP IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. WE DO NOT 
               WARRANT THAT THE APP WILL BE UNINTERRUPTED, ERROR-FREE, OR COMPLETELY SECURE. WE ARE NOT 
@@ -178,7 +237,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">12. Limitation of Liability</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">15. Limitation of Liability</h2>
             <p className="text-gray-300 leading-relaxed">
               TO THE MAXIMUM EXTENT PERMITTED BY LAW, I4IGUANA SHALL NOT BE LIABLE FOR ANY INDIRECT, 
               INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE APP, 
@@ -187,7 +246,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">13. Governing Law</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">16. Governing Law</h2>
             <p className="text-gray-300 leading-relaxed">
               These Terms shall be governed by and construed in accordance with the laws of the State of 
               Israel, without regard to its conflict of law provisions. Any disputes arising from these 
@@ -196,7 +255,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">14. Contact Us</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">17. Contact Us</h2>
             <p className="text-gray-300 leading-relaxed">
               If you have any questions about these Terms of Service, please contact us at:
             </p>

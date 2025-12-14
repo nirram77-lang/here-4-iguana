@@ -328,26 +328,20 @@ export default function HomeScreen({
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1 bg-[#4ade80]/20 px-2 py-0.5 rounded-full border border-[#4ade80]/30"
+              className="flex items-center gap-1.5 bg-white/15 px-2.5 py-1 rounded-full border border-white/30"
               title={venueData.venueName}
             >
-              <div className="w-2 h-2 bg-[#4ade80] rounded-full animate-pulse" />
-              <span className="text-[9px] font-semibold text-[#4ade80] max-w-[60px] truncate">
+              <div className="w-2.5 h-2.5 bg-[#4ade80] rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]" />
+              <span className="text-[10px] font-bold text-[#ff6b6b] max-w-[70px] truncate">
                 {venueData.venueName.split(' - ')[0]}
               </span>
             </motion.button>
           )}
         </div>
         
-        {/* Right: Available + Settings + Refresh - Hollywood sizing */}
+        {/* Right: Search + Available + Refresh - Hollywood sizing */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* ✅ Available Toggle - smaller */}
-          <AvailableToggle
-            isAvailable={isAvailable}
-            onToggle={handleToggleAvailable}
-            disabled={availableLoading}
-          />
-          {/* ✅ Search Settings - larger */}
+          {/* ✅ Search Settings - FIRST (leftmost for quick access) */}
           <button
             onClick={() => setShowSearchSettings(true)}
             className="p-2.5 rounded-full bg-[#4ade80]/20 hover:bg-[#4ade80]/30 transition-colors border border-[#4ade80]/30"
@@ -355,6 +349,12 @@ export default function HomeScreen({
           >
             <Target className="h-5 w-5 text-[#4ade80]" />
           </button>
+          {/* ✅ Available Toggle */}
+          <AvailableToggle
+            isAvailable={isAvailable}
+            onToggle={handleToggleAvailable}
+            disabled={availableLoading}
+          />
           {/* ✅ Refresh - larger */}
           <button
             onClick={onRefresh}

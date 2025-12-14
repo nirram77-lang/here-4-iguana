@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Crown, Sparkles, X, Clock, Rocket, Star, Zap, Check, Heart, Gift } from "lucide-react"
+import { Crown, Sparkles, X, Clock, Rocket, Star, Zap, Check, Heart, Gift, Home } from "lucide-react"
 import { onSnapshot, doc, collection, query, where, getDoc } from "firebase/firestore"  // ✅ NEW
 import { db } from "@/lib/firebase"  // ✅ NEW
 import SplashScreen from "@/components/splash-screen"
@@ -21,9 +21,10 @@ import MatchScreen from "@/components/match-screen"
 import NotificationsScreen from "@/components/notifications-screen"
 import ProfileScreen from "@/components/profile-screen"
 import ChatScreen from "@/components/chat-screen"
-import ScanScreen from "@/components/scan-screen"
+import EnjoyModeScreen from "@/components/enjoy-mode-screen"  // ✅ NEW: Enjoy Mode
+// ❌ DISABLED: import ScanScreen from "@/components/scan-screen"  // Replaced by VenueSelectionScreen
 import CheckInBadge from "@/components/checkin-badge"
-import QRScanRequiredModal from "@/components/qr-scan-required-modal"
+import VenueSelectionScreen from "@/components/venue-selection-screen"  // ✅ NEW: Replace QR with venue selection
 import InAppNotification from "@/components/in-app-notification"
 import MatchEndedScreen from "@/components/match-ended-screen"
 import WeAreMeetingModal from "@/components/we-are-meeting-modal"
@@ -49,7 +50,7 @@ import {
   recordSwipe
 } from "@/lib/firestore-service"
 import { getCurrentLocation } from "@/lib/location-service"
-import { CheckInData, performCheckOut, getUserCheckInStatus, verifyUserStillAtVenue } from "@/lib/checkin-service"
+import { CheckInData, performCheckOut, getUserCheckInStatus, verifyUserStillAtVenue, performCheckInBySelection } from "@/lib/checkin-service"
 import { getUserPassData, usePass, recordMatch } from "@/lib/pass-system"
 import CouponModal from "@/components/coupon-modal"
 import { 
@@ -60,7 +61,7 @@ import {
   syncUserWithPhoneIdentity 
 } from "@/lib/phone-identity-service"
 
-type Screen = "splash" | "welcome" | "login" | "signup" | "phone-verification" | "onboarding-welcome" | "onboarding-name" | "onboarding-gender" | "onboarding-age" | "onboarding-hobbies" | "onboarding-lifestyle" | "onboarding-photos" | "home" | "match" | "notifications" | "profile" | "chat" | "scan"
+type Screen = "splash" | "welcome" | "login" | "signup" | "phone-verification" | "onboarding-welcome" | "onboarding-name" | "onboarding-gender" | "onboarding-age" | "onboarding-hobbies" | "onboarding-lifestyle" | "onboarding-photos" | "home" | "match" | "notifications" | "profile" | "chat" | "scan" | "enjoy-mode"
 
 // Helper function to create consistent match IDs
 const createMatchId = (userId1: string, userId2: string) => {
@@ -97,6 +98,7 @@ export default function Page() {
   
   // ✅ FIXED: Timestamp-based timer that survives app minimize and screen changes
   const [matchExpiresAt, setMatchExpiresAt] = useState<Date | null>(null)
+  const [meetingStartedAt, setMeetingStartedAt] = useState<Date | null>(null)  // ✅ NEW: For Enjoy Mode countdown
   const [timeRemaining, setTimeRemaining] = useState(0)
   
   // ✅ NEW: Track if this is a NEW match (for sound) vs returning from chat
@@ -125,9 +127,12 @@ export default function Page() {
     name: string
     photo: string
   } | null>(null)
+  const [showPartnerLeftMeeting, setShowPartnerLeftMeeting] = useState(false)  // ✅ NEW: Partner exited meeting
+  const [showVenueDisconnected, setShowVenueDisconnected] = useState(false)  // ✅ NEW: Real-time venue disconnect notification
 
-  // ✅ NEW: QR Scan Required modal - shown after onboarding if no check-in
-  const [showQRScanRequired, setShowQRScanRequired] = useState(false)
+  // ✅ NEW: Venue Selection modal - shown after onboarding if no venue check-in
+  const [showVenueSelection, setShowVenueSelection] = useState(false)
+  const [userLocationForVenues, setUserLocationForVenues] = useState<{ lat: number; lng: number } | null>(null)
   const [showPaymentSuccess, setShowPaymentSuccess] = useState<{
     isVisible: boolean
     plan: 'weekly' | 'monthly' | 'skip-timer' | null
@@ -185,8 +190,7 @@ export default function Page() {
   
   const [onboardingData, setOnboardingData] = useState({
     gender: (savedData?.gender || 'male') as 'male' | 'female',
-    // ✅ "She Decides" - lookingFor is automatic (opposite gender)
-    // No orientation - straight dating only
+    lookingFor: (savedData?.lookingFor || undefined) as 'male' | 'female' | 'both' | undefined,  // ✅ FIXED: undefined not null
     age: savedData?.age || 25,
     ageRange: (savedData?.ageRange || [21, 35]) as [number, number],
     minDistance: savedData?.minDistance || 50,
@@ -237,7 +241,8 @@ export default function Page() {
     'notifications': 'home',
     'profile': 'home',
     'chat': 'match',
-    'scan': 'home'
+    'scan': 'home',
+    'enjoy-mode': null  // ✅ Don't allow back from enjoy mode
   }
 
   // ✅ Ref to track current screen for popstate handler (avoids stale closure)
@@ -609,7 +614,8 @@ export default function Page() {
       const data = snapshot.data()
       
       // Check if someone clicked "We're Meeting" and it wasn't us
-      if (data.status === 'successful' && 
+      // ✅ FIX: Check for BOTH 'successful' and 'meeting' status!
+      if ((data.status === 'successful' || data.status === 'meeting') && 
           data.meetingConfirmedBy && 
           data.meetingConfirmedBy !== user.uid) {
         
@@ -641,6 +647,60 @@ export default function Page() {
     
     return () => unsubscribe()
   }, [user, matchedUser])
+
+  // ✅ NEW: Listen for partner exiting Enjoy Mode
+  // This detects when partner clicks "Exit Meeting" before timer ends
+  useEffect(() => {
+    // Only listen when WE are in enjoy-mode
+    if (!user || !matchedUser || currentScreen !== "enjoy-mode" || !meetingStartedAt) return
+    
+    const matchId = createMatchId(user.uid, matchedUser.uid || matchedUser.id)
+    console.log(`👀 Listening for partner exit on match: ${matchId}`)
+    
+    const matchRef = doc(db, 'activeMatches', matchId)
+    
+    // Track if we've already shown the modal to prevent duplicates
+    let hasShownModal = false
+    
+    const unsubscribe = onSnapshot(matchRef, async (snapshot) => {
+      if (hasShownModal) return  // Already handled
+      
+      if (!snapshot.exists()) {
+        // Match document was deleted - partner left!
+        console.log('💔 Match document deleted - partner left the meeting!')
+        hasShownModal = true
+        setShowPartnerLeftMeeting(true)
+        return
+      }
+      
+      const data = snapshot.data()
+      
+      // Check if meeting was completed by PARTNER (not us)
+      // ✅ CRITICAL: Check meetingExitedBy to know WHO exited
+      if (data.meetingCompletedAt && 
+          data.meetingExitReason === 'manual' && 
+          data.meetingExitedBy && 
+          data.meetingExitedBy !== user.uid) {
+        
+        console.log('💔 Partner manually exited the meeting!')
+        console.log(`   Exited by: ${data.meetingExitedBy} (not us: ${user.uid})`)
+        hasShownModal = true
+        
+        // Play a gentle notification sound
+        try {
+          const audio = new Audio('/sounds/notification.wav')
+          audio.volume = 0.5
+          await audio.play()
+        } catch (err) {
+          console.warn('Could not play notification sound:', err)
+        }
+        
+        setShowPartnerLeftMeeting(true)
+      }
+    })
+    
+    return () => unsubscribe()
+  }, [user, matchedUser, currentScreen, meetingStartedAt])
 
   // ✅ NEW: Show splash when returning from background after 30+ minutes
   useEffect(() => {
@@ -832,7 +892,7 @@ export default function Page() {
       }
       
       // ✅ STEP 2: Now we can safely check if already on app screen
-      const appScreens = ["home", "match", "notifications", "profile", "chat", "scan", "phone-verification"]
+      const appScreens = ["home", "match", "notifications", "profile", "chat", "scan", "phone-verification", "enjoy-mode"]
       if (appScreens.includes(currentScreen)) {
         console.log('✅ Already in app, staying on:', currentScreen)
         return
@@ -869,6 +929,7 @@ export default function Page() {
             console.log('🎯 ACTIVE MATCH FOUND! Skipping phone verification check')
             console.log(`   Partner: ${activeMatch.matchedUser.name}`)
             console.log(`   Expires: ${activeMatch.expiresAt.toLocaleString()}`)
+            console.log(`   Status: ${activeMatch.status}`)
             
             // ✅ Load phone number for match
             try {
@@ -894,6 +955,26 @@ export default function Page() {
             
             // ✅ FIX: Also set selectedMatch for chat to work after re-login!
             setSelectedMatch(activeMatch.matchedUser)
+            
+            // ✅ NEW: Check if in MEETING status → Restore to Enjoy Mode!
+            if (activeMatch.status === 'meeting' && activeMatch.meetingStartedAt) {
+              console.log('🎉 MEETING IN PROGRESS! Restoring to Enjoy Mode')
+              console.log(`   Meeting started: ${activeMatch.meetingStartedAt.toLocaleString()}`)
+              
+              // Calculate remaining time
+              const now = new Date()
+              const meetingEndTime = new Date(activeMatch.meetingStartedAt.getTime() + 20 * 60 * 1000) // 20 minutes
+              
+              if (now < meetingEndTime) {
+                // Meeting still active - restore Enjoy Mode
+                setMeetingStartedAt(activeMatch.meetingStartedAt)
+                setCurrentScreen("enjoy-mode")
+                console.log('✅ Restored to Enjoy Mode!')
+                return  // Go directly to enjoy-mode!
+              } else {
+                console.log('⏰ Meeting timer expired, going to match screen')
+              }
+            }
             
             setCurrentScreen("match")
             return  // Go directly to match - skip all other checks!
@@ -1014,19 +1095,19 @@ export default function Page() {
           setIsCheckedIn(false)
           
           // ✅ CRITICAL FIX: If user opens app while NOT checked in (e.g., at home after 4 hours expired)
-          // Show QR Scan modal to guide them back to a venue
+          // Show Venue Selection modal to guide them back to a venue
           // This protects privacy - user won't see nearby matches from home!
           // ✅ FIX: Only show if on home screen (not during onboarding/login flow)
           if (currentScreen === "home") {
             // Double-check user has completed onboarding by checking profile
             const userProfile = await getUserProfile(user.uid)
             if (userProfile && userProfile.onboardingComplete === true) {
-              console.log('🏠 User on home screen without check-in → showing QR modal for privacy')
+              console.log('🏠 User on home screen without check-in → showing venue selection for privacy')
               setTimeout(() => {
-                setShowQRScanRequired(true)
+                setShowVenueSelection(true)
               }, 1000)  // 1 second delay to let home screen render
             } else {
-              console.log('⏳ Onboarding not complete yet, skipping QR modal')
+              console.log('⏳ Onboarding not complete yet, skipping venue selection')
             }
           }
         }
@@ -1037,6 +1118,61 @@ export default function Page() {
     
     loadCheckInStatus()
   }, [user, currentScreen])  // ✅ Added currentScreen dependency to detect when user returns to home
+
+  // ✅ NEW: Real-time listener for venue check-in status
+  // This detects when user is disconnected from venue (admin reset, network issues, etc.)
+  useEffect(() => {
+    if (!user) return
+    
+    console.log('👁️ Setting up real-time venue check-in listener')
+    
+    const userRef = doc(db, 'users', user.uid)
+    
+    const unsubscribe = onSnapshot(userRef, (docSnapshot) => {
+      if (!docSnapshot.exists()) return
+      
+      const data = docSnapshot.data()
+      const serverCheckedInVenue = data.checkedInVenue || data.currentVenueId || null
+      const serverCheckInData = data.checkInData || null
+      
+      // ✅ CRITICAL: Detect when user was checked in but now isn't
+      if (isCheckedIn && checkInData && !serverCheckedInVenue) {
+        console.log('⚠️ REAL-TIME: User disconnected from venue!')
+        console.log(`   Was at: ${checkInData.venueName || checkInData.venueDisplayName}`)
+        
+        // Update local state
+        setCheckInData(null)
+        setIsCheckedIn(false)
+        
+        // Show disconnect notification
+        setShowVenueDisconnected(true)
+        
+        // Auto-hide after 4 seconds and show venue selection
+        setTimeout(() => {
+          setShowVenueDisconnected(false)
+          
+          // Show venue selection if on home screen
+          if (currentScreen === "home") {
+            setShowVenueSelection(true)
+          }
+        }, 4000)
+      }
+      
+      // ✅ Also detect when user is checked in from another device/session
+      if (!isCheckedIn && serverCheckedInVenue && serverCheckInData) {
+        console.log('✅ REAL-TIME: User checked in from elsewhere')
+        setCheckInData(serverCheckInData)
+        setIsCheckedIn(true)
+      }
+    }, (error) => {
+      console.error('❌ Error in venue check-in listener:', error)
+    })
+    
+    return () => {
+      console.log('👋 Cleaning up venue check-in listener')
+      unsubscribe()
+    }
+  }, [user, isCheckedIn, checkInData, currentScreen])
 
   // ✅ NEW: Check notification permission and show modal if needed
   useEffect(() => {
@@ -1212,10 +1348,10 @@ export default function Page() {
             status: matchData.status
           })
           
-          // ✅ CRITICAL FIX: Don't navigate to match if status is 'successful'
+          // ✅ CRITICAL FIX: Don't navigate to match if status is 'successful' or 'meeting'
           // This means "We're Meeting" was already clicked and match is done
-          if (matchData.status === 'successful') {
-            console.log('⏭️ Match already successful - skipping navigation to match screen')
+          if (matchData.status === 'successful' || matchData.status === 'meeting') {
+            console.log('⏭️ Match already successful/meeting - skipping navigation to match screen')
             return
           }
           
@@ -1324,6 +1460,7 @@ export default function Page() {
           console.log('✅ Active match found! Restoring match state...')
           console.log(`   Partner: ${activeMatch.matchedUser.name}`)
           console.log(`   Expires: ${activeMatch.expiresAt.toLocaleString()}`)
+          console.log(`   Status: ${activeMatch.status}`)
           
           setMatchedUser(activeMatch.matchedUser)
           setMatchExpiresAt(activeMatch.expiresAt)
@@ -1332,6 +1469,26 @@ export default function Page() {
           
           // ✅ FIX: Also set selectedMatch for chat to work after re-login!
           setSelectedMatch(activeMatch.matchedUser)
+          
+          // ✅ NEW: Check if in MEETING status → Restore to Enjoy Mode!
+          if (activeMatch.status === 'meeting' && activeMatch.meetingStartedAt) {
+            console.log('🎉 MEETING IN PROGRESS! Restoring to Enjoy Mode')
+            console.log(`   Meeting started: ${activeMatch.meetingStartedAt.toLocaleString()}`)
+            
+            // Calculate remaining time
+            const now = new Date()
+            const meetingEndTime = new Date(activeMatch.meetingStartedAt.getTime() + 20 * 60 * 1000) // 20 minutes
+            
+            if (now < meetingEndTime) {
+              // Meeting still active - restore Enjoy Mode
+              setMeetingStartedAt(activeMatch.meetingStartedAt)
+              setCurrentScreen("enjoy-mode")
+              console.log('✅ Restored to Enjoy Mode from home screen check!')
+              return  // Exit early - don't load nearby users
+            } else {
+              console.log('⏰ Meeting timer expired, going to match screen')
+            }
+          }
           
           setCurrentScreen("match")  // Go directly to match screen
           
@@ -1425,11 +1582,28 @@ export default function Page() {
         setMatchExpiresAt(null)
         setIsLockedInMatch(false)
         
+        // ✅ CRITICAL FIX: Don't clear match or show MatchEnded if meeting is in progress!
+        // This happens when she clicked "We're Meeting!" and timer expired while modal was showing
+        if (meetingStartedAt) {
+          console.log('💕 Meeting already started - skipping MatchEnded screen')
+          return
+        }
+        
         // Clear active match in Firestore
         if (matchedUser && user) {
-          clearActiveMatch(user.uid, matchedUser.uid).catch(err => 
-            console.error('Error clearing expired match:', err)
-          )
+          // ✅ CRITICAL: Check Firestore status BEFORE clearing!
+          // Don't clear if status is 'meeting' - she clicked "We're Meeting!"
+          getMatchStatus(user.uid, matchedUser.uid).then(status => {
+            if (status === 'meeting' || status === 'successful') {
+              console.log('💕 Match is meeting/successful - NOT clearing active match')
+              return
+            }
+            clearActiveMatch(user.uid, matchedUser.uid).catch(err => 
+              console.error('Error clearing expired match:', err)
+            )
+          }).catch(err => {
+            console.error('Error checking match status:', err)
+          })
           
           // ✅ Clear match sound flag so next match will play sound
           const storageKey = `match_sound_played_${matchedUser.uid}`
@@ -1438,7 +1612,8 @@ export default function Page() {
         }
         
         // ✅ Show Match Ended Screen (5 seconds) then return to home
-        if (currentScreen === "match" || currentScreen === "chat") {
+        // ✅ CRITICAL FIX: Also check meetingStartedAt in case it was just set!
+        if ((currentScreen === "match" || currentScreen === "chat") && !meetingStartedAt) {
           setShowMatchEnded(true)
         }
       }
@@ -1451,7 +1626,7 @@ export default function Page() {
     const interval = setInterval(updateTimer, 1000)
     
     return () => clearInterval(interval)
-  }, [matchExpiresAt, currentScreen, matchedUser, user])
+  }, [matchExpiresAt, currentScreen, matchedUser, user, meetingStartedAt])
 
   // 🔒 Phone Lock Timer - Runs continuously for 2-hour lockout
   useEffect(() => {
@@ -1566,16 +1741,17 @@ export default function Page() {
     if (!user || !matchedUser) return
     if (currentScreen !== "match" && currentScreen !== "chat") return
     if (!matchExpiresAt) return  // No active match
+    if (meetingStartedAt) return  // ✅ NEW: Already in meeting mode, don't check
     
     const checkMatchStillActive = async () => {
       try {
-        // ✅ First check status - if 'successful', partner clicked "We're Meeting!"
+        // ✅ First check status - if 'successful' or 'meeting', don't show MatchEndedScreen!
         const status = await getMatchStatus(user.uid, matchedUser.uid || matchedUser.id)
         
-        if (status === 'successful') {
+        if (status === 'successful' || status === 'meeting') {
           // Partner clicked "We're Meeting!" - DON'T show MatchEndedScreen!
           // The WeAreMeetingModal listener will handle this
-          console.log('💕 Match is successful - partner clicked We\'re Meeting!')
+          console.log('💕 Match is meeting/successful - partner clicked We\'re Meeting!')
           return
         }
         
@@ -1598,7 +1774,7 @@ export default function Page() {
     const interval = setInterval(checkMatchStillActive, 5000)
     
     return () => clearInterval(interval)
-  }, [user, matchedUser, currentScreen, matchExpiresAt])
+  }, [user, matchedUser, currentScreen, matchExpiresAt, meetingStartedAt])
 
   const loadNearbyUsers = async () => {
     if (!user) return
@@ -1638,16 +1814,16 @@ export default function Page() {
           setCheckInData(null)
           setShowCheckInBadge(false)
           
-          // Show notification and redirect to scan screen
+          // Show notification and open venue selection
           setInAppNotification({
             isVisible: true,
-            message: `You left ${proximityCheck.venueName}. Scan a QR code at your new venue to continue matching!`,
+            message: `עזבת את ${proximityCheck.venueName}. בחר מועדון חדש כדי להמשיך!`,
             type: 'info'
           })
           
-          // Show QR scan screen after a brief delay
+          // ✅ CHANGED: Show venue selection instead of scan screen
           setTimeout(() => {
-            setCurrentScreen("scan")
+            setShowVenueSelection(true)
           }, 2000)
           
           setLoading(false)
@@ -1671,15 +1847,15 @@ export default function Page() {
       } else {
         // ✅ User NOT checked in - don't show ANY users!
         console.log('⚠️ User not checked in to venue - NOT loading users')
-        console.log('   User must scan QR code at venue to see matches')
+        console.log('   User must select a venue to see matches')
         users = []
         
-        // ✅ Show QR Scan Required modal if not already shown
-        if (!showQRScanRequired && currentScreen === "home") {
+        // ✅ Show Venue Selection modal if not already shown
+        if (!showVenueSelection && currentScreen === "home") {
           const userProfile = await getUserProfile(user.uid)
           if (userProfile && userProfile.onboardingComplete === true) {
             setTimeout(() => {
-              setShowQRScanRequired(true)
+              setShowVenueSelection(true)
             }, 500)
           }
         }
@@ -1733,7 +1909,7 @@ export default function Page() {
     setShowCheckInBadge(true)  // ✅ Show badge on new check-in
     
     // ✅ Close QR Scan Required modal if it was open
-    setShowQRScanRequired(false)
+    setShowVenueSelection(false)
     
     // Reload users from this venue
     await loadNearbyUsers()
@@ -1761,10 +1937,90 @@ export default function Page() {
     }
   }
 
+  // ✅ NEW: Handle venue selection from VenueSelectionScreen
+  const handleVenueSelection = async (venue: any) => {
+    if (!user) {
+      console.error('❌ No user logged in')
+      throw new Error('לא מחובר')
+    }
+    
+    console.log('🎯 Venue selected:', venue.displayName)
+    
+    // Get current location
+    let location = userLocationForVenues
+    if (!location) {
+      console.log('📍 Requesting location for venue check-in...')
+      location = await requestLocationForVenues()
+      if (!location) {
+        throw new Error('נדרשת גישה למיקום כדי להיכנס למועדון')
+      }
+    }
+    
+    try {
+      // Perform check-in using the new function
+      const checkInResult = await performCheckInBySelection(
+        user.uid,
+        venue.id,
+        location.lat,
+        location.lng
+      )
+      
+      console.log('✅ Check-in successful:', checkInResult)
+      
+      // Update state
+      setCheckInData(checkInResult)
+      setIsCheckedIn(true)
+      setShowCheckInBadge(true)
+      setShowVenueSelection(false)
+      
+      // Reload users from this venue
+      await loadNearbyUsers()
+      
+      // Show success notification
+      setInAppNotification({
+        isVisible: true,
+        message: `נכנסת ל-${venue.displayName}! 🎉`,
+        type: 'info'
+      })
+      
+      // Hide notification after 3 seconds
+      setTimeout(() => {
+        setInAppNotification(prev => ({ ...prev, isVisible: false }))
+      }, 3000)
+      
+    } catch (error: any) {
+      console.error('❌ Check-in error:', error)
+      throw error
+    }
+  }
+
+  // ✅ NEW: Request location for venue selection
+  const requestLocationForVenues = async (): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      console.log('📍 Requesting location for venues...')
+      const location = await getCurrentLocation()
+      
+      if (location) {
+        setUserLocationForVenues({ lat: location.latitude, lng: location.longitude })
+        return { lat: location.latitude, lng: location.longitude }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('❌ Error getting location:', error)
+      return null
+    }
+  }
+
   // ✅ NEW: Handle PASS on search screen - save to swipedLeft in Firestore
   // This ensures users don't see the same profiles after navigating away
   const handlePassOnSearch = async (passedUser: any) => {
     if (!user) return
+    
+    // ✅ CRITICAL FIX: Remove user from nearbyUsers IMMEDIATELY
+    // This prevents showing them again in the same session
+    setNearbyUsers(prev => prev.filter(u => u.uid !== passedUser.uid))
+    console.log(`🗑️ Removed ${passedUser.name || passedUser.uid} from nearbyUsers list (PASS)`)
     
     try {
       console.log(`❌ Saving PASS on ${passedUser.name || passedUser.uid} to Firestore...`)
@@ -1781,6 +2037,11 @@ export default function Page() {
 
   const handleMatch = async (matchUser: any) => {
     if (!user) return
+    
+    // ✅ CRITICAL FIX: Remove user from nearbyUsers IMMEDIATELY
+    // This prevents showing them again in the same session
+    setNearbyUsers(prev => prev.filter(u => u.uid !== matchUser.uid))
+    console.log(`🗑️ Removed ${matchUser.name || matchUser.uid} from nearbyUsers list`)
     
     // ✅ NEW FLOW: Check if user has passes BEFORE creating match
     if (!isPremium && passesLeft === 0) {
@@ -2058,6 +2319,12 @@ export default function Page() {
     try {
       console.log('🎉 Marking match as successful!')
       
+      // ✅ CRITICAL FIX: Cancel the match timer immediately!
+      // This prevents MatchEndedScreen from showing while modal is open
+      setMatchExpiresAt(null)
+      setIsLockedInMatch(false)
+      console.log('⏱️ Match timer cancelled - meeting confirmed!')
+      
       // Mark match as successful in Firestore (this sends notification to HIM!)
       await markMatchAsSuccessful(user.uid, matchedUser.uid)
       
@@ -2070,12 +2337,53 @@ export default function Page() {
   }
   
   // ✅ NEW: Called when she closes the "We're Meeting" modal
+  // ✅ UPDATED: Called when user closes the "We're Meeting" modal
+  // Now goes to Enjoy Mode instead of home
   const handleWeAreMeetingModalClose = () => {
-    console.log('💕 She closed the celebration modal - returning to home')
+    console.log('💕 handleWeAreMeetingModalClose called!')
+    console.log('📍 Current screen:', currentScreen)
+    console.log('👤 matchedUser:', matchedUser?.name || matchedUser?.displayName || 'undefined')
+    
+    const meetingTime = new Date()
+    console.log('⏰ Setting meetingStartedAt:', meetingTime.toLocaleString())
+    setMeetingStartedAt(meetingTime)  // Start the 20-minute countdown
+    
     setIsLockedInMatch(false)
+    setMatchExpiresAt(null)  // No more match timer
+    
+    console.log('🚀 Navigating to enjoy-mode screen!')
+    setCurrentScreen("enjoy-mode")  // ✅ Go to Enjoy Mode!
+    
+    console.log('✅ handleWeAreMeetingModalClose completed!')
+    // NOTE: Keep matchedUser - we need it for the Enjoy Mode screen
+  }
+
+  // ✅ NEW: Called when Enjoy Mode ends (timer or manual exit)
+  const handleEnjoyModeExit = async (reason: 'timeout' | 'manual') => {
+    console.log(`🏠 Exiting Enjoy Mode - reason: ${reason}`)
+    
+    // Mark meeting as completed in Firebase
+    if (user && matchedUser) {
+      const matchId = createMatchId(user.uid, matchedUser.uid)
+      try {
+        const { markMeetingAsCompleted } = await import('@/lib/firestore-service')
+        // ✅ Pass user.uid so partner knows WHO exited
+        await markMeetingAsCompleted(matchId, reason, user.uid)
+      } catch (err) {
+        console.error('Error marking meeting as completed:', err)
+      }
+    }
+    
+    // Clear state and return to home
+    setMeetingStartedAt(null)
     setMatchedUser(null)
-    setMatchExpiresAt(null)
     setCurrentScreen("home")
+  }
+
+  // ✅ NEW: Open chat from Enjoy Mode
+  const handleOpenChatFromEnjoyMode = () => {
+    console.log('💬 Opening chat from Enjoy Mode')
+    setCurrentScreen("chat")
   }
 
   const handleContinue = async () => {
@@ -2254,16 +2562,16 @@ export default function Page() {
         console.log(`🎫 Passes after onboarding: ${passData.passesLeft}`)
         
         // ✅ NEW: Check if user has checked in to a venue
-        // If not, show QR Scan Required modal instead of going directly to home
+        // If not, show Venue Selection modal instead of going directly to home
         const userVenue = await getUserVenue(user.uid)
         const checkInStatus = await getUserCheckInStatus(user.uid)
         
         if (!userVenue || !checkInStatus.isCheckedIn || !checkInStatus.checkInData) {
-          console.log('⚠️ User has not checked in to any venue - showing QR Scan modal')
+          console.log('⚠️ User has not checked in to any venue - showing venue selection modal')
           setCurrentScreen("home") // Go to home first
           // Show modal after a short delay to let home screen render
           setTimeout(() => {
-            setShowQRScanRequired(true)
+            setShowVenueSelection(true)
           }, 500)
         } else {
           console.log('✅ User already checked in to venue:', userVenue)
@@ -2378,34 +2686,45 @@ export default function Page() {
           console.log('📧 Loading sender profile for chat...')
           const senderProfile = await getUserProfile(notification.fromUserId)
           
-          if (senderProfile) {
-            // ✅ Set sender as selected match for chat
-            setSelectedMatch({
-              uid: notification.fromUserId,
-              name: senderProfile.name || senderProfile.displayName || 'User',
-              displayName: senderProfile.name || senderProfile.displayName || 'User',
-              // ✅ CRITICAL: Profile photo FIRST, Google photo as FALLBACK
-              photos: senderProfile.photos || [],
-              photoURL: senderProfile.photoURL || '',
-              distance: 'nearby'
-            })
-            console.log('✅ Sender profile loaded:', senderProfile.name, 'Photo:', senderProfile.photos?.[0])
-          } else {
-            // Fallback: use notification data
-            setSelectedMatch({
-              uid: notification.fromUserId,
-              name: notification.fromUserName || 'User',
-              displayName: notification.fromUserName || 'User',
-              photos: notification.fromUserPhoto ? [notification.fromUserPhoto] : [],
-              photoURL: notification.fromUserPhoto || '',
-              distance: 'nearby'
-            })
-            console.warn('⚠️ Using notification data for chat (profile not found)')
+          // ✅ CRITICAL: Build selectedMatch object FIRST, then navigate
+          const chatMatchData = senderProfile ? {
+            uid: notification.fromUserId,
+            name: senderProfile.name || senderProfile.displayName || 'User',
+            displayName: senderProfile.name || senderProfile.displayName || 'User',
+            photos: senderProfile.photos || [],
+            photoURL: senderProfile.photoURL || '',
+            distance: 'nearby'
+          } : {
+            uid: notification.fromUserId,
+            name: notification.fromUserName || 'User',
+            displayName: notification.fromUserName || 'User',
+            photos: notification.fromUserPhoto ? [notification.fromUserPhoto] : [],
+            photoURL: notification.fromUserPhoto || '',
+            distance: 'nearby'
           }
+          
+          // ✅ Set before navigating!
+          setSelectedMatch(chatMatchData)
+          console.log('✅ Selected match set for chat:', chatMatchData.name)
+          
+          // ✅ Check if chat is still active or read-only
+          if (user) {
+            const matchExpiration = await getActiveMatchExpiration(user.uid, notification.fromUserId)
+            if (!matchExpiration) {
+              console.log('⏰ Chat is read-only (match expired)')
+              setMatchExpiresAt(null)
+              setIsLockedInMatch(false)
+            }
+          }
+          
+          setCurrentScreen("chat")
+        } else {
+          console.warn('⚠️ No fromUserId in notification')
+          // Don't navigate if we can't identify the chat partner
         }
       } catch (error) {
         console.error('❌ Error loading sender profile:', error)
-        // Fallback to notification data
+        // Fallback: if we have fromUserId, still try to show chat
         if (notification.fromUserId) {
           setSelectedMatch({
             uid: notification.fromUserId,
@@ -2415,15 +2734,14 @@ export default function Page() {
             photoURL: notification.fromUserPhoto || '',
             distance: 'nearby'
           })
+          setCurrentScreen("chat")
         }
       }
-      
-      setCurrentScreen("chat")
     }
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen w-screen bg-background overflow-hidden fixed inset-0">
       {/* Splash Screen - Loading mode (user logged in) */}
       {currentScreen === "splash" && (
         <SplashScreen 
@@ -2446,50 +2764,53 @@ export default function Page() {
       
       {/* ✅ Login Screen - FIXED: Use onSuccess prop */}
       {currentScreen === "login" && (
-        <LoginScreen 
-          onSuccess={() => {
-            // Auth will handle navigation via useEffect
-            console.log('✅ Login successful')
-          }}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <LoginScreen 
+            onSuccess={() => {
+              // Auth will handle navigation via useEffect
+              console.log('✅ Login successful')
+            }}
+          />
+        </div>
       )}
       
       {/* ✅ NEW: Phone Verification Screen */}
       {currentScreen === "phone-verification" && user && (
-        <PhoneVerification
-          userId={user.uid}
-          userEmail={user.email || undefined}
-          showSkip={false}  // ❌ Disabled for Production - real phone verification only
-          onComplete={async (phoneNumber) => {
-            console.log('✅ Phone verified:', phoneNumber)
-            
-            // ✅ CRITICAL: Cache phone verification to prevent refresh bug
-            localStorage.setItem('i4iguana_phone_verified', 'true')
-            
-            // ✅ CRITICAL: Clear the race-condition flag now that verification is complete
-            localStorage.removeItem('i4iguana_handling_deleted')
-            
-            // Check if user needs onboarding
-            try {
-              const profile = await getUserProfile(user.uid)
-              const hasCompletedOnboarding = profile?.onboardingComplete === true
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <PhoneVerification
+            userId={user.uid}
+            userEmail={user.email || undefined}
+            showSkip={false}  // ❌ Disabled for Production - real phone verification only
+            onComplete={async (phoneNumber) => {
+              console.log('✅ Phone verified:', phoneNumber)
               
-              if (hasCompletedOnboarding) {
-                console.log('✅ Existing user → HOME')
-                setCurrentScreen("home")
-              } else {
-                console.log('🆕 New user → ONBOARDING')
+              // ✅ CRITICAL: Cache phone verification to prevent refresh bug
+              localStorage.setItem('i4iguana_phone_verified', 'true')
+              
+              // ✅ CRITICAL: Clear the race-condition flag now that verification is complete
+              localStorage.removeItem('i4iguana_handling_deleted')
+              
+              // Check if user needs onboarding
+              try {
+                const profile = await getUserProfile(user.uid)
+                const hasCompletedOnboarding = profile?.onboardingComplete === true
+                
+                if (hasCompletedOnboarding) {
+                  console.log('✅ Existing user → HOME')
+                  setCurrentScreen("home")
+                } else {
+                  console.log('🆕 New user → ONBOARDING')
+                  setCurrentScreen("onboarding-welcome")
+                }
+              } catch (error) {
+                console.log('⚠️ Error checking profile → ONBOARDING')
                 setCurrentScreen("onboarding-welcome")
               }
-            } catch (error) {
-              console.log('⚠️ Error checking profile → ONBOARDING')
-              setCurrentScreen("onboarding-welcome")
-            }
-          }}
-          onSkip={async () => {
-            console.log('🔧 DEV: Skipping phone verification')
-            
-            // ✅ CRITICAL: Clear the race-condition flag
+            }}
+            onSkip={async () => {
+              console.log('🔧 DEV: Skipping phone verification')
+              
+              // ✅ CRITICAL: Clear the race-condition flag
             localStorage.removeItem('i4iguana_handling_deleted')
             
             // In dev mode, use fake phone number based on userId
@@ -2525,94 +2846,110 @@ export default function Page() {
             }
           }}
         />
+        </div>
       )}
       
-      {/* Onboarding Screens */}
+      {/* Onboarding Screens - ALL with scroll wrappers */}
       {/* ✅ NEW: Welcome Screen */}
       {currentScreen === "onboarding-welcome" && (
-        <OnboardingWelcomeScreen
-          onContinue={() => {
-            console.log('📝 Moving to Name Entry')
-            setCurrentScreen("onboarding-name")
-          }}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <OnboardingWelcomeScreen
+            onContinue={() => {
+              console.log('📝 Moving to Name Entry')
+              setCurrentScreen("onboarding-name")
+            }}
+          />
+        </div>
       )}
 
       {/* ✅ NEW: Name Entry Screen */}
       {currentScreen === "onboarding-name" && (
-        <NameEntryScreen
-          defaultName={user?.displayName || ""}
-          onContinue={(name) => {
-            console.log('📝 Name entered:', name)
-            setOnboardingData({ ...onboardingData, name })
-            setCurrentScreen("onboarding-gender")
-          }}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <NameEntryScreen
+            defaultName={user?.displayName || (typeof window !== 'undefined' ? localStorage.getItem('googleDisplayName') : '') || ""}
+            onContinue={(name) => {
+              console.log('📝 Name entered:', name)
+              setOnboardingData({ ...onboardingData, name })
+              setCurrentScreen("onboarding-gender")
+            }}
+          />
+        </div>
       )}
 
       {currentScreen === "onboarding-gender" && (
-        <OnboardingGender 
-          onNext={(data) => {
-            setOnboardingData({ ...onboardingData, ...data })
-            setCurrentScreen("onboarding-age")
-          }}
-          onBack={() => setCurrentScreen("onboarding-name")}
-          initialGender={onboardingData.gender}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <OnboardingGender 
+            onNext={(data) => {
+              setOnboardingData({ ...onboardingData, ...data })
+              setCurrentScreen("onboarding-age")
+            }}
+            onBack={() => setCurrentScreen("onboarding-name")}
+            initialGender={onboardingData.gender}
+            initialLookingFor={onboardingData.lookingFor}
+          />
+        </div>
       )}
 
       {/* ✅ "She Decides" - Orientation screen removed (straight dating only) */}
       
       {currentScreen === "onboarding-age" && (
-        <OnboardingAge
-          onNext={(data) => {
-            setOnboardingData({ ...onboardingData, ...data })
-            setCurrentScreen("onboarding-hobbies")
-          }}
-          onBack={() => setCurrentScreen("onboarding-gender")}
-          initialAge={onboardingData.age}
-          initialAgeRange={onboardingData.ageRange}
-          initialMaxDistance={onboardingData.maxDistance}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <OnboardingAge
+            onNext={(data) => {
+              setOnboardingData({ ...onboardingData, ...data })
+              setCurrentScreen("onboarding-hobbies")
+            }}
+            onBack={() => setCurrentScreen("onboarding-gender")}
+            initialAge={onboardingData.age}
+            initialAgeRange={onboardingData.ageRange}
+            initialMaxDistance={onboardingData.maxDistance}
+          />
+        </div>
       )}
       
       {currentScreen === "onboarding-hobbies" && (
-        <OnboardingHobbies
-          onNext={(data) => {
-            setOnboardingData({ ...onboardingData, ...data })
-            setCurrentScreen("onboarding-lifestyle")
-          }}
-          onBack={() => setCurrentScreen("onboarding-age")}
-          initialHobbies={onboardingData.hobbies}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <OnboardingHobbies
+            onNext={(data) => {
+              setOnboardingData({ ...onboardingData, ...data })
+              setCurrentScreen("onboarding-lifestyle")
+            }}
+            onBack={() => setCurrentScreen("onboarding-age")}
+            initialHobbies={onboardingData.hobbies}
+          />
+        </div>
       )}
       
       {/* ✅ NEW: Lifestyle Screen */}
       {currentScreen === "onboarding-lifestyle" && (
-        <OnboardingLifestyle
-          onNext={(data) => {
-            setOnboardingData({ ...onboardingData, ...data })
-            setCurrentScreen("onboarding-photos")
-          }}
-          onBack={() => setCurrentScreen("onboarding-hobbies")}
-          initialDrinking={onboardingData.drinking as 'never' | 'social' | 'regular'}
-          initialSmoking={onboardingData.smoking as 'no' | 'social' | 'yes'}
-          initialHeight={onboardingData.height}
-          initialRelationshipType={onboardingData.relationshipType as 'relationship' | 'casual' | 'friends'}
-          initialEducation={onboardingData.education}
-          initialCity={onboardingData.city}
-          initialOccupation={onboardingData.occupation}
-          initialLanguages={onboardingData.languages}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+          <OnboardingLifestyle
+            onNext={(data) => {
+              setOnboardingData({ ...onboardingData, ...data })
+              setCurrentScreen("onboarding-photos")
+            }}
+            onBack={() => setCurrentScreen("onboarding-hobbies")}
+            initialDrinking={onboardingData.drinking as 'never' | 'social' | 'regular'}
+            initialSmoking={onboardingData.smoking as 'no' | 'social' | 'yes'}
+            initialHeight={onboardingData.height}
+            initialRelationshipType={onboardingData.relationshipType as 'relationship' | 'casual' | 'friends'}
+            initialEducation={onboardingData.education}
+            initialCity={onboardingData.city}
+            initialOccupation={onboardingData.occupation}
+            initialLanguages={onboardingData.languages}
+          />
+        </div>
       )}
       
       {currentScreen === "onboarding-photos" && (
-        <OnboardingPhotos
-          onComplete={handleOnboardingComplete}
-          onBack={() => setCurrentScreen("onboarding-lifestyle")}
-          initialPhotos={onboardingData.photos}
-          initialBio={onboardingData.bio}
-        />
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'auto' }}>
+          <OnboardingPhotos
+            onComplete={handleOnboardingComplete}
+            onBack={() => setCurrentScreen("onboarding-lifestyle")}
+            initialPhotos={onboardingData.photos}
+            initialBio={onboardingData.bio}
+          />
+        </div>
       )}
       
       {/* Home Screen */}
@@ -2638,7 +2975,7 @@ export default function Page() {
             loading={loading}
             onRefresh={loadNearbyUsers}
             onNavigate={handleNavigate}
-            onScan={() => setCurrentScreen("scan")}
+            onScan={() => setShowVenueSelection(true)}  // ✅ CHANGED: Open venue selection instead of scan
             venueData={checkInData ? {
               venueName: checkInData.venueDisplayName || checkInData.venueName,
               checkedInAt: checkInData.checkedInAt instanceof Date ? checkInData.checkedInAt : checkInData.checkedInAt?.toDate?.() || new Date(),
@@ -2649,13 +2986,14 @@ export default function Page() {
         </>
       )}
       
-      {/* ✅ NEW: Scan Screen */}
+      {/* ❌ DISABLED: Scan Screen - replaced by VenueSelectionScreen
       {currentScreen === "scan" && (
         <ScanScreen
           onNavigate={(screen) => setCurrentScreen(screen)}
           onCheckInSuccess={handleCheckIn}
         />
       )}
+      */}
       
       {/* Match Screen */}
       {currentScreen === "match" && matchedUser && (
@@ -2664,39 +3002,34 @@ export default function Page() {
           onContinue={handleContinue}
           onMeetNow={handleMeetNow}
           onMarkMatchSuccessful={handleMarkMatchSuccessful}
-          onWeAreMeetingModalClose={handleWeAreMeetingModalClose}  // ✅ NEW: Close modal → return to home
+          onWeAreMeetingModalClose={handleWeAreMeetingModalClose}
           passesLeft={passesLeft}
           onPass={handlePass}
-          onNotInterested={handleNotInterested}  // ✅ NEW: Exit match without using pass
+          onNotInterested={handleNotInterested}
           isPremium={isPremium}
           timeRemaining={timeRemaining}
+          currentUserGender={onboardingData?.gender as 'male' | 'female' | undefined}
+          matchedUserGender={matchedUser?.gender as 'male' | 'female' | undefined}
           onNavigate={handleNavigate}
-          onUpgradePremium={handleUpgradePremium}
-          onBuyOnePass={handleBuyOnePass}
-          passResetTime={passResetTime || undefined}
           isNewMatch={isNewMatch}
-          currentUserGender={onboardingData.gender}  // ✅ "She Decides"
-          matchedUserGender={matchedUser?.gender}  // ✅ NEW: For same-sex matching logic
         />
       )}
       
-      {/* ✅ Notifications Screen - FIXED: Type-safe wrapper */}
-      {currentScreen === "notifications" && (
-        <NotificationsScreen 
-          onNavigate={handleNotificationsNavigate}
-          hasActiveMatch={isLockedInMatch}
-          onNotificationClick={handleNotificationClick}
-        />
+      {/* ✅ FALLBACK: Match screen without matchedUser - redirect to home */}
+      {currentScreen === "match" && !matchedUser && (
+        <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#0a1f18] to-[#050d0a] flex flex-col items-center justify-center p-6">
+          <div className="text-6xl mb-4">💔</div>
+          <h2 className="text-xl font-bold text-white mb-2">Match Unavailable</h2>
+          <p className="text-white/60 text-center mb-6">This match is no longer available or has expired.</p>
+          <button
+            onClick={() => setCurrentScreen("home")}
+            className="px-6 py-3 bg-[#4ade80] text-[#0d2920] font-bold rounded-full"
+          >
+            Back to Home
+          </button>
+        </div>
       )}
-      
-      {/* ✅ Profile Screen - FIXED: Type-safe wrapper */}
-      {currentScreen === "profile" && (
-        <ProfileScreen 
-          onNavigate={handleProfileNavigate}
-          hasActiveMatch={isLockedInMatch}
-        />
-      )}
-      
+
       {/* Chat Screen */}
       {currentScreen === "chat" && selectedMatch && user && (
         <ChatScreen
@@ -2708,31 +3041,89 @@ export default function Page() {
             photo: selectedMatch.photos?.[0] || selectedMatch.photoURL || "/placeholder.jpg",
             distance: selectedMatch.distance || "nearby"
           }}
-          // ✅ NEW: Pass current user info for notifications
           currentUser={{
             name: onboardingData.name || user.displayName || "Someone",
             photo: onboardingData.photos?.[0] || user.photoURL || ""
           }}
           timeRemaining={timeRemaining}
           onBack={() => {
-            // ✅ CRITICAL FIX: If timer still running, go back to Match screen
-            // Only go to Home if timer expired or no active match
-            if (timeRemaining > 0 && matchedUser) {
-              console.log('⬅️ Returning to Match screen (timer still running)')
-              setIsNewMatch(false)  // ✅ NOT a new match - don't play sound!
+            if (meetingStartedAt && matchedUser) {
+              console.log('⬅️ Returning to Enjoy Mode from chat')
+              setCurrentScreen("enjoy-mode")
+            } else if (timeRemaining > 0 && matchedUser) {
+              console.log('⬅️ Returning to Match screen')
+              setIsNewMatch(false)
               setCurrentScreen("match")
             } else {
-              console.log('⬅️ Timer expired, returning to Home')
+              console.log('⬅️ Returning to Home')
               setCurrentScreen("home")
             }
           }}
-          // ✅ NEW: View match profile
           onViewProfile={() => {
             console.log('👤 Viewing match profile from chat')
             setCurrentScreen("match")
-            setIsNewMatch(false)  // Don't play match sound
+            setIsNewMatch(false)
           }}
         />
+      )}
+      
+      {/* ✅ FALLBACK: Chat screen without selectedMatch - redirect to home */}
+      {currentScreen === "chat" && !selectedMatch && (
+        <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#0a1f18] to-[#050d0a] flex flex-col items-center justify-center p-6">
+          <div className="text-6xl mb-4">💬</div>
+          <h2 className="text-xl font-bold text-white mb-2">Chat Unavailable</h2>
+          <p className="text-white/60 text-center mb-6">This chat is no longer available or the match has ended.</p>
+          <button
+            onClick={() => setCurrentScreen("home")}
+            className="px-6 py-3 bg-[#4ade80] text-[#0d2920] font-bold rounded-full"
+          >
+            Back to Home
+          </button>
+        </div>
+      )}
+      
+      {/* ✅ NEW: Enjoy Mode Screen - After they confirm meeting */}
+      {currentScreen === "enjoy-mode" && matchedUser && meetingStartedAt && (
+        <EnjoyModeScreen
+          meetingStartedAt={meetingStartedAt}
+          partnerName={matchedUser.name || matchedUser.displayName || "Your match"}
+          partnerPhoto={matchedUser.photos?.[0] || matchedUser.photoURL || "/placeholder.jpg"}
+          matchId={user ? createMatchId(user.uid, matchedUser.uid) : ""}
+          cooldownMinutes={20}
+          onOpenChat={handleOpenChatFromEnjoyMode}
+          onExit={handleEnjoyModeExit}
+        />
+      )}
+
+      {/* Profile Screen - with scroll wrapper */}
+      {currentScreen === "profile" && user && (
+        <div 
+          className="absolute inset-0 overflow-y-auto overflow-x-hidden"
+          style={{ 
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y'
+          }}
+        >
+          <ProfileScreen
+            onNavigate={handleProfileNavigate}
+          />
+        </div>
+      )}
+
+      {/* Notifications Screen - with scroll wrapper */}
+      {currentScreen === "notifications" && user && (
+        <div 
+          className="absolute inset-0 overflow-y-auto overflow-x-hidden"
+          style={{ 
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y'
+          }}
+        >
+          <NotificationsScreen
+            onNavigate={handleNotificationsNavigate}
+            onNotificationClick={handleNotificationClick}
+          />
+        </div>
       )}
       
       {/* ✅ NEW: Out of Passes Modal - Shown when user swipes with no passes */}
@@ -3089,14 +3480,13 @@ export default function Page() {
         )}
       </AnimatePresence>
 
-      {/* ✅ NEW: QR Scan Required Modal - Shown after onboarding if no venue check-in */}
-      <QRScanRequiredModal
-        isOpen={showQRScanRequired}
-        onScanClick={() => {
-          setShowQRScanRequired(false)
-          setCurrentScreen("scan")
-        }}
-        onClose={() => setShowQRScanRequired(false)}
+      {/* ✅ NEW: Venue Selection Screen - Shown after onboarding if no venue check-in */}
+      <VenueSelectionScreen
+        isOpen={showVenueSelection}
+        onClose={() => setShowVenueSelection(false)}
+        onSelectVenue={handleVenueSelection}
+        userLocation={userLocationForVenues}
+        onRequestLocation={requestLocationForVenues}
       />
 
       {/* ✅ Match Ended Screen - 5 seconds with two-phase animation */}
@@ -3140,16 +3530,135 @@ export default function Page() {
             }
           }
           
-          // Clear match state
+          // ✅ UPDATED: Go to Enjoy Mode instead of home!
+          console.log('💕 We Are Meeting modal closed - entering Enjoy Mode!')
+          
+          // Set up matchedUser from meetingPartnerInfo if not already set
+          if (meetingPartnerInfo && !matchedUser) {
+            const notificationFromUserId = inAppNotification?.fromUserId
+            if (notificationFromUserId) {
+              setMatchedUser({
+                uid: notificationFromUserId,
+                name: meetingPartnerInfo.name,
+                displayName: meetingPartnerInfo.name,
+                photos: meetingPartnerInfo.photo ? [meetingPartnerInfo.photo] : [],
+                photoURL: meetingPartnerInfo.photo || '',
+              })
+            }
+          }
+          
+          setMeetingStartedAt(new Date())  // Start 20-minute countdown
           setIsLockedInMatch(false)
-          setMatchedUser(null)
           setMatchExpiresAt(null)
-          setCurrentScreen("home")
-          console.log('💕 We Are Meeting modal closed - returned to home')
+          setCurrentScreen("enjoy-mode")  // ✅ Go to Enjoy Mode!
         }}
         partnerName={meetingPartnerInfo?.name}
         partnerPhoto={meetingPartnerInfo?.photo}
       />
+
+      {/* ✅ NEW: Partner Left Meeting Modal */}
+      <AnimatePresence>
+        {showPartnerLeftMeeting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] rounded-3xl p-8 max-w-sm w-full border border-[#4ade80]/30 shadow-2xl text-center"
+            >
+              {/* Emoji */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", damping: 15 }}
+                className="text-6xl mb-4"
+              >
+                👋
+              </motion.div>
+              
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-white mb-3">
+                Meeting Ended
+              </h2>
+              
+              {/* Message */}
+              <p className="text-white/70 mb-6">
+                {matchedUser?.name || matchedUser?.displayName || 'Your match'} has left the meeting.
+                <br />
+                <span className="text-[#4ade80]/80">Maybe next time! 🦎</span>
+              </p>
+              
+              {/* Button */}
+              <Button
+                onClick={() => {
+                  console.log('💔 Partner left - returning to home')
+                  setShowPartnerLeftMeeting(false)
+                  setMeetingStartedAt(null)
+                  setMatchedUser(null)
+                  setCurrentScreen("home")
+                }}
+                className="w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg rounded-xl shadow-lg"
+              >
+                <Home className="mr-2 h-5 w-5" />
+                Back to Home
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ✅ NEW: Venue Disconnected Notification */}
+      <AnimatePresence>
+        {showVenueDisconnected && (
+          <motion.div
+            initial={{ opacity: 0, y: -100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -100 }}
+            className="fixed top-4 left-4 right-4 z-[200] pointer-events-none"
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="bg-gradient-to-r from-orange-600 to-red-600 rounded-2xl p-4 shadow-2xl border-2 border-orange-400/50 pointer-events-auto max-w-md mx-auto"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-4xl animate-bounce">📍</div>
+                <div className="flex-1">
+                  <h3 className="text-white font-bold text-lg">Disconnected from Venue</h3>
+                  <p className="text-white/80 text-sm">
+                    You've been checked out. Select a venue to continue matching!
+                  </p>
+                </div>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="text-2xl"
+                >
+                  🦎
+                </motion.div>
+              </div>
+              
+              {/* Progress bar for auto-dismiss */}
+              <motion.div 
+                className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden"
+              >
+                <motion.div
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ duration: 4, ease: "linear" }}
+                  className="h-full bg-white/60 rounded-full"
+                />
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ✅ NEW: Venue Status Modal */}
       <AnimatePresence>
@@ -3202,16 +3711,16 @@ export default function Page() {
                   onClick={() => setShowVenueStatus(false)}
                   className="flex-1 bg-[#4ade80]/20 hover:bg-[#4ade80]/30 text-[#4ade80] border border-[#4ade80]/30"
                 >
-                  Close
+                  סגור
                 </Button>
                 <Button
                   onClick={() => {
                     setShowVenueStatus(false)
-                    setCurrentScreen("scan")
+                    setShowVenueSelection(true)  // ✅ CHANGED: Open venue selection instead of scan
                   }}
                   className="flex-1 bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920]"
                 >
-                  Switch Venue
+                  החלף מועדון
                 </Button>
               </div>
             </motion.div>

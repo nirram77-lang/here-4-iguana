@@ -560,7 +560,24 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     try {
       setIsDeleting(true)
       
-      // ✅ FIX: Use the proper delete service for full cleanup
+      // ✅ Step 1: OneSignal logout FIRST (before deleting account!)
+      try {
+        const OneSignal = (window as any).OneSignal
+        if (OneSignal) {
+          console.log('🔔 Logging out from OneSignal...')
+          if (OneSignal.logout) {
+            await OneSignal.logout()
+            console.log('✅ OneSignal logout successful')
+          } else if (OneSignal.removeExternalUserId) {
+            await OneSignal.removeExternalUserId()
+            console.log('✅ OneSignal removeExternalUserId successful')
+          }
+        }
+      } catch (oneSignalError) {
+        console.log('⚠️ OneSignal logout error (continuing anyway):', oneSignalError)
+      }
+      
+      // ✅ Step 2: Use the proper delete service for full cleanup
       const { deleteUserAccount } = await import('@/lib/delete-account-service')
       const result = await deleteUserAccount(currentUser.uid)
       
@@ -570,17 +587,21 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       
       console.log('✅ Account deleted successfully')
       
-      // ✅ CRITICAL FIX: Set flag BEFORE signOut to prevent race condition
-      // This flag tells page.tsx to go straight to welcome, bypassing all checks
+      // ✅ CRITICAL: Set flags for proper re-registration flow
       localStorage.setItem('i4iguana_just_deleted', 'true')
+      localStorage.setItem('force_notification_setup', 'true')  // ← NEW: Force notification modal on re-register
+      console.log('✅ Set force_notification_setup flag')
       
-      // ✅ FIX: Clear ALL other localStorage and sessionStorage
+      // ✅ Clear ALL other localStorage and sessionStorage
       localStorage.removeItem('hasScannedQR')
       localStorage.removeItem('pendingCheckIn')
       localStorage.removeItem('i4iguana_phone_verified')
-      localStorage.removeItem('i4iguana_handling_deleted')  // ✅ Clear race-condition flag
+      localStorage.removeItem('i4iguana_handling_deleted')
+      localStorage.removeItem('i4iguana_notification_modal_shown')  // ← NEW: Clear notification modal flag
+      localStorage.removeItem('i4iguana_onesignal_linked')  // ← NEW: Clear OneSignal linked flag
+      localStorage.removeItem('googleDisplayName')  // ← CRITICAL: Clear Google name so new login gets fresh name
       
-      // ✅ NEW: Clear match sound timestamps for all users
+      // ✅ Clear match sound timestamps for all users
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('match_sound_played_')) {
           localStorage.removeItem(key)
@@ -632,13 +653,15 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             <User className="h-7 w-7 text-[#4ade80]" />
             My Profile
           </h1>
-          <Button
-            onClick={handleLogout}
-            variant="outline"
-            className="border-2 border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl px-4 py-2"
-          >
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="border-2 border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl px-4 py-2"
+            >
+              Logout
+            </Button>
+          </div>
         </div>
       </motion.div>
 

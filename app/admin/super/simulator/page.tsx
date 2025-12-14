@@ -679,6 +679,14 @@ export default function SimulatorPage() {
               </Button>
 
               <Button
+                onClick={() => router.push('/admin/super/simulator/club')}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                🎬 Club Simulator
+              </Button>
+
+              <Button
                 onClick={() => setShowCreatePanel(true)}
                 className="bg-[#4ade80] hover:bg-[#3bc970] text-black font-bold"
               >

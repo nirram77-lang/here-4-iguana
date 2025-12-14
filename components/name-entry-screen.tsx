@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,8 +15,25 @@ export default function NameEntryScreen({
   defaultName = "",
   onContinue 
 }: NameEntryScreenProps) {
-  const [name, setName] = useState(defaultName)
+  // ✅ Initialize with defaultName if available
+  const [name, setName] = useState(defaultName || "")
   const [error, setError] = useState("")
+  const [hasUserEdited, setHasUserEdited] = useState(false)
+
+  // ✅ Update name when defaultName (Google name) becomes available
+  // Only if user hasn't manually edited the field
+  useEffect(() => {
+    // ✅ CRITICAL: Also check localStorage directly as fallback
+    const storedGoogleName = typeof window !== 'undefined' ? localStorage.getItem('googleDisplayName') : null
+    const nameToUse = defaultName || storedGoogleName || ''
+    
+    console.log('🔍 NameEntryScreen - defaultName:', defaultName, 'storedGoogleName:', storedGoogleName, 'current name:', name, 'hasUserEdited:', hasUserEdited)
+    
+    if (nameToUse && !hasUserEdited && !name) {
+      console.log('✅ Setting name from Google/localStorage:', nameToUse)
+      setName(nameToUse)
+    }
+  }, [defaultName, hasUserEdited, name])
 
   const handleContinue = () => {
     // Validation
@@ -43,6 +60,7 @@ export default function NameEntryScreen({
 
   const handleNameChange = (value: string) => {
     setName(value)
+    setHasUserEdited(true)  // ✅ Mark that user has edited
     setError("")  // Clear error on change
   }
 

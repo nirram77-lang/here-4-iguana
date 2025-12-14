@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { 
@@ -28,8 +28,9 @@ interface TestResult {
   trigger: string
   branch: string
   commit: string
-  overall: 'passed' | 'failed' | 'running'
+  overall: 'passed' | 'failed' | 'running' | 'unknown'
   duration: string
+  url?: string
   tests: {
     healthCheck: { status: string; website: string; app: string }
     buildTest: { status: string; buildTime: string }
@@ -39,64 +40,8 @@ interface TestResult {
   }
 }
 
-// Mock data - will be replaced with real GitHub API data
-const mockTestResults: TestResult[] = [
-  {
-    id: '1',
-    runNumber: 21,
-    timestamp: new Date().toISOString(),
-    trigger: 'schedule',
-    branch: 'main',
-    commit: '0d2c9e7',
-    overall: 'failed',
-    duration: '29s',
-    tests: {
-      healthCheck: { status: 'success', website: '200', app: '200' },
-      buildTest: { status: 'failure', buildTime: '12s' },
-      apiTests: { status: 'success' },
-      performanceTests: { status: 'success', websiteTime: '450ms', appTime: '380ms' },
-      securityCheck: { status: 'success' }
-    }
-  },
-  {
-    id: '2',
-    runNumber: 20,
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    trigger: 'push',
-    branch: 'main',
-    commit: 'abc1234',
-    overall: 'passed',
-    duration: '45s',
-    tests: {
-      healthCheck: { status: 'success', website: '200', app: '200' },
-      buildTest: { status: 'success', buildTime: '38s' },
-      apiTests: { status: 'success' },
-      performanceTests: { status: 'success', websiteTime: '420ms', appTime: '350ms' },
-      securityCheck: { status: 'success' }
-    }
-  },
-  {
-    id: '3',
-    runNumber: 19,
-    timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-    trigger: 'schedule',
-    branch: 'main',
-    commit: 'def5678',
-    overall: 'passed',
-    duration: '42s',
-    tests: {
-      healthCheck: { status: 'success', website: '200', app: '200' },
-      buildTest: { status: 'success', buildTime: '35s' },
-      apiTests: { status: 'success' },
-      performanceTests: { status: 'success', websiteTime: '380ms', appTime: '320ms' },
-      securityCheck: { status: 'success' }
-    }
-  }
-]
-
 const testCategories = [
   { id: 'healthCheck', name: 'Health Check', icon: Globe, description: 'Website & App availability' },
-  { id: 'buildTest', name: 'Build Test', icon: Server, description: 'Application build process' },
   { id: 'apiTests', name: 'API Tests', icon: Zap, description: 'API endpoints functionality' },
   { id: 'performanceTests', name: 'Performance', icon: Activity, description: 'Response times & speed' },
   { id: 'securityCheck', name: 'Security', icon: Shield, description: 'Security headers & protection' },
@@ -104,28 +49,71 @@ const testCategories = [
 
 export default function TestsDashboard() {
   const router = useRouter()
-  const [testResults, setTestResults] = useState<TestResult[]>(mockTestResults)
-  const [selectedRun, setSelectedRun] = useState<TestResult | null>(mockTestResults[0])
-  const [isLoading, setIsLoading] = useState(false)
+  const [testResults, setTestResults] = useState<TestResult[]>([])
+  const [selectedRun, setSelectedRun] = useState<TestResult | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [lastFetched, setLastFetched] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // Auto refresh every 60 seconds
+  // Fetch test results from GitHub API
+  const fetchTestResults = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      const response = await fetch('/api/github-tests', {
+        cache: 'no-store'
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch test results')
+      }
+      
+      const data = await response.json()
+      
+      if (data.success && data.results) {
+        setTestResults(data.results)
+        if (data.results.length > 0 && !selectedRun) {
+          setSelectedRun(data.results[0])
+        } else if (data.results.length > 0) {
+          // Update selected run with fresh data
+          const updatedSelected = data.results.find((r: TestResult) => r.id === selectedRun?.id)
+          if (updatedSelected) {
+            setSelectedRun(updatedSelected)
+          } else {
+            setSelectedRun(data.results[0])
+          }
+        }
+        setLastFetched(data.fetchedAt)
+      }
+    } catch (err) {
+      console.error('Error fetching tests:', err)
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedRun])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchTestResults()
+  }, [])
+
+  // Auto refresh every 30 seconds
   useEffect(() => {
     if (!autoRefresh) return
     
     const interval = setInterval(() => {
-      // In production, this would fetch from GitHub API
       console.log('🔄 Auto-refreshing test results...')
-    }, 60000)
+      fetchTestResults()
+    }, 30000)
     
     return () => clearInterval(interval)
-  }, [autoRefresh])
+  }, [autoRefresh, fetchTestResults])
 
   const handleRefresh = async () => {
-    setIsLoading(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsLoading(false)
+    await fetchTestResults()
   }
 
   const handleTriggerTests = () => {
@@ -141,7 +129,11 @@ export default function TestsDashboard() {
       case 'failed':
         return <XCircle className="h-5 w-5 text-red-400" />
       case 'warning':
+      case 'skipped':
         return <AlertTriangle className="h-5 w-5 text-yellow-400" />
+      case 'running':
+      case 'in_progress':
+        return <RefreshCw className="h-5 w-5 text-blue-400 animate-spin" />
       default:
         return <Clock className="h-5 w-5 text-gray-400" />
     }
@@ -156,7 +148,11 @@ export default function TestsDashboard() {
       case 'failed':
         return 'text-red-400 bg-red-400/10 border-red-400/30'
       case 'warning':
+      case 'skipped':
         return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30'
+      case 'running':
+      case 'in_progress':
+        return 'text-blue-400 bg-blue-400/10 border-blue-400/30'
       default:
         return 'text-gray-400 bg-gray-400/10 border-gray-400/30'
     }
@@ -195,6 +191,11 @@ export default function TestsDashboard() {
             </div>
 
             <div className="flex items-center gap-3">
+              {lastFetched && (
+                <span className="text-white/40 text-xs">
+                  Updated: {new Date(lastFetched).toLocaleTimeString()}
+                </span>
+              )}
               <label className="flex items-center gap-2 text-white/60 text-sm">
                 <input 
                   type="checkbox" 
@@ -204,15 +205,14 @@ export default function TestsDashboard() {
                 />
                 Auto-refresh
               </label>
-              <Button
+              <button
                 onClick={handleRefresh}
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10"
                 disabled={isLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-white/50 bg-white/10 text-white font-medium hover:bg-white/20 hover:border-white/70 disabled:opacity-50 transition-all"
               >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Loading...' : 'Refresh'}
+              </button>
               <Button
                 onClick={handleTriggerTests}
                 className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -227,6 +227,24 @@ export default function TestsDashboard() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 mb-6">
+            <p className="text-red-400 font-medium">❌ Error fetching results: {error}</p>
+            <p className="text-red-300/70 text-sm mt-1">Click Refresh to try again</p>
+          </div>
+        )}
+
+        {/* Loading Skeleton */}
+        {isLoading && testResults.length === 0 && (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="text-6xl animate-bounce mb-4">🦎</div>
+              <p className="text-white text-lg">Loading test results from GitHub...</p>
+            </div>
+          </div>
+        )}
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <motion.div

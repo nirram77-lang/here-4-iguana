@@ -19,7 +19,7 @@ interface AuthContextType {
   loading: boolean
   signUp: (email: string, password: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: () => Promise<User>
   logout: () => Promise<void>
 }
 
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password)
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (): Promise<User> => {
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({
       prompt: 'select_account'
@@ -73,6 +73,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setPersistence(auth, browserLocalPersistence)
       const result = await signInWithPopup(auth, provider)
       console.log('✅ Sign-in successful:', result.user.email)
+      
+      // ✅ CRITICAL: Save Google displayName to localStorage IMMEDIATELY!
+      // This ensures the name is saved BEFORE any navigation or state changes
+      if (result.user.displayName) {
+        console.log('💾 Saving Google displayName to localStorage:', result.user.displayName)
+        localStorage.setItem('googleDisplayName', result.user.displayName)
+        console.log('💾 Verify saved:', localStorage.getItem('googleDisplayName'))
+      } else {
+        console.log('⚠️ No displayName from Google - user.displayName is:', result.user.displayName)
+      }
+      
+      return result.user
     } catch (error: any) {
       console.error('❌ Google sign-in error:', error.code, error.message)
       

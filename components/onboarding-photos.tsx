@@ -107,7 +107,7 @@ export default function OnboardingPhotos({
     setPhotos(photos.filter((_, i) => i !== index))
   }
 
-  // Drag & Drop handlers
+  // Drag & Drop handlers (Desktop)
   const handleDragStart = (index: number) => {
     setDraggedIndex(index)
     console.log('🎯 Started dragging photo:', index + 1)
@@ -143,6 +143,53 @@ export default function OnboardingPhotos({
     setDragOverIndex(null)
     
     console.log('✅ Photos reordered! New order:', newPhotos.map((_, i) => i + 1))
+  }
+
+  // ✅ Touch handlers for MOBILE drag support
+  const touchStartRef = useRef<{ index: number; startY: number; startX: number } | null>(null)
+  
+  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    const touch = e.touches[0]
+    touchStartRef.current = { index, startY: touch.clientY, startX: touch.clientX }
+    setDraggedIndex(index)
+    console.log('📱 Touch started on photo:', index + 1)
+  }
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartRef.current === null || draggedIndex === null) return
+    
+    const touch = e.touches[0]
+    const elements = document.elementsFromPoint(touch.clientX, touch.clientY)
+    
+    // Find which photo slot we're over
+    for (const el of elements) {
+      const photoIndex = el.getAttribute('data-photo-index')
+      if (photoIndex !== null) {
+        const idx = parseInt(photoIndex)
+        if (idx !== draggedIndex) {
+          setDragOverIndex(idx)
+        }
+        break
+      }
+    }
+  }
+  
+  const handleTouchEnd = () => {
+    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+      console.log(`📱 Touch drop: ${draggedIndex + 1} → ${dragOverIndex + 1}`)
+      
+      // Reorder photos array
+      const newPhotos = [...photos]
+      const [draggedPhoto] = newPhotos.splice(draggedIndex, 1)
+      newPhotos.splice(dragOverIndex, 0, draggedPhoto)
+      setPhotos(newPhotos)
+      
+      console.log('✅ Photos reordered via touch!')
+    }
+    
+    touchStartRef.current = null
+    setDraggedIndex(null)
+    setDragOverIndex(null)
   }
 
   const handleComplete = () => {
@@ -254,6 +301,7 @@ export default function OnboardingPhotos({
               {photos.map((photo, index) => (
                 <motion.div
                   key={index}
+                  data-photo-index={index}
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
@@ -264,7 +312,10 @@ export default function OnboardingPhotos({
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, index)}
                   onDragEnd={() => setDraggedIndex(null)}
-                  className={`relative aspect-square rounded-2xl overflow-hidden bg-[#1a4d3e]/50 border-2 transition-all cursor-move ${
+                  onTouchStart={(e) => handleTouchStart(e, index)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  className={`relative aspect-square rounded-2xl overflow-hidden bg-[#1a4d3e]/50 border-2 transition-all cursor-move touch-none ${
                     draggedIndex === index
                       ? 'border-[#4ade80] opacity-50 scale-95'
                       : dragOverIndex === index

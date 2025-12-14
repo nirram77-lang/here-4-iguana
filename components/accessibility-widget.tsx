@@ -43,6 +43,18 @@ export default function AccessibilityWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings)
   const [showStatement, setShowStatement] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768) // Hide on screens smaller than 768px
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Load settings from localStorage
   useEffect(() => {
@@ -57,6 +69,11 @@ export default function AccessibilityWidget() {
       }
     }
   }, [])
+
+  // Don't render on mobile
+  if (isMobile) {
+    return null
+  }
 
   // Apply settings to document
   const applySettings = (s: AccessibilitySettings) => {

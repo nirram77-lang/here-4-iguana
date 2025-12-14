@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { Loader2, Mail, Phone } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
+import { GA } from "@/lib/ga-events"
 
 interface LoginScreenProps {
   onSuccess?: () => void
@@ -23,12 +24,14 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
     try {
       console.log('🔐 Starting Google authentication...')
       
-      // ✅ Just sign in with Google - that's it!
-      // AuthContext will update the user state
-      // page.tsx useEffect will handle navigation
-      await signInWithGoogle()
+      // ✅ Sign in with Google
+      // The displayName is saved to localStorage inside signInWithGoogle()
+      const user = await signInWithGoogle()
       
-      console.log('✅ Google authentication successful')
+      console.log('✅ Google authentication successful:', user.displayName)
+      
+      // 📊 Track login event
+      GA.login('google')
       
       // ✅ Optional: Show success screen for 2 seconds
       if (onSuccess) {

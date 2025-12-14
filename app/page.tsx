@@ -67,6 +67,14 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden">
       
+      {/* Floating Hearts - Fixed on screen */}
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+        <div className="absolute bottom-0 left-[10%] text-pink-400/50 text-3xl animate-floatHeart" style={{animationDelay: '0s'}}>💕</div>
+        <div className="absolute bottom-0 left-[30%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '1.5s'}}>💕</div>
+        <div className="absolute bottom-0 right-[15%] text-pink-400/50 text-3xl animate-floatHeart" style={{animationDelay: '3s'}}>💕</div>
+        <div className="absolute bottom-0 right-[35%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '4.5s'}}>💕</div>
+      </div>
+      
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* NAVIGATION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
@@ -214,7 +222,7 @@ export default function LandingPage() {
           <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
             No endless swiping. No fake profiles. 
             <br className="hidden md:block" />
-            Meet real people at real places within <span className="text-green-400 font-semibold">10-500 meters</span>.
+            Meet <span className="text-pink-400">real people</span> at real places within <span className="text-green-400 font-semibold">10-500 meters</span>.
           </p>
 
           {/* CTA Buttons */}
@@ -441,29 +449,42 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Visual */}
+            {/* Visual - Real App Screenshot */}
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-pink-500/20 rounded-3xl blur-3xl"></div>
-              <div className="relative bg-[#0a1f1a] border border-white/10 rounded-3xl p-8 overflow-hidden">
-                {/* Phone Mockup */}
-                <div className="relative mx-auto w-64 h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 rounded-[40px] border-4 border-gray-700 shadow-2xl">
-                  {/* Notch */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl"></div>
+              {/* Glow Effects */}
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/30 to-pink-500/30 rounded-3xl blur-3xl animate-pulse"></div>
+              <div className="absolute -inset-4 bg-gradient-to-r from-green-400/20 via-transparent to-pink-400/20 rounded-3xl blur-2xl"></div>
+              
+              <div className="relative">
+                {/* Phone Frame */}
+                <div className="relative mx-auto w-[280px] md:w-[300px]">
+                  {/* Shadow */}
+                  <div className="absolute -inset-4 bg-gradient-to-b from-green-500/20 to-pink-500/20 rounded-[50px] blur-xl"></div>
                   
-                  {/* Screen Content */}
-                  <div className="absolute inset-4 top-8 bg-gradient-to-b from-[#0d2920] to-[#1a4d3e] rounded-[28px] overflow-hidden">
-                    {/* Match Animation */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
-                          <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                          </svg>
-                        </div>
-                        <h3 className="text-white font-bold text-xl">It's a Match!</h3>
-                        <p className="text-green-400 text-sm mt-2">50 meters away</p>
-                      </div>
+                  {/* Device Frame */}
+                  <div className="relative bg-gradient-to-b from-gray-800 to-gray-900 rounded-[40px] p-2 shadow-2xl border border-white/10">
+                    {/* Notch */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-b-2xl z-20"></div>
+                    
+                    {/* Screen with Real Screenshot */}
+                    <div className="relative rounded-[32px] overflow-hidden">
+                      <img 
+                        src="/match-screen.png" 
+                        alt="It's a Match! - I4IGUANA Dating App"
+                        className="w-full h-auto"
+                      />
+                      
+                      {/* Animated Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 via-transparent to-transparent pointer-events-none"></div>
                     </div>
+                  </div>
+                  
+                  {/* Floating Elements */}
+                  <div className="absolute -right-4 top-20 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-bounce">
+                    💕 Match!
+                  </div>
+                  <div className="absolute -left-4 bottom-32 bg-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg" style={{animationDelay: '0.5s'}}>
+                    📍 0m away
                   </div>
                 </div>
               </div>
@@ -675,10 +696,10 @@ export default function LandingPage() {
               style={{ animation: 'subtle-glow 2s ease-in-out infinite' }}
             >
               <span className="text-2xl">🦎</span>
-              <span>הצטרפו עכשיו - חינם!</span>
+              <span>Join Now - Free!</span>
               <span className="text-2xl">→</span>
             </Link>
-            <p className="text-gray-400 text-sm mt-4">מלאו טופס קצר ונחזור אליכם תוך 24 שעות</p>
+            <p className="text-gray-400 text-sm mt-4">Fill a short form and we'll get back to you within 24 hours</p>
           </div>
 
           {/* Business Card */}
@@ -745,7 +766,7 @@ export default function LandingPage() {
                     href="/join"
                     className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-center font-bold text-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
                   >
-                    📝 הצטרף עכשיו - טופס דיגיטלי
+                    📝 Join Now - Digital Form
                   </a>
                   <a 
                     href="tel:+972522653170"
@@ -841,6 +862,11 @@ export default function LandingPage() {
                 A product by <span className="text-green-400">Nir Ram</span> • All copyrights reserved
               </p>
             </div>
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <span>Made with</span>
+              <span className="text-pink-400 animate-pulse">💕</span>
+              <span>in Israel</span>
+            </div>
             <div className="flex items-center gap-4">
               <a href="#" className="text-gray-400 hover:text-green-400 transition-colors">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -896,6 +922,15 @@ export default function LandingPage() {
           50% { 
             box-shadow: 0 0 20px rgba(74, 222, 128, 0.6), 0 0 30px rgba(74, 222, 128, 0.3);
           }
+        }
+        @keyframes floatHeart {
+          0% { transform: translateY(0) scale(1); opacity: 0; }
+          20% { opacity: 0.8; }
+          80% { opacity: 0.8; }
+          100% { transform: translateY(-100vh) scale(1.3); opacity: 0; }
+        }
+        .animate-floatHeart {
+          animation: floatHeart 8s ease-in-out infinite;
         }
       `}</style>
     </div>
