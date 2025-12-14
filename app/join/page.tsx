@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -340,12 +341,33 @@ const translations = {
 type Language = 'en' | 'he'
 
 export default function VenueJoinPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a1f1a] flex items-center justify-center">
+        <div className="text-green-400 text-xl">Loading...</div>
+      </div>
+    }>
+      <VenueJoinPageContent />
+    </Suspense>
+  )
+}
+
+function VenueJoinPageContent() {
+  const searchParams = useSearchParams()
   const [lang, setLang] = useState<Language>('en')
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [showCoordinatesHelp, setShowCoordinatesHelp] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+
+  // Read language from URL parameter
+  useEffect(() => {
+    const langParam = searchParams.get('lang')
+    if (langParam === 'he') {
+      setLang('he')
+    }
+  }, [searchParams])
 
   const t = translations[lang]
   const benefitIcons = [Users, Target, Zap]
@@ -490,7 +512,7 @@ export default function VenueJoinPage() {
             </ul>
           </div>
           
-          <Link href="/">
+          <Link href={lang === 'he' ? '/he' : '/'}>
             <Button className="bg-[#4ade80] hover:bg-[#22c55e] text-black font-bold">
               {t.backHome}
             </Button>
@@ -506,7 +528,7 @@ export default function VenueJoinPage() {
       <div className="fixed top-4 left-4 right-4 z-50 flex justify-between items-center">
         {/* Back Button */}
         <Link 
-          href="/"
+          href={lang === 'he' ? '/he' : '/'}
           className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white font-medium transition-all flex items-center gap-2 hover:scale-105 hover:shadow-lg hover:shadow-green-500/20"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

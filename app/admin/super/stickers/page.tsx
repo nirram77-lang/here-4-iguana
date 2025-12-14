@@ -12,7 +12,7 @@ interface Venue {
   displayName?: string
 }
 
-type TemplateType = 'venue' | 'club-owners' | 'customers-dark' | 'customers-light' | 'challenge-card' | 'download-only' | 'download-only-light' | 'discreet-dating' | 'pride-edition' | 'same-connection'
+type TemplateType = 'venue' | 'club-owners' | 'customers-dark' | 'customers-light' | 'challenge-card' | 'download-only' | 'download-only-light'
 
 export default function StickerGeneratorPage() {
   const [venues, setVenues] = useState<Venue[]>([])
@@ -22,6 +22,7 @@ export default function StickerGeneratorPage() {
   const [loading, setLoading] = useState(true)
   const [challengeVariant, setChallengeVariant] = useState(0)
   const [cardStyle, setCardStyle] = useState<'light' | 'full'>('light')
+  const [clubOwnerVariant, setClubOwnerVariant] = useState<'hearts' | 'modern' | 'tlv' | 'elegant' | 'business'>('hearts')
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // ✅ URL יחיד לכל הסטיקרים - דף הנחיתה!
@@ -1590,13 +1591,66 @@ export default function StickerGeneratorPage() {
   // CLUB OWNERS STICKER - הצעה לבעלי מקומות בילוי
   // ═══════════════════════════════════════════════════════════════
   const generateClubOwnersHTML = () => {
-    const websiteUrl = 'https://i4iguana.com'
+    const websiteUrl = 'https://www.i4iguana.com/he'
     const iguanaRadarImg = 'https://www.i4iguana.com/iguana-radar.jpg'
     const websiteQrUrl = `${QR_API}?size=200x200&data=${encodeURIComponent(websiteUrl)}&color=0d2920`
     const vCardData = 'BEGIN:VCARD\\nVERSION:3.0\\nN:Ram;Nir\\nFN:Nir Ram\\nTITLE:Founder & CEO\\nORG:I4IGUANA\\nTEL:+972522653170\\nEMAIL:nir@i4iguana.com\\nURL:https://i4iguana.com\\nEND:VCARD'
     const vCardQrUrl = `${QR_API}?size=180x180&data=${encodeURIComponent(vCardData)}&color=0d2920`
 
-    return `<!DOCTYPE html>
+    // ═══════════════════════════════════════════════════════════════
+    // תבניות פרסום לבעלי מועדונים - 4 וריאציות + עסקי
+    // ═══════════════════════════════════════════════════════════════
+    
+    const variants: Record<string, { 
+      headline: string; 
+      subheadline: string; 
+      bgGradient: string; 
+      textGradient: string;
+      decorBefore: string;
+      decorAfter: string;
+      borderColor: string;
+    }> = {
+      hearts: {
+        headline: 'הלקוחות שלך<br>ימצאו אהבה',
+        subheadline: 'אצלך במקום 💕',
+        bgGradient: 'linear-gradient(180deg, #fff 0%, #fff5f8 100%)',
+        textGradient: 'linear-gradient(135deg, #e91e63, #ff6b6b)',
+        decorBefore: '💕',
+        decorAfter: '💕',
+        borderColor: '#e91e63'
+      },
+      modern: {
+        headline: 'הפוך את הבר<br>למקום מפגשים',
+        subheadline: 'בזמן אמת 🎯',
+        bgGradient: 'linear-gradient(180deg, #fff 0%, #f0fff4 100%)',
+        textGradient: 'linear-gradient(135deg, #15803d, #4ade80)',
+        decorBefore: '🦎',
+        decorAfter: '',
+        borderColor: '#22c55e'
+      },
+      tlv: {
+        headline: 'יותר זוגות<br>יותר הזמנות',
+        subheadline: 'פשוט עובד ✨',
+        bgGradient: 'linear-gradient(180deg, #fff 0%, #fffbeb 100%)',
+        textGradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+        decorBefore: '✨',
+        decorAfter: '🍸',
+        borderColor: '#f59e0b'
+      },
+      elegant: {
+        headline: 'היא בוחרת<br>הוא מחכה',
+        subheadline: 'אצלך זה קורה 💜',
+        bgGradient: 'linear-gradient(180deg, #fff 0%, #fdf4ff 100%)',
+        textGradient: 'linear-gradient(135deg, #a855f7, #ec4899)',
+        decorBefore: '💜',
+        decorAfter: '💜',
+        borderColor: '#a855f7'
+      }
+    }
+
+    // If business variant selected, return the original detailed template
+    if (clubOwnerVariant === 'business') {
+      return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -1708,15 +1762,19 @@ export default function StickerGeneratorPage() {
       justify-content: center;
       padding: 10px;
     }
-    .logo-img, .logo-container { background: linear-gradient(135deg, #0d2920, #1a4d3e); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(74, 222, 128, 0.4); } .logo-emoji { font-size: 36px; } .logo-img-old {
-      width: 100px;
-      height: 100px;
-      border-radius: 24px;
-      border: 4px solid #22c55e;
-      box-shadow: 0 8px 30px rgba(34,197,94,0.3);
+    .logo-container {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      border: 3px solid #4ade80;
+      background: linear-gradient(135deg, #0d2920, #1a4d3e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
       margin-bottom: 10px;
-      object-fit: cover;
     }
+    .logo-emoji { font-size: 36px; }
     .brand-name {
       font-size: 28px;
       font-weight: 900;
@@ -1847,6 +1905,167 @@ export default function StickerGeneratorPage() {
     </div>
     <div class="footer">
       <div class="footer-text">🤝 בואו נעשה היסטוריה ביחד!</div>
+    </div>
+  </div>
+</body>
+</html>`
+    }
+
+    // Simple promotional templates
+    const v = variants[clubOwnerVariant] || variants.hearts
+    
+    return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I4IGUANA - פרסום לבעלי מועדונים</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @keyframes sparkle { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
+    body {
+      font-family: "Heebo", sans-serif;
+      background: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .flyer {
+      width: 20cm;
+      height: 20cm;
+      background: ${v.bgGradient};
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      border: 4px solid ${v.borderColor};
+    }
+    .flyer::before {
+      content: '${v.decorBefore}';
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      font-size: 28px;
+    }
+    .flyer::after {
+      content: '${v.decorAfter}';
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 28px;
+    }
+    .top-section {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .headline {
+      font-size: 48px;
+      font-weight: 900;
+      line-height: 1.15;
+      margin-bottom: 12px;
+      background: ${v.textGradient};
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subheadline {
+      font-size: 24px;
+      color: #555;
+      font-weight: 600;
+    }
+    .middle-section {
+      text-align: center;
+    }
+    .qr-container {
+      background: white;
+      padding: 16px;
+      border-radius: 20px;
+      display: inline-block;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    }
+    .qr-container img {
+      width: 160px;
+      height: 160px;
+      border-radius: 10px;
+    }
+    .scan-text {
+      margin-top: 14px;
+      font-size: 18px;
+      color: #333;
+      font-weight: 700;
+    }
+    .bottom-section {
+      text-align: center;
+    }
+    .logo {
+      font-size: 32px;
+      font-weight: 900;
+      color: #15803d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .logo span {
+      font-size: 28px;
+    }
+    .slogan-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .sparkle-icon {
+      font-size: 16px;
+      animation: sparkle 1.5s ease-in-out infinite;
+    }
+    .slogan {
+      font-size: 15px;
+      color: #8b7355;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .website {
+      font-size: 12px;
+      color: #a0a0a0;
+      margin-top: 4px;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .flyer { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="flyer">
+    <div class="top-section">
+      <div class="headline">${v.headline}</div>
+      <div class="subheadline">${v.subheadline}</div>
+    </div>
+    <div class="middle-section">
+      <div class="qr-container">
+        <img src="${websiteQrUrl}" alt="QR Code">
+      </div>
+      <div class="scan-text">📲 סרקו להצטרפות</div>
+    </div>
+    <div class="bottom-section">
+      <div class="logo"><span>🦎</span> I4IGUANA</div>
+      <div class="slogan-row">
+        <span class="sparkle-icon">✨</span>
+        <span class="slogan">הכרויות בזמן אמת - פה ועכשיו</span>
+        <span class="sparkle-icon">✨</span>
+      </div>
+      <div class="website">www.i4iguana.com</div>
     </div>
   </div>
 </body>
@@ -2327,1061 +2546,6 @@ export default function StickerGeneratorPage() {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 🔒 DISCREET DATING TEMPLATE - דייטינג בדיסקרטיות (20x20cm)
-  // ═══════════════════════════════════════════════════════════════════════════════
-  const generateDiscreetDatingHTML = () => {
-    const qrUrl = `${QR_API}?size=300x300&data=${encodeURIComponent(DOWNLOAD_URL)}&color=0d2920&bgcolor=ffffff`
-    
-    const hebrewHTML = `<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>I4IGUANA - דייטינג בדיסקרטיות</title>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: "Heebo", sans-serif;
-      background: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    .sticker {
-      width: 20cm;
-      height: 20cm;
-      background: #ffffff;
-      border-radius: 28px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      padding: 25px;
-      border: 4px solid #0d2920;
-      overflow: hidden;
-    }
-    .top-bar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 8px;
-      background: linear-gradient(90deg, #0d2920, #22c55e, #0d2920);
-    }
-    .lock-icon {
-      width: 90px;
-      height: 90px;
-      background: linear-gradient(135deg, #0d2920, #1a4d3e);
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 45px;
-      box-shadow: 0 8px 25px rgba(13, 41, 32, 0.3);
-      margin-top: 15px;
-    }
-    .title-section { text-align: center; }
-    .title-heb {
-      font-size: 36px;
-      font-weight: 900;
-      color: #0d2920;
-      margin-bottom: 5px;
-    }
-    .subtitle-heb {
-      font-size: 16px;
-      color: #666;
-      margin-bottom: 10px;
-    }
-    .title-eng {
-      font-size: 24px;
-      font-weight: 800;
-      color: #22c55e;
-      letter-spacing: 2px;
-    }
-    .subtitle-eng {
-      font-size: 12px;
-      color: #888;
-      letter-spacing: 1px;
-    }
-    .divider {
-      width: 150px;
-      height: 3px;
-      background: linear-gradient(90deg, transparent, #22c55e, transparent);
-      margin: 10px 0;
-    }
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-      max-width: 90%;
-    }
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      background: #f5f5f5;
-      border-radius: 20px;
-      border-right: 3px solid #0d2920;
-    }
-    .feature-icon { font-size: 18px; }
-    .feature-text { font-size: 12px; color: #333; font-weight: 600; }
-    .qr-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .qr-box {
-      padding: 12px;
-      background: white;
-      border-radius: 15px;
-      border: 3px solid #22c55e;
-      box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2);
-    }
-    .qr-box img { display: block; width: 110px; height: 110px; }
-    .scan-text {
-      font-size: 14px;
-      color: #0d2920;
-      font-weight: 700;
-    }
-    .brand {
-      font-size: 28px;
-      font-weight: 900;
-      color: #0d2920;
-    }
-    .brand-url {
-      font-size: 11px;
-      color: #22c55e;
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-  <div class="sticker">
-    <div class="top-bar"></div>
-    <div class="lock-icon">🔒</div>
-    <div class="title-section">
-      <div class="title-heb">דייטינג בדיסקרטיות</div>
-      <div class="subtitle-heb">הפרטיות שלך. הכללים שלך.</div>
-      <div class="title-eng">DISCREET DATING</div>
-      <div class="subtitle-eng">Your Privacy. Your Rules.</div>
-    </div>
-    <div class="divider"></div>
-    <div class="features">
-      <div class="feature"><span class="feature-icon">🔒</span><span class="feature-text">ללא תמונה חובה</span></div>
-      <div class="feature"><span class="feature-icon">👁️</span><span class="feature-text">תמונות נעלמות</span></div>
-      <div class="feature"><span class="feature-icon">📍</span><span class="feature-text">מפגשים קרובים</span></div>
-      <div class="feature"><span class="feature-icon">🛡️</span><span class="feature-text">פרטיות מלאה</span></div>
-    </div>
-    <div class="qr-section">
-      <div class="scan-text">סרקו והתחברו בדיסקרטיות 👇</div>
-      <div class="qr-box"><img src="${qrUrl}" alt="QR" /></div>
-    </div>
-    <div class="brand">🦎 I4IGUANA</div>
-    <div class="brand-url">i4iguana.com</div>
-  </div>
-</body>
-</html>`
-
-    const englishHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>I4IGUANA - Discreet Dating</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: "Poppins", sans-serif;
-      background: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    .sticker {
-      width: 20cm;
-      height: 20cm;
-      background: #ffffff;
-      border-radius: 28px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      padding: 25px;
-      border: 4px solid #0d2920;
-      overflow: hidden;
-    }
-    .top-bar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 8px;
-      background: linear-gradient(90deg, #0d2920, #22c55e, #0d2920);
-    }
-    .lock-icon {
-      width: 90px;
-      height: 90px;
-      background: linear-gradient(135deg, #0d2920, #1a4d3e);
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 45px;
-      box-shadow: 0 8px 25px rgba(13, 41, 32, 0.3);
-      margin-top: 15px;
-    }
-    .title-section { text-align: center; }
-    .title-eng {
-      font-size: 36px;
-      font-weight: 900;
-      color: #0d2920;
-      letter-spacing: 2px;
-      margin-bottom: 5px;
-    }
-    .subtitle-eng {
-      font-size: 16px;
-      color: #666;
-    }
-    .divider {
-      width: 150px;
-      height: 3px;
-      background: linear-gradient(90deg, transparent, #22c55e, transparent);
-      margin: 15px 0;
-    }
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
-      max-width: 90%;
-    }
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      background: #f5f5f5;
-      border-radius: 20px;
-      border-left: 3px solid #0d2920;
-    }
-    .feature-icon { font-size: 20px; }
-    .feature-text { font-size: 13px; color: #333; font-weight: 600; }
-    .qr-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .qr-box {
-      padding: 12px;
-      background: white;
-      border-radius: 15px;
-      border: 3px solid #22c55e;
-      box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2);
-    }
-    .qr-box img { display: block; width: 120px; height: 120px; }
-    .scan-text {
-      font-size: 15px;
-      color: #0d2920;
-      font-weight: 700;
-    }
-    .brand {
-      font-size: 28px;
-      font-weight: 900;
-      color: #0d2920;
-    }
-    .brand-url {
-      font-size: 11px;
-      color: #22c55e;
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-  <div class="sticker">
-    <div class="top-bar"></div>
-    <div class="lock-icon">🔒</div>
-    <div class="title-section">
-      <div class="title-eng">DISCREET DATING</div>
-      <div class="subtitle-eng">Your Privacy. Your Rules.</div>
-    </div>
-    <div class="divider"></div>
-    <div class="features">
-      <div class="feature"><span class="feature-icon">🔒</span><span class="feature-text">No Photo Required</span></div>
-      <div class="feature"><span class="feature-icon">👁️</span><span class="feature-text">View-Once Photos</span></div>
-      <div class="feature"><span class="feature-icon">📍</span><span class="feature-text">Meet Nearby</span></div>
-      <div class="feature"><span class="feature-icon">🛡️</span><span class="feature-text">Full Privacy</span></div>
-    </div>
-    <div class="qr-section">
-      <div class="scan-text">Scan & Connect Privately 👇</div>
-      <div class="qr-box"><img src="${qrUrl}" alt="QR" /></div>
-    </div>
-    <div class="brand">🦎 I4IGUANA</div>
-    <div class="brand-url">i4iguana.com</div>
-  </div>
-</body>
-</html>`
-
-    return language === 'hebrew' ? hebrewHTML : englishHTML
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 🏳️‍🌈 PRIDE EDITION TEMPLATE - לתוך בר להט"ב (20x20cm)
-  // ═══════════════════════════════════════════════════════════════════════════════
-  const generatePrideEditionHTML = () => {
-    const qrUrl = `${QR_API}?size=300x300&data=${encodeURIComponent(DOWNLOAD_URL)}&color=732982&bgcolor=ffffff`
-    
-    const hebrewHTML = `<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>I4IGUANA - Pride Edition</title>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    body {
-      font-family: "Heebo", sans-serif;
-      background: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-    }
-    .sticker {
-      width: 20cm;
-      height: 20cm;
-      background: #ffffff;
-      border-radius: 28px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px;
-      border: 4px solid #22c55e;
-      overflow: hidden;
-    }
-    .rainbow-top, .rainbow-bottom {
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 20px;
-      display: flex;
-    }
-    .rainbow-top { top: 0; border-radius: 24px 24px 0 0; }
-    .rainbow-bottom { bottom: 0; border-radius: 0 0 24px 24px; }
-    .stripe { flex: 1; }
-    .red { background: #E40303; }
-    .orange { background: #FF8C00; }
-    .yellow { background: #FFED00; }
-    .green { background: #008026; }
-    .blue { background: #24408E; }
-    .purple { background: #732982; }
-    .heart-icon {
-      font-size: 70px;
-      margin-top: 25px;
-    }
-    .title-section { text-align: center; }
-    .title-eng {
-      font-size: 38px;
-      font-weight: 900;
-      background: linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .pride-badge {
-      display: inline-block;
-      background: linear-gradient(90deg, #732982, #24408E, #008026, #FFED00, #FF8C00, #E40303);
-      padding: 6px 20px;
-      border-radius: 20px;
-      margin: 8px 0;
-    }
-    .pride-badge span {
-      font-size: 14px;
-      font-weight: 700;
-      color: white;
-      letter-spacing: 1px;
-    }
-    .title-heb {
-      font-size: 28px;
-      font-weight: 900;
-      color: #0d2920;
-    }
-    .subtitle-heb {
-      font-size: 14px;
-      color: #666;
-    }
-    .rainbow-divider {
-      display: flex;
-      border-radius: 5px;
-      overflow: hidden;
-      margin: 8px 0;
-    }
-    .divider-stripe { width: 25px; height: 5px; }
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      max-width: 95%;
-    }
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 12px;
-      background: #f8f8f8;
-      border-radius: 15px;
-    }
-    .feature:nth-child(1) { border-right: 3px solid #E40303; }
-    .feature:nth-child(2) { border-right: 3px solid #FF8C00; }
-    .feature:nth-child(3) { border-right: 3px solid #008026; }
-    .feature:nth-child(4) { border-right: 3px solid #24408E; }
-    .feature-icon { font-size: 16px; }
-    .feature-text { font-size: 11px; color: #333; font-weight: 600; }
-    .qr-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-    .cta-box {
-      background: linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982);
-      padding: 10px 25px;
-      border-radius: 15px;
-    }
-    .cta-text {
-      font-size: 16px;
-      font-weight: 800;
-      color: white;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-    .qr-box {
-      padding: 10px;
-      background: white;
-      border-radius: 12px;
-      border: 3px solid #22c55e;
-    }
-    .qr-box img { display: block; width: 100px; height: 100px; }
-    .brand {
-      font-size: 24px;
-      font-weight: 900;
-      color: #0d2920;
-      margin-bottom: 5px;
-    }
-    .website {
-      font-size: 16px;
-      font-weight: 700;
-      color: #732982;
-      text-shadow: 0 0 10px rgba(115, 41, 130, 0.5), 0 0 20px rgba(115, 41, 130, 0.3);
-      letter-spacing: 1px;
-      margin-bottom: 20px;
-    }
-    @media print {
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-      .stripe, .divider-stripe, .pride-badge, .cta-box, .feature { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sticker">
-    <div class="rainbow-top">
-      <div class="stripe red"></div>
-      <div class="stripe orange"></div>
-      <div class="stripe yellow"></div>
-      <div class="stripe green"></div>
-      <div class="stripe blue"></div>
-      <div class="stripe purple"></div>
-    </div>
-    <div class="heart-icon">❤️</div>
-    <div class="title-section">
-      <div class="title-eng">LOVE IS LOVE</div>
-      <div class="pride-badge"><span>🏳️‍🌈 PRIDE EDITION 🏳️‍🌈</span></div>
-      <div class="title-heb">אהבה היא אהבה</div>
-      <div class="subtitle-heb">מרחב בטוח לכל הקשת 🌈</div>
-    </div>
-    <div class="rainbow-divider">
-      <div class="divider-stripe red"></div>
-      <div class="divider-stripe orange"></div>
-      <div class="divider-stripe yellow"></div>
-      <div class="divider-stripe green"></div>
-      <div class="divider-stripe blue"></div>
-      <div class="divider-stripe purple"></div>
-    </div>
-    <div class="features">
-      <div class="feature"><span class="feature-icon">🏳️‍🌈</span><span class="feature-text">התאמות לכל הקשת</span></div>
-      <div class="feature"><span class="feature-icon">💚</span><span class="feature-text">שניכם יוזמים</span></div>
-      <div class="feature"><span class="feature-icon">🛡️</span><span class="feature-text">מרחב בטוח</span></div>
-      <div class="feature"><span class="feature-icon">📍</span><span class="feature-text">חיבורים קרובים</span></div>
-    </div>
-    <div class="qr-section">
-      <div class="cta-box"><span class="cta-text">הצטרפו לקהילה! 🦎</span></div>
-      <div class="qr-box"><img src="${qrUrl}" alt="QR" /></div>
-    </div>
-    <div class="brand">🦎 I4IGUANA</div>
-    <div class="website">www.i4iguana.com</div>
-    <div class="rainbow-bottom">
-      <div class="stripe purple"></div>
-      <div class="stripe blue"></div>
-      <div class="stripe green"></div>
-      <div class="stripe yellow"></div>
-      <div class="stripe orange"></div>
-      <div class="stripe red"></div>
-    </div>
-  </div>
-</body>
-</html>`
-
-    const englishHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>I4IGUANA - Pride Edition</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    body {
-      font-family: "Poppins", sans-serif;
-      background: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-    }
-    .sticker {
-      width: 20cm;
-      height: 20cm;
-      background: #ffffff;
-      border-radius: 28px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px;
-      border: 4px solid #22c55e;
-      overflow: hidden;
-    }
-    .rainbow-top, .rainbow-bottom {
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 20px;
-      display: flex;
-    }
-    .rainbow-top { top: 0; border-radius: 24px 24px 0 0; }
-    .rainbow-bottom { bottom: 0; border-radius: 0 0 24px 24px; }
-    .stripe { flex: 1; }
-    .red { background: #E40303; }
-    .orange { background: #FF8C00; }
-    .yellow { background: #FFED00; }
-    .green { background: #008026; }
-    .blue { background: #24408E; }
-    .purple { background: #732982; }
-    .heart-icon {
-      font-size: 70px;
-      margin-top: 25px;
-    }
-    .title-section { text-align: center; }
-    .title-eng {
-      font-size: 42px;
-      font-weight: 900;
-      background: linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .pride-badge {
-      display: inline-block;
-      background: linear-gradient(90deg, #732982, #24408E, #008026, #FFED00, #FF8C00, #E40303);
-      padding: 8px 25px;
-      border-radius: 25px;
-      margin: 10px 0;
-    }
-    .pride-badge span {
-      font-size: 16px;
-      font-weight: 700;
-      color: white;
-      letter-spacing: 2px;
-    }
-    .subtitle-eng {
-      font-size: 16px;
-      color: #666;
-    }
-    .rainbow-divider {
-      display: flex;
-      border-radius: 5px;
-      overflow: hidden;
-      margin: 10px 0;
-    }
-    .divider-stripe { width: 30px; height: 6px; }
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-      max-width: 95%;
-    }
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 15px;
-      background: #f8f8f8;
-      border-radius: 15px;
-    }
-    .feature:nth-child(1) { border-left: 3px solid #E40303; }
-    .feature:nth-child(2) { border-left: 3px solid #FF8C00; }
-    .feature:nth-child(3) { border-left: 3px solid #008026; }
-    .feature:nth-child(4) { border-left: 3px solid #24408E; }
-    .feature-icon { font-size: 18px; }
-    .feature-text { font-size: 12px; color: #333; font-weight: 600; }
-    .qr-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .cta-box {
-      background: linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982);
-      padding: 12px 30px;
-      border-radius: 20px;
-    }
-    .cta-text {
-      font-size: 18px;
-      font-weight: 800;
-      color: white;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-    .qr-box {
-      padding: 10px;
-      background: white;
-      border-radius: 12px;
-      border: 3px solid #22c55e;
-    }
-    .qr-box img { display: block; width: 110px; height: 110px; }
-    .brand {
-      font-size: 26px;
-      font-weight: 900;
-      color: #0d2920;
-      margin-bottom: 5px;
-    }
-    .website {
-      font-size: 16px;
-      font-weight: 700;
-      color: #732982;
-      text-shadow: 0 0 10px rgba(115, 41, 130, 0.5), 0 0 20px rgba(115, 41, 130, 0.3);
-      letter-spacing: 1px;
-      margin-bottom: 20px;
-    }
-    @media print {
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-      .stripe, .divider-stripe, .pride-badge, .cta-box, .feature { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sticker">
-    <div class="rainbow-top">
-      <div class="stripe red"></div>
-      <div class="stripe orange"></div>
-      <div class="stripe yellow"></div>
-      <div class="stripe green"></div>
-      <div class="stripe blue"></div>
-      <div class="stripe purple"></div>
-    </div>
-    <div class="heart-icon">❤️</div>
-    <div class="title-section">
-      <div class="title-eng">LOVE IS LOVE</div>
-      <div class="pride-badge"><span>🏳️‍🌈 PRIDE EDITION 🏳️‍🌈</span></div>
-      <div class="subtitle-eng">A Safe Space for Everyone 🌈</div>
-    </div>
-    <div class="rainbow-divider">
-      <div class="divider-stripe red"></div>
-      <div class="divider-stripe orange"></div>
-      <div class="divider-stripe yellow"></div>
-      <div class="divider-stripe green"></div>
-      <div class="divider-stripe blue"></div>
-      <div class="divider-stripe purple"></div>
-    </div>
-    <div class="features">
-      <div class="feature"><span class="feature-icon">🏳️‍🌈</span><span class="feature-text">All Orientations</span></div>
-      <div class="feature"><span class="feature-icon">💚</span><span class="feature-text">Both Initiate</span></div>
-      <div class="feature"><span class="feature-icon">🛡️</span><span class="feature-text">Safe Space</span></div>
-      <div class="feature"><span class="feature-icon">📍</span><span class="feature-text">Meet Nearby</span></div>
-    </div>
-    <div class="qr-section">
-      <div class="cta-box"><span class="cta-text">Join the Community! 🦎</span></div>
-      <div class="qr-box"><img src="${qrUrl}" alt="QR" /></div>
-    </div>
-    <div class="brand">🦎 I4IGUANA</div>
-    <div class="website">www.i4iguana.com</div>
-    <div class="rainbow-bottom">
-      <div class="stripe purple"></div>
-      <div class="stripe blue"></div>
-      <div class="stripe green"></div>
-      <div class="stripe yellow"></div>
-      <div class="stripe orange"></div>
-      <div class="stripe red"></div>
-    </div>
-  </div>
-</body>
-</html>`
-
-    return language === 'hebrew' ? hebrewHTML : englishHTML
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 💚 SAME CONNECTION TEMPLATE - כללי, לתליה בחוץ (20x20cm)
-  // בלי דגלי גאווה - פשוט מסקרן על חיבור בין אותם המינים
-  // ═══════════════════════════════════════════════════════════════════════════════
-  const generateSameConnectionHTML = () => {
-    const qrUrl = `${QR_API}?size=300x300&data=${encodeURIComponent(DOWNLOAD_URL)}&color=0d2920&bgcolor=ffffff`
-    
-    const hebrewHTML = `<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>I4IGUANA - Connect Your Way</title>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: "Heebo", sans-serif;
-      background: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    .sticker {
-      width: 20cm;
-      height: 20cm;
-      background: linear-gradient(160deg, #1a4d3e 0%, #0d2920 50%, #051410 100%);
-      border-radius: 28px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      padding: 25px;
-      border: 4px solid #4ade80;
-      overflow: hidden;
-    }
-    .sparkle {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      background: #4ade80;
-      border-radius: 50%;
-      opacity: 0.4;
-    }
-    .sparkle:nth-child(1) { top: 12%; left: 15%; }
-    .sparkle:nth-child(2) { top: 18%; right: 18%; }
-    .sparkle:nth-child(3) { bottom: 22%; left: 12%; }
-    .sparkle:nth-child(4) { bottom: 18%; right: 15%; }
-    .hearts-icon {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    .heart { font-size: 50px; }
-    .heart-green { filter: hue-rotate(90deg); }
-    .title-section { text-align: center; }
-    .title-heb {
-      font-size: 34px;
-      font-weight: 900;
-      color: white;
-      margin-bottom: 5px;
-    }
-    .subtitle-heb {
-      font-size: 16px;
-      color: #4ade80;
-      margin-bottom: 12px;
-    }
-    .title-eng {
-      font-size: 26px;
-      font-weight: 800;
-      color: #4ade80;
-      letter-spacing: 2px;
-    }
-    .subtitle-eng {
-      font-size: 13px;
-      color: white;
-      opacity: 0.7;
-    }
-    .tagline {
-      background: rgba(74, 222, 128, 0.15);
-      border: 2px solid #4ade80;
-      border-radius: 20px;
-      padding: 10px 25px;
-      margin: 10px 0;
-    }
-    .tagline-text {
-      font-size: 15px;
-      font-weight: 700;
-      color: #4ade80;
-    }
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-      max-width: 95%;
-    }
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 15px;
-      border: 1px solid rgba(74, 222, 128, 0.3);
-    }
-    .feature-icon { font-size: 18px; }
-    .feature-text { font-size: 12px; color: white; font-weight: 600; }
-    .qr-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .scan-text {
-      font-size: 15px;
-      color: #4ade80;
-      font-weight: 700;
-    }
-    .qr-box {
-      padding: 12px;
-      background: white;
-      border-radius: 15px;
-      border: 3px solid #4ade80;
-    }
-    .qr-box img { display: block; width: 110px; height: 110px; }
-    .brand {
-      font-size: 28px;
-      font-weight: 900;
-      color: white;
-    }
-    .brand-url {
-      font-size: 11px;
-      color: #4ade80;
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-  <div class="sticker">
-    <div class="sparkle"></div>
-    <div class="sparkle"></div>
-    <div class="sparkle"></div>
-    <div class="sparkle"></div>
-    <div class="hearts-icon">
-      <span class="heart">💚</span>
-      <span class="heart">💚</span>
-    </div>
-    <div class="title-section">
-      <div class="title-heb">התחברו בדרך שלכם</div>
-      <div class="subtitle-heb">מי שמתאים לך - קרוב אליך</div>
-      <div class="title-eng">CONNECT YOUR WAY</div>
-      <div class="subtitle-eng">Your Match. Your Choice.</div>
-    </div>
-    <div class="tagline">
-      <span class="tagline-text">✨ כל החיבורים. בלי גבולות. ✨</span>
-    </div>
-    <div class="features">
-      <div class="feature"><span class="feature-icon">💚</span><span class="feature-text">שניכם יוזמים</span></div>
-      <div class="feature"><span class="feature-icon">🎯</span><span class="feature-text">התאמות מדויקות</span></div>
-      <div class="feature"><span class="feature-icon">📍</span><span class="feature-text">קרובים אליך</span></div>
-      <div class="feature"><span class="feature-icon">🛡️</span><span class="feature-text">מרחב בטוח</span></div>
-    </div>
-    <div class="qr-section">
-      <div class="scan-text">סרקו והתחילו להכיר 👇</div>
-      <div class="qr-box"><img src="${qrUrl}" alt="QR" /></div>
-    </div>
-    <div class="brand">🦎 I4IGUANA</div>
-    <div class="brand-url">i4iguana.com</div>
-  </div>
-</body>
-</html>`
-
-    const englishHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>I4IGUANA - Connect Your Way</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: "Poppins", sans-serif;
-      background: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    .sticker {
-      width: 20cm;
-      height: 20cm;
-      background: linear-gradient(160deg, #1a4d3e 0%, #0d2920 50%, #051410 100%);
-      border-radius: 28px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      padding: 25px;
-      border: 4px solid #4ade80;
-      overflow: hidden;
-    }
-    .sparkle {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      background: #4ade80;
-      border-radius: 50%;
-      opacity: 0.4;
-    }
-    .sparkle:nth-child(1) { top: 12%; left: 15%; }
-    .sparkle:nth-child(2) { top: 18%; right: 18%; }
-    .sparkle:nth-child(3) { bottom: 22%; left: 12%; }
-    .sparkle:nth-child(4) { bottom: 18%; right: 15%; }
-    .hearts-icon {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    .heart { font-size: 50px; }
-    .title-section { text-align: center; }
-    .title-eng {
-      font-size: 36px;
-      font-weight: 900;
-      color: white;
-      letter-spacing: 2px;
-      margin-bottom: 5px;
-    }
-    .subtitle-eng {
-      font-size: 16px;
-      color: #4ade80;
-    }
-    .tagline {
-      background: rgba(74, 222, 128, 0.15);
-      border: 2px solid #4ade80;
-      border-radius: 20px;
-      padding: 12px 30px;
-      margin: 12px 0;
-    }
-    .tagline-text {
-      font-size: 16px;
-      font-weight: 700;
-      color: #4ade80;
-    }
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
-      max-width: 95%;
-    }
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 15px;
-      border: 1px solid rgba(74, 222, 128, 0.3);
-    }
-    .feature-icon { font-size: 18px; }
-    .feature-text { font-size: 13px; color: white; font-weight: 600; }
-    .qr-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .scan-text {
-      font-size: 16px;
-      color: #4ade80;
-      font-weight: 700;
-    }
-    .qr-box {
-      padding: 12px;
-      background: white;
-      border-radius: 15px;
-      border: 3px solid #4ade80;
-    }
-    .qr-box img { display: block; width: 120px; height: 120px; }
-    .brand {
-      font-size: 28px;
-      font-weight: 900;
-      color: white;
-    }
-    .brand-url {
-      font-size: 11px;
-      color: #4ade80;
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-  <div class="sticker">
-    <div class="sparkle"></div>
-    <div class="sparkle"></div>
-    <div class="sparkle"></div>
-    <div class="sparkle"></div>
-    <div class="hearts-icon">
-      <span class="heart">💚</span>
-      <span class="heart">💚</span>
-    </div>
-    <div class="title-section">
-      <div class="title-eng">CONNECT YOUR WAY</div>
-      <div class="subtitle-eng">Your Match. Your Choice.</div>
-    </div>
-    <div class="tagline">
-      <span class="tagline-text">✨ All Connections. No Limits. ✨</span>
-    </div>
-    <div class="features">
-      <div class="feature"><span class="feature-icon">💚</span><span class="feature-text">Both Initiate</span></div>
-      <div class="feature"><span class="feature-icon">🎯</span><span class="feature-text">Perfect Match</span></div>
-      <div class="feature"><span class="feature-icon">📍</span><span class="feature-text">Nearby</span></div>
-      <div class="feature"><span class="feature-icon">🛡️</span><span class="feature-text">Safe Space</span></div>
-    </div>
-    <div class="qr-section">
-      <div class="scan-text">Scan & Start Meeting 👇</div>
-      <div class="qr-box"><img src="${qrUrl}" alt="QR" /></div>
-    </div>
-    <div class="brand">🦎 I4IGUANA</div>
-    <div class="brand-url">i4iguana.com</div>
-  </div>
-</body>
-</html>`
-
-    return language === 'hebrew' ? hebrewHTML : englishHTML
-  }
-
   // Get current HTML based on template selection
   const getCurrentHTML = () => {
     switch (template) {
@@ -3400,12 +2564,6 @@ export default function StickerGeneratorPage() {
         return generateClubOwnersHTML()
       case 'challenge-card':
         return generateChallengeCardHTML()
-      case 'discreet-dating':
-        return generateDiscreetDatingHTML()
-      case 'pride-edition':
-        return generatePrideEditionHTML()
-      case 'same-connection':
-        return generateSameConnectionHTML()
       default:
         return generateDownloadOnlyHTML()
     }
@@ -3625,57 +2783,6 @@ export default function StickerGeneratorPage() {
                   </div>
                 </div>
               </button>
-              
-              <button
-                onClick={() => setTemplate('discreet-dating')}
-                className={`w-full text-right p-3 rounded-lg transition-all ${
-                  template === 'discreet-dating' 
-                    ? 'bg-[#4ade80] text-[#0d2920]' 
-                    : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <QrCode className="h-5 w-5" />
-                  <div>
-                    <div className="font-semibold">🔒 דייטינג דיסקרטי</div>
-                    <div className="text-xs opacity-70">פרטיות מלאה (20x20)</div>
-                  </div>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => setTemplate('pride-edition')}
-                className={`w-full text-right p-3 rounded-lg transition-all ${
-                  template === 'pride-edition' 
-                    ? 'bg-[#4ade80] text-[#0d2920]' 
-                    : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <QrCode className="h-5 w-5" />
-                  <div>
-                    <div className="font-semibold">🏳️‍🌈 Pride Edition</div>
-                    <div className="text-xs opacity-70">לתוך בר להט"ב (20x20)</div>
-                  </div>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => setTemplate('same-connection')}
-                className={`w-full text-right p-3 rounded-lg transition-all ${
-                  template === 'same-connection' 
-                    ? 'bg-[#4ade80] text-[#0d2920]' 
-                    : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <QrCode className="h-5 w-5" />
-                  <div>
-                    <div className="font-semibold">💚 Connect Your Way</div>
-                    <div className="text-xs opacity-70">כללי, לתליה בחוץ (20x20)</div>
-                  </div>
-                </div>
-              </button>
             </div>
           </div>
 
@@ -3761,6 +2868,102 @@ export default function StickerGeneratorPage() {
               </div>
               <p className="text-white/50 text-xs mt-3 text-center">
                 🎯 10 סטים שונים של אתגרים למשחק
+              </p>
+            </div>
+          )}
+
+          {/* Club Owner Variant Selection - Only show for club-owners */}
+          {template === 'club-owners' && (
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">🎨 בחר סגנון פרסום</h3>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  onClick={() => setClubOwnerVariant('hearts')}
+                  className={`w-full text-right p-3 rounded-lg transition-all ${
+                    clubOwnerVariant === 'hearts' 
+                      ? 'bg-[#e91e63] text-white' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">💕</span>
+                    <div>
+                      <div className="font-semibold">לבבות ורומנטיקה</div>
+                      <div className="text-xs opacity-70">הלקוחות שלך ימצאו אהבה</div>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => setClubOwnerVariant('modern')}
+                  className={`w-full text-right p-3 rounded-lg transition-all ${
+                    clubOwnerVariant === 'modern' 
+                      ? 'bg-[#22c55e] text-[#0d2920]' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🦎</span>
+                    <div>
+                      <div className="font-semibold">מודרני וישיר</div>
+                      <div className="text-xs opacity-70">הפוך את הבר למקום מפגשים</div>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => setClubOwnerVariant('tlv')}
+                  className={`w-full text-right p-3 rounded-lg transition-all ${
+                    clubOwnerVariant === 'tlv' 
+                      ? 'bg-[#f59e0b] text-white' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">✨</span>
+                    <div>
+                      <div className="font-semibold">TLV Vibes</div>
+                      <div className="text-xs opacity-70">יותר זוגות יותר הזמנות</div>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => setClubOwnerVariant('elegant')}
+                  className={`w-full text-right p-3 rounded-lg transition-all ${
+                    clubOwnerVariant === 'elegant' 
+                      ? 'bg-[#a855f7] text-white' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">💜</span>
+                    <div>
+                      <div className="font-semibold">אלגנטי ושיקי</div>
+                      <div className="text-xs opacity-70">היא בוחרת, הוא מחכה</div>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => setClubOwnerVariant('business')}
+                  className={`w-full text-right p-3 rounded-lg transition-all ${
+                    clubOwnerVariant === 'business' 
+                      ? 'bg-[#4ade80] text-[#0d2920]' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">💼</span>
+                    <div>
+                      <div className="font-semibold">עסקי מלא</div>
+                      <div className="text-xs opacity-70">עם כרטיס ביקור ופרטי קשר</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+              <p className="text-white/50 text-xs mt-3 text-center">
+                📐 20x20 ס"מ | QR מוביל לאתר | מוכן להדפסה ופיזור
               </p>
             </div>
           )}
