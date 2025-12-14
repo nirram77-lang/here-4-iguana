@@ -45,7 +45,7 @@ export default function LandingPage() {
                 className="ml-3 px-3 py-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-semibold text-black text-xs shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all whitespace-nowrap animate-shimmer"
                 style={{ backgroundSize: '200% 100%' }}
               >
-                🚀 Pilot Soon
+                <span role="img" aria-label="rocket">🚀</span> Pilot Soon
               </Link>
             </div>
 
