@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 
-export default function LandingPage() {
+export default function HebrewLandingPage() {
   const [scrollY, setScrollY] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -15,7 +14,7 @@ export default function LandingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden" dir="rtl">
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* NAVIGATION */}
@@ -42,38 +41,25 @@ export default function LandingPage() {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-6">
-              <a href="#how-it-works" className="text-gray-300 hover:text-green-400 transition-colors">How It Works</a>
-              <a href="#features" className="text-gray-300 hover:text-green-400 transition-colors">Features</a>
-              <a href="#for-venues" className="text-gray-300 hover:text-green-400 transition-colors">For Venues</a>
-              <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
-              
-              {/* HE Language Button */}
+              <a href="#how-it-works" className="text-gray-300 hover:text-green-400 transition-colors">איך זה עובד</a>
+              <a href="#features" className="text-gray-300 hover:text-green-400 transition-colors">יתרונות</a>
+              <a href="#for-venues" className="text-gray-300 hover:text-green-400 transition-colors">לבעלי מועדונים</a>
+              <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">הורדה</a>
               <Link 
-                href="/he"
+                href="/"
                 className="group relative px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
               >
                 <span className="absolute inset-0 rounded-full bg-white/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></span>
                 <span className="relative flex items-center gap-1.5">
-                  <span className="text-base">🇮🇱</span>
-                  <span>HE</span>
+                  <span className="text-base">🌐</span>
+                  <span>EN</span>
                 </span>
               </Link>
-              
-              {/* Join as Venue Button */}
-              <Link 
-                href="/join"
-                className="px-5 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold hover:bg-green-500/10 transition-all flex items-center gap-2"
-              >
-                <span>📋</span>
-                <span>Join as Venue</span>
-              </Link>
-              
-              {/* Open App Button */}
               <Link 
                 href="/download"
                 className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
               >
-                Open App
+                פתח אפליקציה
               </Link>
             </div>
 
@@ -93,28 +79,23 @@ export default function LandingPage() {
           {/* Mobile Menu */}
           {menuOpen && (
             <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4">
-              <a href="#how-it-works" className="block text-gray-300 hover:text-green-400">How It Works</a>
-              <a href="#features" className="block text-gray-300 hover:text-green-400">Features</a>
-              <a href="#for-venues" className="block text-gray-300 hover:text-green-400">For Venues</a>
-              <a href="#download" className="block text-gray-300 hover:text-green-400">Download</a>
+              <a href="#how-it-works" className="block text-gray-300 hover:text-green-400">איך זה עובד</a>
+              <a href="#features" className="block text-gray-300 hover:text-green-400">יתרונות</a>
+              <a href="#for-venues" className="block text-gray-300 hover:text-green-400">לבעלי מועדונים</a>
+              <a href="#download" className="block text-gray-300 hover:text-green-400">הורדה</a>
               <Link 
-                href="/he" 
+                href="/" 
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
               >
-                <span>🇮🇱</span>
-                <span>HE</span>
+                <span>🌐</span>
+                <span>EN</span>
               </Link>
-              <Link 
-                href="/join"
-                className="block w-full text-center px-6 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold"
-              >
-                📋 Join as Venue
-              </Link>
+              <Link href="/he/terms" className="block text-gray-300 hover:text-green-400">תנאי שימוש</Link>
               <Link 
                 href="/download"
                 className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold"
               >
-                Open App
+                פתח אפליקציה
               </Link>
             </div>
           )}
@@ -165,29 +146,29 @@ export default function LandingPage() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full mb-8 animate-fadeIn">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            <span className="text-green-400 text-sm font-medium">Real-Time Dating Revolution</span>
+            <span className="text-green-400 text-sm font-medium">✨ הכרויות בזמן אמת - פה ועכשיו ✨</span>
           </div>
 
           {/* Main Heading */}
           <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight animate-fadeInUp">
             <span className="bg-gradient-to-r from-white via-green-100 to-white bg-clip-text text-transparent">
-              She Decides.
+              היא בוחרת.
             </span>
             <br />
             <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
-              You Meet.
+              אתם נפגשים.
             </span>
             <br />
             <span className="text-white">
-              Right Now.
+              עכשיו.
             </span>
           </h1>
 
           {/* Subtitle */}
           <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-            No endless swiping. No fake profiles. 
+            בלי סוויפים אינסופיים. בלי פרופילים מזויפים.
             <br className="hidden md:block" />
-            Meet <span className="text-pink-400">real people</span> at real places within <span className="text-green-400 font-semibold">10-500 meters</span>.
+            פגשו <span className="text-pink-400">אנשים אמיתיים</span> במקומות אמיתיים במרחק <span className="text-green-400 font-semibold">10-500 מטר</span>.
           </p>
 
           {/* CTA Buttons */}
@@ -196,8 +177,8 @@ export default function LandingPage() {
               href="/download"
               className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-2"
             >
-              <span>Open App</span>
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span>פתח אפליקציה</span>
+              <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
@@ -205,7 +186,7 @@ export default function LandingPage() {
               href="#how-it-works"
               className="px-8 py-4 border-2 border-white/20 rounded-full font-bold text-lg hover:bg-white/10 transition-all"
             >
-              Learn More
+              למדו עוד
             </a>
           </div>
 
@@ -213,17 +194,17 @@ export default function LandingPage() {
           <div className="flex items-center justify-center gap-8 md:gap-16 mt-16 animate-fadeInUp" style={{animationDelay: '0.6s'}}>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-green-400">10m</div>
-              <div className="text-gray-500 text-sm">Min Distance</div>
+              <div className="text-gray-500 text-sm">מרחק מינימלי</div>
             </div>
             <div className="w-px h-12 bg-white/20"></div>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-green-400">500m</div>
-              <div className="text-gray-500 text-sm">Max Range</div>
+              <div className="text-gray-500 text-sm">טווח מקסימלי</div>
             </div>
             <div className="w-px h-12 bg-white/20"></div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-green-400">Real</div>
-              <div className="text-gray-500 text-sm">Time</div>
+              <div className="text-3xl md:text-4xl font-bold text-green-400">בזמן</div>
+              <div className="text-gray-500 text-sm">אמת</div>
             </div>
           </div>
         </div>
@@ -244,10 +225,10 @@ export default function LandingPage() {
           {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              How It <span className="text-green-400">Works</span>
+              איך זה <span className="text-green-400">עובד</span>
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Three simple steps to meet someone special nearby
+              שלושה צעדים פשוטים לפגוש מישהו מיוחד בקרבת מקום
             </p>
           </div>
 
@@ -260,16 +241,16 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
                   1
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Check In</h3>
+                <h3 className="text-2xl font-bold mb-4">צ'ק-אין</h3>
                 <p className="text-gray-400">
-                  Arrive at a participating venue - bar, cafe, or event. Scan the QR code to check in and go live.
+                  הגיעו למקום בילוי משתתף - בר, קפה, או אירוע. סרקו את הברקוד כדי להיכנס למערכת.
                 </p>
                 <div className="mt-6 flex items-center gap-2 text-green-400">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span className="text-sm">GPS Verified</span>
+                  <span className="text-sm">אימות GPS</span>
                 </div>
               </div>
             </div>
@@ -281,16 +262,16 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
                   2
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Discover</h3>
+                <h3 className="text-2xl font-bold mb-4">גלו</h3>
                 <p className="text-gray-400">
-                  See who's nearby within 10-500 meters. Real profiles, real photos, real people - right now.
+                  ראו מי נמצא בקרבת מקום ב-10-500 מטר. פרופילים אמיתיים, תמונות אמיתיות, אנשים אמיתיים - עכשיו.
                 </p>
                 <div className="mt-6 flex items-center gap-2 text-green-400">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
-                  <span className="text-sm">Verified Profiles</span>
+                  <span className="text-sm">פרופילים מאומתים</span>
                 </div>
               </div>
             </div>
@@ -302,15 +283,15 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
                   3
                 </div>
-                <h3 className="text-2xl font-bold mb-4">She Decides</h3>
+                <h3 className="text-2xl font-bold mb-4">היא בוחרת</h3>
                 <p className="text-gray-400">
-                  Women are in control. She chooses who to meet. If there's a match - you meet instantly. No waiting.
+                  נשים בשליטה. היא בוחרת את מי לפגוש, מתי ואיפה. אם יש התאמה - נפגשים מיד. בלי המתנה.
                 </p>
                 <div className="mt-6 flex items-center gap-2 text-green-400">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <span className="text-sm">Women First</span>
+                  <span className="text-sm">נשים קודם</span>
                 </div>
               </div>
             </div>
@@ -328,24 +309,24 @@ export default function LandingPage() {
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/20 border border-pink-500/30 rounded-full mb-6">
                 <span className="text-pink-400">👸</span>
-                <span className="text-pink-400 text-sm font-medium">Women First</span>
+                <span className="text-pink-400 text-sm font-medium">נשים קודם</span>
               </div>
               <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                She's in <span className="text-green-400">Control</span>
+                היא <span className="text-green-400">בשליטה</span>
               </h2>
               <p className="text-gray-400 text-lg mb-8">
-                Unlike other dating apps, I4IGUANA puts women in the driver's seat. 
-                She decides who she wants to meet, when, and where. 
-                No unwanted messages. No harassment. Just meaningful connections.
+                בניגוד לאפליקציות אחרות, I4IGUANA שמה את הנשים במושב הנהג.
+                היא מחליטה את מי לפגוש, מתי ואיפה.
+                בלי הודעות לא רצויות. בלי הטרדות. רק חיבורים משמעותיים.
               </p>
               
               <div className="space-y-4">
                 {[
-                  'Women initiate all conversations',
-                  'Safe, GPS-verified locations only',
-                  'Real-time presence - no catfishing',
-                  'Block & report with one tap',
-                  'Premium venues vetted for safety'
+                  'נשים יוזמות את כל השיחות',
+                  'מיקומים בטוחים ומאומתים GPS',
+                  'נוכחות בזמן אמת - בלי קטפישינג',
+                  'חסימה ודיווח בלחיצה אחת',
+                  'מקומות פרימיום מאומתים לבטיחות'
                 ].map((feature, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
@@ -378,8 +359,8 @@ export default function LandingPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                           </svg>
                         </div>
-                        <h3 className="text-white font-bold text-xl">It's a Match!</h3>
-                        <p className="text-green-400 text-sm mt-2">50 meters away</p>
+                        <h3 className="text-white font-bold text-xl">יש התאמה!</h3>
+                        <p className="text-green-400 text-sm mt-2">50 מטר משם</p>
                       </div>
                     </div>
                   </div>
@@ -397,72 +378,54 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5"></div>
         
         <div className="max-w-6xl mx-auto relative z-10">
+          {/* Section Header */}
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full mb-6">
-              <span className="text-emerald-400">🏢</span>
-              <span className="text-emerald-400 text-sm font-medium">For Venue Owners</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 border border-amber-500/30 rounded-full mb-6">
+              <span className="text-amber-400">🏢</span>
+              <span className="text-amber-400 text-sm font-medium">לבעלי מקומות בילוי</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Boost Your <span className="text-green-400">Business</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              הפכו את <span className="text-green-400">המקום שלכם</span>
+              <br />לנקודת מפגש!
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Partner with I4IGUANA and turn your venue into a premium dating destination.
-              Increase foot traffic and become the place where connections happen.
+              I4IGUANA מביאה לכם קהל חדש ואיכותי של רווקים שמחפשים לצאת ולהכיר
             </p>
           </div>
 
           {/* Benefits Grid */}
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-[#0d2920] border border-green-500/20 rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+          <div className="grid md:grid-cols-4 gap-6 mb-12">
+            {[
+              { emoji: '👥', title: 'קהל חדש', desc: 'משיכת רווקים איכותיים' },
+              { emoji: '📈', title: 'הגדלת תנועה', desc: 'יותר לקוחות למקום' },
+              { emoji: '🎯', title: 'שיווק ממוקד', desc: 'חשיפה באפליקציה' },
+              { emoji: '💰', title: 'ללא עלות', desc: 'שותפות WIN-WIN' },
+            ].map((item, i) => (
+              <div key={i} className="bg-[#0d2920] border border-green-500/20 rounded-2xl p-6 text-center hover:border-green-500/50 transition-all">
+                <div className="text-4xl mb-4">{item.emoji}</div>
+                <h3 className="font-bold text-lg mb-2">{item.title}</h3>
+                <p className="text-gray-400 text-sm">{item.desc}</p>
               </div>
-              <h3 className="text-xl font-bold mb-2">Featured Venue</h3>
-              <p className="text-gray-400 text-sm">Get premium placement on the app map and attract more visitors</p>
-            </div>
-
-            <div className="bg-[#0d2920] border border-green-500/20 rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">More Visibility</h3>
-              <p className="text-gray-400 text-sm">Users see your venue when they're nearby and ready to meet</p>
-            </div>
-
-            <div className="bg-[#0d2920] border border-green-500/20 rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Boost Revenue</h3>
-              <p className="text-gray-400 text-sm">Increase sales with a steady stream of dating customers</p>
-            </div>
+            ))}
           </div>
 
           {/* CTA Box */}
           <div className="bg-gradient-to-r from-[#0d2920] to-[#1a4d3e] border-2 border-green-500/30 rounded-3xl p-8 md:p-12 text-center">
             <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              Ready to Join? 🦎
+              רוצים להצטרף? 🦎
             </h3>
             <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-              Fill out the form and our team will contact you within 24-48 hours
+              מלאו את הטופס ונציג שלנו יצור איתכם קשר תוך 24-48 שעות
             </p>
             <Link 
-              href="/join"
+              href="/join?lang=he"
               className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all"
             >
               <span>📝</span>
-              <span>Fill Out Join Form</span>
+              <span>מלאו טופס הצטרפות</span>
             </Link>
             <p className="text-gray-500 text-sm mt-4">
-              Or email us: <a href="mailto:venues@i4iguana.com" className="text-green-400 hover:underline">venues@i4iguana.com</a>
+              או שלחו מייל ל: <a href="mailto:venues@i4iguana.com" className="text-green-400 hover:underline">venues@i4iguana.com</a>
             </p>
           </div>
         </div>
@@ -471,17 +434,14 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* DOWNLOAD SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <section id="download" className="py-24 px-6 relative overflow-hidden">
-        {/* Background Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5"></div>
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10">
+      <section id="download" className="py-24 px-6 bg-[#0d2920]">
+        <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Ready to <span className="text-green-400">Meet?</span>
+            מוכנים <span className="text-green-400">להיפגש?</span>
           </h2>
           <p className="text-gray-400 text-lg mb-10 max-w-2xl mx-auto">
-            Download I4IGUANA now and start meeting real people at real places. 
-            Your next connection is just meters away.
+            הורידו את I4IGUANA עכשיו והתחילו לפגוש אנשים אמיתיים במקומות אמיתיים.
+            החיבור הבא שלכם במרחק מטרים בודדים.
           </p>
 
           {/* App Buttons */}
@@ -493,7 +453,7 @@ export default function LandingPage() {
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17.9 17.39c-.26.8-.78 1.49-1.4 2.1-1.02 1.02-2.43 1.51-3.82 1.51H6.05c-1.4 0-2.8-.49-3.82-1.51-1.01-1.02-1.51-2.43-1.51-3.82V6.05c0-1.4.49-2.8 1.51-3.82 1.02-1.02 2.43-1.51 3.82-1.51h6.63c1.4 0 2.8.49 3.82 1.51.62.62 1.14 1.3 1.4 2.1.24.73.28 1.52.28 2.28v8.5c0 .76-.04 1.55-.28 2.28zM12 6.21c-2.86 0-5.19 2.33-5.19 5.19s2.33 5.19 5.19 5.19 5.19-2.33 5.19-5.19-2.33-5.19-5.19-5.19z"/>
               </svg>
-              <div className="text-left">
+              <div className="text-right">
                 <div className="text-xs opacity-80">Android</div>
                 <div className="text-lg font-bold">Web App</div>
               </div>
@@ -506,7 +466,7 @@ export default function LandingPage() {
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
               </svg>
-              <div className="text-left">
+              <div className="text-right">
                 <div className="text-xs opacity-80">iOS</div>
                 <div className="text-lg font-bold">App Store</div>
               </div>
@@ -517,10 +477,10 @@ export default function LandingPage() {
           <div className="inline-block p-6 bg-white rounded-2xl">
             <img 
               src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.i4iguana.com/download&bgcolor=ffffff&color=0d2920"
-              alt="Scan to download"
+              alt="סרקו להורדה"
               className="w-36 h-36"
             />
-            <p className="text-gray-800 text-sm mt-2 font-medium">Scan to Open App</p>
+            <p className="text-gray-800 text-sm mt-2 font-medium">סרקו לפתיחת האפליקציה</p>
           </div>
         </div>
       </section>
@@ -528,24 +488,74 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* CONTACT SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <section id="contact" className="py-24 px-6 bg-[#0d2920]">
+      <section id="contact" className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-6">
-            Get in <span className="text-green-400">Touch</span>
+            צרו <span className="text-green-400">קשר</span>
           </h2>
-          <p className="text-gray-400 text-lg mb-8">
-            Have questions? Want to partner with us? We'd love to hear from you.
+          <p className="text-gray-400 text-lg mb-12">
+            יש שאלות? רוצים לשתף פעולה? נשמח לשמוע מכם.
           </p>
           
-          <a 
-            href="mailto:nir@i4iguana.com"
-            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            nir@i4iguana.com
-          </a>
+          {/* Founder Card */}
+          <div className="max-w-md mx-auto">
+            <div className="bg-gradient-to-br from-[#0d2920] to-[#1a4d3e] border border-green-500/30 rounded-3xl p-8 shadow-xl">
+              {/* Profile */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
+                  <img src="/notification-icon-192.png" alt="I4IGUANA" className="w-10 h-10" />
+                </div>
+                <div className="text-right">
+                  <h3 className="text-xl font-bold text-white">Nir Ram</h3>
+                  <p className="text-green-400">Founder & CEO</p>
+                </div>
+              </div>
+
+              {/* Company */}
+              <div className="mb-6 text-right">
+                <h4 className="text-2xl font-bold text-green-400">I4IGUANA</h4>
+                <p className="text-gray-400">Real-Time Dating Revolution</p>
+              </div>
+
+              {/* Contact Details */}
+              <div className="space-y-3 mb-6">
+                <a href="tel:+972522653170" className="flex items-center gap-3 text-gray-300 hover:text-green-400 transition-colors justify-end">
+                  <span>052-265-3170</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </a>
+                <a href="mailto:nir@i4iguana.com" className="flex items-center gap-3 text-gray-300 hover:text-green-400 transition-colors justify-end">
+                  <span>nir@i4iguana.com</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </a>
+                <a href="https://www.i4iguana.com" className="flex items-center gap-3 text-gray-300 hover:text-green-400 transition-colors justify-end">
+                  <span>i4iguana.com</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                </a>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="space-y-3">
+                <Link 
+                  href="/join?lang=he"
+                  className="block w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-bold text-center hover:shadow-lg hover:shadow-green-500/30 transition-all"
+                >
+                  📝 Join Now - Digital Form
+                </Link>
+                <a 
+                  href="tel:+972522653170"
+                  className="block w-full py-3 bg-white/10 border border-white/20 rounded-xl font-bold text-center hover:bg-white/20 transition-all"
+                >
+                  📞 Let's Talk Partnership
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -562,28 +572,28 @@ export default function LandingPage() {
                 <span className="text-xl font-bold">I4IGUANA</span>
               </div>
               <p className="text-gray-400 max-w-sm">
-                Real-time dating revolution. Meet real people at real places. 
-                She decides, you meet - instantly.
+                מהפכת ההכרויות בזמן אמת. פגשו אנשים אמיתיים במקומות אמיתיים.
+                היא בוחרת, אתם נפגשים - מיד.
               </p>
             </div>
 
             {/* Links */}
             <div>
-              <h4 className="font-bold mb-4">Product</h4>
+              <h4 className="font-bold mb-4">מוצר</h4>
               <div className="space-y-2">
-                <a href="#how-it-works" className="block text-gray-400 hover:text-green-400 transition-colors">How It Works</a>
-                <a href="#features" className="block text-gray-400 hover:text-green-400 transition-colors">Features</a>
-                <a href="#download" className="block text-gray-400 hover:text-green-400 transition-colors">Download</a>
+                <a href="#how-it-works" className="block text-gray-400 hover:text-green-400 transition-colors">איך זה עובד</a>
+                <a href="#features" className="block text-gray-400 hover:text-green-400 transition-colors">יתרונות</a>
+                <a href="#download" className="block text-gray-400 hover:text-green-400 transition-colors">הורדה</a>
               </div>
             </div>
 
             {/* Legal */}
             <div>
-              <h4 className="font-bold mb-4">Legal</h4>
+              <h4 className="font-bold mb-4">משפטי</h4>
               <div className="space-y-2">
-                <Link href="/terms" className="block text-gray-400 hover:text-green-400 transition-colors">Terms of Service</Link>
-                <Link href="/privacy" className="block text-gray-400 hover:text-green-400 transition-colors">Privacy Policy</Link>
-                <a href="#contact" className="block text-gray-400 hover:text-green-400 transition-colors">Contact</a>
+                <Link href="/he/terms" className="block text-gray-400 hover:text-green-400 transition-colors">תנאי שימוש</Link>
+                <Link href="/he/privacy" className="block text-gray-400 hover:text-green-400 transition-colors">מדיניות פרטיות</Link>
+                <a href="#contact" className="block text-gray-400 hover:text-green-400 transition-colors">צור קשר</a>
               </div>
             </div>
           </div>
@@ -591,12 +601,12 @@ export default function LandingPage() {
           {/* Bottom */}
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-sm">
-              © {new Date().getFullYear()} I4IGUANA. All rights reserved.
+              © {new Date().getFullYear()} I4IGUANA. כל הזכויות שמורות.
             </p>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <span>Made with</span>
+              <span>נוצר עם</span>
               <span className="text-pink-400 animate-pulse">💕</span>
-              <span>in Israel</span>
+              <span>בישראל</span>
             </div>
             <div className="flex items-center gap-4">
               <a href="#" className="text-gray-400 hover:text-green-400 transition-colors">
