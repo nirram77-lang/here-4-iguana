@@ -42,9 +42,10 @@ export default function LandingPage() {
               {/* Launch Pilot Button */}
               <Link 
                 href="#"
-                className="ml-4 px-4 py-2 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-bold text-black text-sm shadow-lg shadow-orange-500/50 animate-pulse hover:scale-105 transition-all"
+                className="ml-3 px-3 py-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-semibold text-black text-xs shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all whitespace-nowrap animate-shimmer"
+                style={{ backgroundSize: '200% 100%' }}
               >
-                🚀 Launch Pilot - Soon!
+                🚀 Pilot Soon
               </Link>
             </div>
 
@@ -624,6 +625,13 @@ export default function LandingPage() {
       {/* CUSTOM STYLES */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <style jsx global>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        .animate-shimmer {
+          animation: shimmer 3s ease-in-out infinite;
+        }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

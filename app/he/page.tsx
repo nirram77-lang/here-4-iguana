@@ -37,6 +37,15 @@ export default function HebrewLandingPage() {
               <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
                 I4IGUANA
               </span>
+              
+              {/* Launch Pilot Button */}
+              <Link 
+                href="#"
+                className="mr-3 px-3 py-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-semibold text-black text-xs shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all whitespace-nowrap animate-shimmer"
+                style={{ backgroundSize: '200% 100%' }}
+              >
+                🚀 פיילוט בקרוב
+              </Link>
             </div>
 
             {/* Desktop Menu */}
@@ -349,20 +358,13 @@ export default function HebrewLandingPage() {
                   {/* Notch */}
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl"></div>
                   
-                  {/* Screen Content */}
-                  <div className="absolute inset-4 top-8 bg-gradient-to-b from-[#0d2920] to-[#1a4d3e] rounded-[28px] overflow-hidden">
-                    {/* Match Animation */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
-                          <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                          </svg>
-                        </div>
-                        <h3 className="text-white font-bold text-xl">יש התאמה!</h3>
-                        <p className="text-green-400 text-sm mt-2">50 מטר משם</p>
-                      </div>
-                    </div>
+                  {/* Screen Content - Using match-screen.png */}
+                  <div className="absolute inset-4 top-8 rounded-[28px] overflow-hidden">
+                    <img 
+                      src="/match-screen.png" 
+                      alt="יש התאמה! - I4IGUANA"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 </div>
               </div>
@@ -633,6 +635,13 @@ export default function HebrewLandingPage() {
       {/* CUSTOM STYLES */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <style jsx global>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        .animate-shimmer {
+          animation: shimmer 3s ease-in-out infinite;
+        }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
