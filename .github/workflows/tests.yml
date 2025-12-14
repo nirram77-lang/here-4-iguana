@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 env:
-  APP_URL: https://i4iguana-app.vercel.app
+  APP_URL: https://i4iguana.com
   WEBSITE_URL: https://i4iguana.com
 
 jobs:
