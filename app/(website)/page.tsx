@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
@@ -17,9 +17,9 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden">
       
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* NAVIGATION */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrollY > 50 ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
       }`}>
@@ -40,6 +40,14 @@ export default function LandingPage() {
               </span>
             </div>
 
+              {/* Launch Pilot Button */}
+              <Link 
+                href="#"
+                className="ml-4 px-4 py-2 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-bold text-black text-sm shadow-lg shadow-orange-500/50 animate-pulse hover:scale-105 transition-all"
+              >
+                🚀 Launch Pilot - Soon!
+              </Link>
+
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-6">
               <a href="#how-it-works" className="text-gray-300 hover:text-green-400 transition-colors">How It Works</a>
@@ -54,7 +62,7 @@ export default function LandingPage() {
               >
                 <span className="absolute inset-0 rounded-full bg-white/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></span>
                 <span className="relative flex items-center gap-1.5">
-                  <span className="text-base">🇮🇱</span>
+                  <span className="text-base">נ‡®נ‡±</span>
                   <span>HE</span>
                 </span>
               </Link>
@@ -64,7 +72,7 @@ export default function LandingPage() {
                 href="/join"
                 className="px-5 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold hover:bg-green-500/10 transition-all flex items-center gap-2"
               >
-                <span>📋</span>
+                <span>נ“‹</span>
                 <span>Join as Venue</span>
               </Link>
               
@@ -101,14 +109,14 @@ export default function LandingPage() {
                 href="/he" 
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
               >
-                <span>🇮🇱</span>
+                <span>נ‡®נ‡±</span>
                 <span>HE</span>
               </Link>
               <Link 
                 href="/join"
                 className="block w-full text-center px-6 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold"
               >
-                📋 Join as Venue
+                נ“‹ Join as Venue
               </Link>
               <Link 
                 href="/download"
@@ -121,9 +129,9 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* HERO SECTION */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0">
@@ -135,10 +143,10 @@ export default function LandingPage() {
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
           
           {/* Floating Hearts */}
-          <div className="absolute bottom-0 left-[10%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '0s'}}>💕</div>
-          <div className="absolute bottom-0 left-[25%] text-pink-400/20 text-xl animate-floatHeart" style={{animationDelay: '2s'}}>💕</div>
-          <div className="absolute bottom-0 right-[15%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '4s'}}>💕</div>
-          <div className="absolute bottom-0 right-[35%] text-pink-400/20 text-lg animate-floatHeart" style={{animationDelay: '6s'}}>💕</div>
+          <div className="absolute bottom-0 left-[10%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '0s'}}>נ’•</div>
+          <div className="absolute bottom-0 left-[25%] text-pink-400/20 text-xl animate-floatHeart" style={{animationDelay: '2s'}}>נ’•</div>
+          <div className="absolute bottom-0 right-[15%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '4s'}}>נ’•</div>
+          <div className="absolute bottom-0 right-[35%] text-pink-400/20 text-lg animate-floatHeart" style={{animationDelay: '6s'}}>נ’•</div>
           
           {/* Radar Effect */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px]">
@@ -236,9 +244,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* HOW IT WORKS */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <section id="how-it-works" className="py-24 px-6 relative">
         <div className="max-w-6xl mx-auto">
           {/* Section Header */}
@@ -318,16 +326,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* FEATURES - WOMEN IN CONTROL */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <section id="features" className="py-24 px-6 bg-gradient-to-b from-[#0d2920] to-[#0a1f1a]">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Content */}
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/20 border border-pink-500/30 rounded-full mb-6">
-                <span className="text-pink-400">👸</span>
+                <span className="text-pink-400">נ‘¸</span>
                 <span className="text-pink-400 text-sm font-medium">Women First</span>
               </div>
               <h2 className="text-4xl md:text-5xl font-bold mb-6">
@@ -390,16 +398,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* FOR VENUE OWNERS */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <section id="for-venues" className="py-24 px-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5"></div>
         
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full mb-6">
-              <span className="text-emerald-400">🏢</span>
+              <span className="text-emerald-400">נ¢</span>
               <span className="text-emerald-400 text-sm font-medium">For Venue Owners</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
@@ -449,7 +457,7 @@ export default function LandingPage() {
           {/* CTA Box */}
           <div className="bg-gradient-to-r from-[#0d2920] to-[#1a4d3e] border-2 border-green-500/30 rounded-3xl p-8 md:p-12 text-center">
             <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              Ready to Join? 🦎
+              Ready to Join? נ¦
             </h3>
             <p className="text-gray-400 mb-8 max-w-xl mx-auto">
               Fill out the form and our team will contact you within 24-48 hours
@@ -458,7 +466,7 @@ export default function LandingPage() {
               href="/join"
               className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all"
             >
-              <span>📝</span>
+              <span>נ“</span>
               <span>Fill Out Join Form</span>
             </Link>
             <p className="text-gray-500 text-sm mt-4">
@@ -468,9 +476,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* DOWNLOAD SECTION */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <section id="download" className="py-24 px-6 relative overflow-hidden">
         {/* Background Effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5"></div>
@@ -525,9 +533,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* CONTACT SECTION */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <section id="contact" className="py-24 px-6 bg-[#0d2920]">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-6">
@@ -549,9 +557,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* FOOTER */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <footer className="py-12 px-6 border-t border-white/10">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-12">
@@ -591,11 +599,11 @@ export default function LandingPage() {
           {/* Bottom */}
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-sm">
-              © {new Date().getFullYear()} I4IGUANA. All rights reserved.
+              ֲ© {new Date().getFullYear()} I4IGUANA. All rights reserved.
             </p>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
               <span>Made with</span>
-              <span className="text-pink-400 animate-pulse">💕</span>
+              <span className="text-pink-400 animate-pulse">נ’•</span>
               <span>in Israel</span>
             </div>
             <div className="flex items-center gap-4">
@@ -619,9 +627,9 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* CUSTOM STYLES */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -659,3 +667,4 @@ export default function LandingPage() {
     </div>
   )
 }
+
