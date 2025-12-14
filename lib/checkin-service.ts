@@ -390,3 +390,162 @@ export async function verifyUserStillAtVenue(
     return { stillAtVenue: true, checkInData: null }
   }
 }
+
+/**
+ * ✅ NEW: Check in user by venue selection (no QR required!)
+ * This is the new flow for venue discovery feature
+ */
+export async function performCheckInBySelection(
+  userId: string,
+  venueId: string,
+  userLat: number,
+  userLng: number,
+  gpsAccuracy?: number
+): Promise<CheckInData> {
+  try {
+    console.log('🎯 Performing check-in by venue selection:', { userId, venueId })
+    
+    // Get venue details
+    const venue = await getVenue(venueId)
+    if (!venue) {
+      throw new Error('המועדון לא נמצא')
+    }
+    
+    if (!venue.active) {
+      throw new Error('המועדון אינו פעיל כרגע')
+    }
+    
+    // Calculate distance from venue
+    const distance = calculateDistance(
+      userLat,
+      userLng,
+      venue.location.latitude,
+      venue.location.longitude
+    )
+    
+    // Use venue's radius or default 500m
+    const venueRadius = venue.radius || 500
+    const GPS_GRACE_MARGIN = 100  // 100m grace for GPS inaccuracy
+    const effectiveRadius = venueRadius + GPS_GRACE_MARGIN + (gpsAccuracy || 0)
+    
+    console.log(`📍 Venue check-in location validation:`)
+    console.log(`   - User location: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`)
+    console.log(`   - Venue location: ${venue.location.latitude.toFixed(6)}, ${venue.location.longitude.toFixed(6)}`)
+    console.log(`   - Distance: ${distance.toFixed(0)}m`)
+    console.log(`   - Venue radius: ${venueRadius}m`)
+    console.log(`   - Effective radius (with grace): ${effectiveRadius.toFixed(0)}m`)
+    
+    // Validate distance
+    if (distance > effectiveRadius) {
+      const distanceKm = (distance / 1000).toFixed(1)
+      const radiusKm = (venueRadius / 1000).toFixed(1)
+      console.log(`❌ Too far from venue! ${distance.toFixed(0)}m > ${effectiveRadius.toFixed(0)}m`)
+      throw new Error(`אתה רחוק מדי מ-${venue.displayName}. קרב ל-${radiusKm} ק"מ מהמועדון כדי להיכנס (המרחק הנוכחי: ${distanceKm} ק"מ)`)
+    }
+    
+    console.log(`✅ Distance OK: ${distance.toFixed(0)}m <= ${effectiveRadius.toFixed(0)}m`)
+    
+    // Check if user is already checked in somewhere else
+    const currentStatus = await getUserCheckInStatus(userId)
+    if (currentStatus.isCheckedIn && currentStatus.checkInData?.venueId !== venueId) {
+      console.log(`🔄 User already checked in at ${currentStatus.checkInData?.venueName} - checking out first`)
+      await performCheckOut(userId, currentStatus.checkInData?.venueId)
+    }
+    
+    // Create check-in data
+    const now = Timestamp.now()
+    const expiresAt = Timestamp.fromMillis(Date.now() + CHECK_IN_DURATION)
+    
+    const checkInData: CheckInData = {
+      venueId: venue.id,
+      venueName: venue.name,
+      venueDisplayName: venue.displayName,
+      checkedInAt: now,
+      expiresAt,
+      location: {
+        latitude: venue.location.latitude,
+        longitude: venue.location.longitude
+      }
+    }
+    
+    // Update user document
+    await updateDoc(doc(db, 'users', userId), {
+      checkedInVenue: venueId,
+      checkInData,
+      lastCheckIn: now,
+      // Reset swipes on check-in - "Every day is a new game!"
+      swipedRight: [],
+      swipedLeft: []
+    })
+    
+    // ✅ NEW: Clear old matches cooldown when checking into NEW venue
+    // This allows users to meet again at different venues!
+    await clearMatchesCooldown(userId)
+    console.log('🔄 Matches cooldown cleared - fresh start at new venue!')
+    
+    console.log('🔄 Swipes reset for fresh matching!')
+    
+    // Add user to venue's checked-in list
+    await checkInUser(venueId, userId)
+    
+    console.log('✅ Check-in by selection successful:', venue.displayName)
+    
+    return checkInData
+    
+  } catch (error: any) {
+    console.error('❌ Error in check-in by selection:', error)
+    throw error
+  }
+}
+
+/**
+ * ✅ NEW: Clear all matches cooldown for a user
+ * This allows them to meet the same people again at different venues
+ */
+async function clearMatchesCooldown(userId: string): Promise<void> {
+  try {
+    const { collection, getDocs, deleteDoc, doc: firestoreDoc } = await import('firebase/firestore')
+    const { db: firebaseDb } = await import('@/lib/firebase')
+    
+    console.log(`🧹 Clearing matches cooldown for user: ${userId.substring(0, 8)}...`)
+    
+    // Get all matches involving this user
+    const matchesRef = collection(firebaseDb, 'matches')
+    const snapshot = await getDocs(matchesRef)
+    
+    let deletedCount = 0
+    
+    for (const matchDoc of snapshot.docs) {
+      const data = matchDoc.data()
+      const users = data.users as string[]
+      
+      // Check if this user is part of this match
+      if (users?.includes(userId)) {
+        await deleteDoc(firestoreDoc(firebaseDb, 'matches', matchDoc.id))
+        deletedCount++
+        console.log(`   🗑️ Deleted match: ${matchDoc.id}`)
+      }
+    }
+    
+    // Also clear active matches
+    const activeMatchesRef = collection(firebaseDb, 'activeMatches')
+    const activeSnapshot = await getDocs(activeMatchesRef)
+    
+    for (const matchDoc of activeSnapshot.docs) {
+      const data = matchDoc.data()
+      const users = data.users as string[]
+      
+      if (users?.includes(userId)) {
+        await deleteDoc(firestoreDoc(firebaseDb, 'activeMatches', matchDoc.id))
+        deletedCount++
+        console.log(`   🗑️ Deleted active match: ${matchDoc.id}`)
+      }
+    }
+    
+    console.log(`✅ Cleared ${deletedCount} matches for user`)
+    
+  } catch (error) {
+    console.error('❌ Error clearing matches cooldown:', error)
+    // Don't throw - this is not critical
+  }
+}

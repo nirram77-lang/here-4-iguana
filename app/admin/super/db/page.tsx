@@ -23,7 +23,9 @@ import {
   XCircle,
   Eye,
   RotateCcw,
-  QrCode
+  QrCode,
+  Pencil,
+  Mail
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { auth, db } from '@/lib/firebase'
@@ -103,6 +105,10 @@ export default function DatabaseManager() {
   const [showDeleted, setShowDeleted] = useState(false)
   const [showDummy, setShowDummy] = useState(true)
   const [activeFilter, setActiveFilter] = useState<'all' | 'real' | 'dummy' | 'deleted' | 'checkedIn' | 'premium' | 'matches' | 'chats'>('all')
+  
+  // ✅ NEW: Edit email modal state
+  const [editingUser, setEditingUser] = useState<{ uid: string; name: string; currentEmail: string } | null>(null)
+  const [newEmail, setNewEmail] = useState('')
 
   // Load admin and data
   useEffect(() => {
@@ -141,10 +147,12 @@ export default function DatabaseManager() {
       const usersData: UserData[] = []
       usersSnapshot.forEach(doc => {
         const data = doc.data()
+        // ✅ Check multiple possible email fields
+        const userEmail = data.email || data.authEmail || data.googleEmail || data.providerEmail || ''
         usersData.push({
           uid: doc.id,
-          email: data.email || '',
-          name: data.name || 'No Name',
+          email: userEmail,
+          name: data.name || data.displayName || 'No Name',
           gender: data.gender || 'Not Set',
           age: data.age || 0,
           photos: data.photos || [],
@@ -157,8 +165,8 @@ export default function DatabaseManager() {
           isDummy: data.isDummy === true || 
                    (data.name && data.name.toLowerCase().includes('dummy')) ||
                    (data.name && data.name.toLowerCase().includes('test')) ||
-                   (data.email && data.email.toLowerCase().includes('dummy')) ||
-                   (data.email && data.email.toLowerCase().includes('test@')) ||
+                   (userEmail && userEmail.toLowerCase().includes('dummy')) ||
+                   (userEmail && userEmail.toLowerCase().includes('test@')) ||
                    (!data.onboardingComplete && !data.photos?.length && !data.name),
           createdAt: data.createdAt,
           swipedRight: data.swipedRight || [],
@@ -307,19 +315,131 @@ export default function DatabaseManager() {
     }
   }
 
-  // Reset specific users by email
-  const resetUsersByEmail = async (emails: string[]) => {
-    const usersToReset = users.filter(u => emails.includes(u.email))
-    if (usersToReset.length === 0) {
-      alert('No users found with those emails')
+  // ✅ NEW: Update user email in Firestore
+  const updateUserEmail = async () => {
+    if (!editingUser || !newEmail.trim()) return
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(newEmail.trim())) {
+      alert('❌ Invalid email format!')
       return
     }
     
-    if (!confirm(`Reset ${usersToReset.length} users?\n${usersToReset.map(u => u.email).join('\n')}`)) return
-    
     setProcessing(true)
     try {
+      await updateDoc(doc(db, 'users', editingUser.uid), {
+        email: newEmail.trim().toLowerCase()
+      })
+      
+      console.log(`✅ Updated email for ${editingUser.name}: ${newEmail}`)
+      alert(`✅ Email updated!\n\n${editingUser.name}\n${editingUser.currentEmail || '(no email)'} → ${newEmail}`)
+      
+      // Close modal and reload data
+      setEditingUser(null)
+      setNewEmail('')
+      await loadAllData()
+    } catch (error) {
+      console.error('❌ Error updating email:', error)
+      alert('❌ Error updating email!')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  // Reset specific users by email
+  // ✅ EXACT test accounts to reset - UPDATED based on actual DB emails
+  const TEST_ACCOUNTS = [
+    'nir.ram77@gmail.com',      // Nir Ram (main)
+    'ramnir0555@gmail.com',     // אור Or (was niroram77)
+    'iguanabar2@gmail.com'      // Jacob (N) (was jango5432)
+  ]
+
+  const resetUsersByEmail = async (emails: string[]) => {
+    setProcessing(true)
+    try {
+      console.log('🔍 Searching for EXACT test accounts:', TEST_ACCOUNTS)
+      
+      const usersSnapshot = await getDocs(collection(db, 'users'))
+      const usersToReset: { uid: string; email: string; name: string }[] = []
+      const foundEmails: string[] = []
+      const notFoundEmails: string[] = [...TEST_ACCOUNTS]
+      
+      // ✅ Search for EXACT email matches - check multiple email fields!
+      usersSnapshot.forEach(doc => {
+        const data = doc.data()
+        // ✅ Check ALL possible email fields (same as loading)
+        const userEmail = (data.email || data.authEmail || data.googleEmail || data.providerEmail || '').toLowerCase().trim()
+        const userName = (data.name || data.displayName || '').toLowerCase()
+        
+        // Check if this is one of our test accounts by email
+        let isTestAccount = TEST_ACCOUNTS.some(testEmail => testEmail.toLowerCase() === userEmail)
+        
+        // ✅ FALLBACK: Also check by name for users with missing email
+        // Known test users: Nir Ram, אור Or, Jacob (N)
+        if (!isTestAccount && !userEmail) {
+          // Check if name matches known test user patterns
+          const lowerName = userName.toLowerCase()
+          if (lowerName === 'nir ram' ||
+              lowerName === 'nir r' ||
+              lowerName.includes('אור') ||
+              lowerName === 'or or' ||
+              lowerName.includes('jango') || 
+              lowerName === 'jacob (n)' ||
+              lowerName === 'jacob') {
+            isTestAccount = true
+            console.log(`⚠️ Found by NAME (no email): ${data.name} - UID: ${doc.id}`)
+          }
+        }
+        
+        if (isTestAccount) {
+          // Avoid duplicates
+          if (!usersToReset.some(u => u.uid === doc.id)) {
+            usersToReset.push({
+              uid: doc.id,
+              email: userEmail || '⚠️ NO EMAIL',
+              name: data.name || data.displayName || 'Unknown'
+            })
+            if (userEmail) {
+              foundEmails.push(userEmail)
+              const idx = notFoundEmails.findIndex(e => e.toLowerCase() === userEmail)
+              if (idx > -1) notFoundEmails.splice(idx, 1)
+            }
+            console.log(`✅ Found: ${data.name} (${userEmail || 'NO EMAIL'}) - UID: ${doc.id}`)
+          }
+        }
+      })
+      
+      // ✅ Show detailed status - which accounts found, which not
+      let statusMsg = `🔍 Search Results:\n\n`
+      statusMsg += `✅ Found ${usersToReset.length}/${TEST_ACCOUNTS.length} accounts:\n`
+      usersToReset.forEach((u, i) => {
+        statusMsg += `   ${i+1}. ${u.name} (${u.email})\n`
+      })
+      
+      if (notFoundEmails.length > 0) {
+        statusMsg += `\n❌ Not found in database:\n`
+        notFoundEmails.forEach(e => {
+          statusMsg += `   • ${e}\n`
+        })
+      }
+      
+      if (usersToReset.length === 0) {
+        alert(statusMsg + '\n\n⚠️ No accounts to reset!')
+        setProcessing(false)
+        return
+      }
+      
+      statusMsg += `\n🔄 Reset these ${usersToReset.length} account(s)?`
+      
+      if (!confirm(statusMsg)) {
+        setProcessing(false)
+        return
+      }
+      
       for (const user of usersToReset) {
+        console.log(`🔄 Resetting user: ${user.name} (${user.uid})`)
+        
         // Reset user document
         await updateDoc(doc(db, 'users', user.uid), {
           swipedRight: [],
@@ -334,6 +454,7 @@ export default function DatabaseManager() {
         for (const match of matches) {
           if (match.users.includes(user.uid)) {
             await deleteDoc(doc(db, 'matches', match.id))
+            console.log(`🗑️ Deleted match: ${match.id}`)
           }
         }
         
@@ -341,8 +462,9 @@ export default function DatabaseManager() {
         const activeMatchesSnapshot = await getDocs(collection(db, 'activeMatches'))
         for (const matchDoc of activeMatchesSnapshot.docs) {
           const data = matchDoc.data()
-          if (data.users?.includes(user.uid)) {
+          if (data.users?.includes(user.uid) || matchDoc.id.includes(user.uid)) {
             await deleteDoc(doc(db, 'activeMatches', matchDoc.id))
+            console.log(`🗑️ Deleted active match: ${matchDoc.id}`)
           }
         }
         
@@ -350,15 +472,31 @@ export default function DatabaseManager() {
         for (const chat of chats) {
           if (chat.participants.includes(user.uid)) {
             await deleteDoc(doc(db, 'chats', chat.id))
+            console.log(`🗑️ Deleted chat: ${chat.id}`)
           }
         }
       }
       
       await loadAllData()
-      alert(`✅ Reset ${usersToReset.length} users successfully!`)
+      
+      // ✅ Detailed success message
+      let successMsg = `✅ RESET COMPLETE!\n\n`
+      successMsg += `📊 ${usersToReset.length}/${TEST_ACCOUNTS.length} accounts reset:\n\n`
+      usersToReset.forEach((u, i) => {
+        successMsg += `${i+1}. ✅ ${u.name}\n   📧 ${u.email}\n\n`
+      })
+      
+      if (notFoundEmails.length > 0) {
+        successMsg += `⚠️ Not in database:\n`
+        notFoundEmails.forEach(e => {
+          successMsg += `   • ${e}\n`
+        })
+      }
+      
+      alert(successMsg)
     } catch (error) {
       console.error('❌ Error resetting users:', error)
-      alert('Failed to reset users')
+      alert(`Failed to reset users: ${error}`)
     } finally {
       setProcessing(false)
     }
@@ -607,7 +745,7 @@ export default function DatabaseManager() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d2920] via-[#1a4d3e] to-[#0d2920]">
+    <div className="fixed inset-0 overflow-y-auto bg-gradient-to-br from-[#0d2920] via-[#1a4d3e] to-[#0d2920]">
       {/* Header */}
       <div className="bg-[#0d2920]/80 backdrop-blur-md border-b-2 border-[#4ade80]/30 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -732,27 +870,28 @@ export default function DatabaseManager() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
           {(['users', 'matches', 'chats', 'phones', 'cleanup'] as const).map(tab => (
-            <Button
+            <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              variant={activeTab === tab ? 'default' : 'outline'}
-              className={activeTab === tab 
-                ? 'bg-[#4ade80] text-[#0d2920] font-bold' 
-                : 'border-[#4ade80]/30 text-white hover:bg-[#4ade80]/20'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                activeTab === tab 
+                  ? 'bg-[#4ade80] text-[#0d2920] font-bold' 
+                  : 'bg-white/10 border border-[#4ade80]/30 text-white hover:bg-[#4ade80]/20'
+              }`}
             >
-              {tab === 'users' && <Users className="mr-2 h-4 w-4" />}
-              {tab === 'matches' && <Heart className="mr-2 h-4 w-4" />}
-              {tab === 'chats' && <MessageSquare className="mr-2 h-4 w-4" />}
-              {tab === 'phones' && <Shield className="mr-2 h-4 w-4" />}
-              {tab === 'cleanup' && <Trash2 className="mr-2 h-4 w-4" />}
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Button>
+              {tab === 'users' && <Users className="h-4 w-4" />}
+              {tab === 'matches' && <Heart className="h-4 w-4" />}
+              {tab === 'chats' && <MessageSquare className="h-4 w-4" />}
+              {tab === 'phones' && <Shield className="h-4 w-4" />}
+              {tab === 'cleanup' && <Trash2 className="h-4 w-4" />}
+              <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+            </button>
           ))}
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 pb-8">
+      <div className="max-w-7xl mx-auto px-6 pb-24">
         
         {/* USERS TAB */}
         {activeTab === 'users' && (
@@ -812,12 +951,12 @@ export default function DatabaseManager() {
               )}
               
               <Button
-                onClick={() => resetUsersByEmail(['niroram77@gmail.com', 'jango5432@gmail.com'])}
+                onClick={() => resetUsersByEmail(TEST_ACCOUNTS)}
                 disabled={processing}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
-                Reset Nir & Jango
+                Reset 3 Test Users
               </Button>
               <Button
                 onClick={deleteAllDummy}
@@ -846,6 +985,7 @@ export default function DatabaseManager() {
                   <thead>
                     <tr className="bg-[#4ade80]/10 text-left">
                       <th className="px-4 py-3 text-white font-bold">User</th>
+                      <th className="px-4 py-3 text-white font-bold">Email</th>
                       <th className="px-4 py-3 text-white font-bold">Gender</th>
                       <th className="px-4 py-3 text-white font-bold">Age</th>
                       <th className="px-4 py-3 text-white font-bold">Age Range</th>
@@ -867,9 +1007,15 @@ export default function DatabaseManager() {
                         <td className="px-4 py-3">
                           <div>
                             <div className="text-white font-medium">{user.name}</div>
-                            <div className="text-white/50 text-xs">{user.email}</div>
                             <div className="text-white/30 text-xs font-mono">{user.uid.substring(0, 12)}...</div>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {user.email ? (
+                            <div className="text-white/70 text-xs">{user.email}</div>
+                          ) : (
+                            <span className="text-red-400/60 text-xs">⚠️ No email</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded text-xs font-bold ${
@@ -907,6 +1053,18 @@ export default function DatabaseManager() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
+                            <Button
+                              onClick={() => {
+                                setEditingUser({ uid: user.uid, name: user.name, currentEmail: user.email })
+                                setNewEmail(user.email || '')
+                              }}
+                              size="sm"
+                              variant="ghost"
+                              className="text-amber-400 hover:bg-amber-500/20 h-8 w-8 p-0"
+                              title="Edit Email"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
                             <Button
                               onClick={() => resetUser(user.uid)}
                               size="sm"
@@ -1121,14 +1279,17 @@ export default function DatabaseManager() {
                   Reset Test Users
                 </h3>
                 <p className="text-white/60 text-sm mb-4">
-                  Reset niroram77@gmail.com and jango5432@gmail.com to fresh state (clear swipes, matches, chats)
+                  Reset 3 test accounts to fresh state (clear swipes, matches, chats):
+                  <br />• nir.ram77@gmail.com
+                  <br />• niroram77@gmail.com  
+                  <br />• jango5432@gmail.com
                 </p>
                 <Button
-                  onClick={() => resetUsersByEmail(['niroram77@gmail.com', 'jango5432@gmail.com'])}
+                  onClick={() => resetUsersByEmail(TEST_ACCOUNTS)}
                   disabled={processing}
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
-                  {processing ? 'Processing...' : 'Reset Nir & Jango'}
+                  {processing ? 'Processing...' : 'Reset 3 Test Users'}
                 </Button>
               </div>
 
@@ -1243,6 +1404,64 @@ export default function DatabaseManager() {
           </div>
         )}
       </div>
+      
+      {/* ✅ Edit Email Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#1a4d3e] to-[#0d2920] rounded-2xl p-6 max-w-md w-full border-2 border-[#4ade80]/30 shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Mail className="h-5 w-5 text-[#4ade80]" />
+              Edit User Email
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-white/70 text-sm mb-1">User</p>
+                <p className="text-white font-medium">{editingUser.name}</p>
+              </div>
+              
+              <div>
+                <p className="text-white/70 text-sm mb-1">Current Email</p>
+                <p className={`font-mono ${editingUser.currentEmail ? 'text-white' : 'text-red-400'}`}>
+                  {editingUser.currentEmail || '⚠️ No email set'}
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-white/70 text-sm mb-1">New Email</p>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="Enter new email address..."
+                  className="w-full bg-black/30 border border-[#4ade80]/30 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:border-[#4ade80] focus:outline-none"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={() => {
+                  setEditingUser(null)
+                  setNewEmail('')
+                }}
+                variant="outline"
+                className="flex-1 border-white/30 text-white hover:bg-white/10"
+                disabled={processing}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={updateUserEmail}
+                className="flex-1 bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold"
+                disabled={processing || !newEmail.trim()}
+              >
+                {processing ? 'Saving...' : 'Save Email'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

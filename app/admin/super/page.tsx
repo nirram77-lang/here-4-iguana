@@ -15,7 +15,8 @@ import {
   LogOut,
   Bell,
   RefreshCw,
-  FileText
+  FileText,
+  Flag
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -109,6 +110,7 @@ export default function SuperAdminPanel() {
   const [searchTerm, setSearchTerm] = useState('')
   const [cleaning, setCleaning] = useState(false)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+  const [pendingReportsCount, setPendingReportsCount] = useState(0)
   
   // Listen for pending venue requests
   useEffect(() => {
@@ -119,6 +121,20 @@ export default function SuperAdminPanel() {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setPendingRequestsCount(snapshot.size)
+    })
+    
+    return () => unsubscribe()
+  }, [])
+
+  // Listen for pending reports
+  useEffect(() => {
+    const q = query(
+      collection(db, 'reports'),
+      where('status', '==', 'pending')
+    )
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPendingReportsCount(snapshot.size)
     })
     
     return () => unsubscribe()
@@ -286,6 +302,20 @@ export default function SuperAdminPanel() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Reports Button with Badge */}
+              <Button
+                onClick={() => router.push('/admin/super/reports')}
+                variant="outline"
+                className="border-red-500/50 text-red-400 hover:bg-red-500/20 relative"
+              >
+                <Flag className="mr-2 h-5 w-5" />
+                Reports
+                {pendingReportsCount > 0 && (
+                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {pendingReportsCount}
+                  </span>
+                )}
+              </Button>
               {/* Venue Requests Button with Badge */}
               <Button
                 onClick={() => router.push('/admin/super/requests')}

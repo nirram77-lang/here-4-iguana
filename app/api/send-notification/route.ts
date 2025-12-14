@@ -3,6 +3,8 @@
  * 
  * This API route sends push notifications to users through OneSignal.
  * Called from the client when creating matches, sending messages, etc.
+ * 
+ * ⚠️ CRITICAL: Requires ONESIGNAL_REST_API_KEY environment variable!
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -26,27 +28,43 @@ interface NotificationRequest {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('═══════════════════════════════════════════════════')
+  console.log('📤 PUSH NOTIFICATION API CALLED')
+  console.log('═══════════════════════════════════════════════════')
+  
   try {
     const body: NotificationRequest = await request.json()
     
-    console.log('📤 Sending push notification:', body)
+    console.log('📦 Request body:', JSON.stringify(body, null, 2))
     
     // Validate required fields
     if (!body.targetUserId || !body.title || !body.message) {
+      console.error('❌ Missing required fields!')
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields', received: { targetUserId: !!body.targetUserId, title: !!body.title, message: !!body.message } },
         { status: 400 }
       )
     }
     
-    // Check for API key
+    // ⚠️ CRITICAL CHECK: API key must be configured
     if (!ONESIGNAL_REST_API_KEY) {
-      console.error('❌ ONESIGNAL_REST_API_KEY not configured!')
+      console.error('═══════════════════════════════════════════════════')
+      console.error('❌ CRITICAL ERROR: ONESIGNAL_REST_API_KEY NOT SET!')
+      console.error('═══════════════════════════════════════════════════')
+      console.error('Please add ONESIGNAL_REST_API_KEY to Vercel environment variables!')
+      console.error('Get it from: https://onesignal.com/dashboard → Settings → Keys & IDs')
+      console.error('═══════════════════════════════════════════════════')
       return NextResponse.json(
-        { error: 'Push notifications not configured' },
+        { 
+          error: 'ONESIGNAL_REST_API_KEY not configured!',
+          help: 'Add ONESIGNAL_REST_API_KEY to Vercel environment variables. Get it from OneSignal Dashboard → Settings → Keys & IDs'
+        },
         { status: 500 }
       )
     }
+    
+    console.log('✅ API Key configured (starts with:', ONESIGNAL_REST_API_KEY.substring(0, 8) + '...)')
+    console.log('🎯 Target user:', body.targetUserId)
     
     // Build OneSignal notification payload
     const notificationPayload = {
@@ -66,14 +84,19 @@ export async function POST(request: NextRequest) {
       // iOS specific
       ios_badgeType: "Increase",
       ios_badgeCount: 1,
-      // Android specific
+      // Android specific  
       android_channel_id: "default",
-      // Icon
+      // Icons
       small_icon: "notification_icon",
-      large_icon: body.data?.fromUserPhoto || "",
+      chrome_web_icon: "https://i4iguana.com/notification-icon-192.png",
+      firefox_icon: "https://i4iguana.com/notification-icon-192.png",
       // URL to open when clicked
-      url: "https://i4iguana.com/app"
+      url: "https://i4iguana.com/app",
+      web_url: "https://i4iguana.com/app"
     }
+    
+    console.log('📤 Sending to OneSignal API...')
+    console.log('📦 Payload:', JSON.stringify(notificationPayload, null, 2))
     
     // Send to OneSignal API
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
@@ -87,15 +110,31 @@ export async function POST(request: NextRequest) {
     
     const result = await response.json()
     
+    console.log('📨 OneSignal Response Status:', response.status)
+    console.log('📨 OneSignal Response:', JSON.stringify(result, null, 2))
+    
     if (!response.ok) {
-      console.error('❌ OneSignal API error:', result)
+      console.error('❌ OneSignal API error!')
+      console.error('Status:', response.status)
+      console.error('Result:', result)
+      
+      // Check for common errors
+      if (result.errors && result.errors.includes('All included players are not subscribed')) {
+        console.warn('⚠️ User not subscribed to push notifications!')
+        console.warn('User needs to: 1) Allow notifications in browser, 2) Have OneSignal.login() called with their userId')
+      }
+      
       return NextResponse.json(
         { error: 'Failed to send notification', details: result },
         { status: response.status }
       )
     }
     
-    console.log('✅ Push notification sent:', result)
+    console.log('═══════════════════════════════════════════════════')
+    console.log('✅ PUSH NOTIFICATION SENT SUCCESSFULLY!')
+    console.log('   Notification ID:', result.id)
+    console.log('   Recipients:', result.recipients)
+    console.log('═══════════════════════════════════════════════════')
     
     return NextResponse.json({
       success: true,
@@ -104,9 +143,12 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('❌ Error sending notification:', error)
+    console.error('═══════════════════════════════════════════════════')
+    console.error('❌ ERROR IN SEND-NOTIFICATION API!')
+    console.error('Error:', error)
+    console.error('═══════════════════════════════════════════════════')
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

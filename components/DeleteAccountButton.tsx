@@ -67,12 +67,19 @@ export default function DeleteAccountButton() {
         'hasScannedQR',
         'i4iguana_checkin',
         'lastVenueId',
-        'i4iguana_phone_verified'
+        'i4iguana_phone_verified',
+        'i4iguana_onboarding_data',
+        'googleDisplayName',
+        'pendingCheckIn'
       ];
       keysToRemove.forEach(key => {
         localStorage.removeItem(key);
         console.log(`   ✓ Removed: ${key}`);
       });
+      
+      // ✅ Also clear sessionStorage
+      sessionStorage.clear();
+      console.log('   ✓ sessionStorage cleared');
       
       // ✅ NEW: Logout from OneSignal (unlink device from this user)
       try {

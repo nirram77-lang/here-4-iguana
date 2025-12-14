@@ -51,6 +51,39 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* 🛡️ PREVENT GOOGLE DICTIONARY / TEXT SELECTION POPUP */}
+        <Script id="prevent-text-selection" strategy="beforeInteractive">
+          {`
+            (function() {
+              // Prevent text selection globally (except in input/textarea)
+              document.addEventListener('selectstart', function(e) {
+                var tagName = e.target.tagName.toLowerCase();
+                if (tagName !== 'input' && tagName !== 'textarea') {
+                  e.preventDefault();
+                }
+              });
+              
+              // Prevent context menu (long press)
+              document.addEventListener('contextmenu', function(e) {
+                var tagName = e.target.tagName.toLowerCase();
+                if (tagName !== 'input' && tagName !== 'textarea') {
+                  e.preventDefault();
+                }
+              });
+              
+              // Prevent copy on non-input elements
+              document.addEventListener('copy', function(e) {
+                var tagName = e.target.tagName.toLowerCase();
+                if (tagName !== 'input' && tagName !== 'textarea') {
+                  e.preventDefault();
+                }
+              });
+              
+              console.log('🛡️ Text selection prevention enabled');
+            })();
+          `}
+        </Script>
+        
         {/* Auto Cache Clear on Version Change */}
         <Script id="cache-clear" strategy="beforeInteractive">
           {`
@@ -219,7 +252,21 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="I4IGUANA" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={inter.className} style={{ overscrollBehavior: 'none', overscrollBehaviorY: 'none' }}>
+      <body 
+        className={inter.className} 
+        style={{ 
+          overscrollBehavior: 'none', 
+          overscrollBehaviorY: 'none',
+          WebkitUserSelect: 'none',
+          MozUserSelect: 'none',
+          msUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          // ✅ NOTE: overflow/position removed - app has its own lock in app/app/page.tsx
+          touchAction: 'manipulation',
+        }}
+      >
         {/* ✅ CRITICAL: HTML Splash Screen - Shows IMMEDIATELY before React loads */}
         <div 
           id="html-splash" 

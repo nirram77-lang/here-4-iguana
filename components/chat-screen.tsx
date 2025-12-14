@@ -3,20 +3,25 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Send, MapPin, Clock, MoreVertical, CheckCheck, Heart } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { ArrowLeft, Send, MapPin, Clock, MoreVertical, CheckCheck, Heart, X, Flag, UserX, AlertTriangle, Camera, Image as ImageIcon, Eye, EyeOff } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   sendMessage, 
   listenToChatMessages, 
   markMessagesAsRead,
-  ChatMessage 
+  ChatMessage,
+  uploadChatImage,
+  sendImageMessage,
+  markImageAsViewed
 } from "@/lib/chat-system"
 import { 
   setTypingStatus, 
   subscribeToTypingStatus 
 } from "@/lib/chat-service"
 import { auth, db } from "@/lib/firebase"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, collection, addDoc, arrayUnion, serverTimestamp, deleteDoc } from "firebase/firestore"
+import { GA } from "@/lib/ga-events"
 
 interface ChatScreenProps {
   matchId: string
@@ -43,7 +48,11 @@ interface DisplayMessage {
   sender: "me" | "them"
   timestamp: Date
   status?: "sent" | "delivered" | "read"
-  likedBy?: string[]  // ✅ NEW: Array of user IDs who liked this message
+  likedBy?: string[]  // Array of user IDs who liked this message
+  // ✅ NEW: Image support
+  imageUrl?: string
+  imageType?: 'normal' | 'view-once'
+  imageViewed?: boolean
 }
 
 export default function ChatScreen({ 
@@ -67,6 +76,18 @@ export default function ChatScreen({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)  // ✨ NEW: For debouncing typing status
+  
+  // 🚨 REPORT & BLOCK
+  const [showMenuDropdown, setShowMenuDropdown] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportData, setReportData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    description: ''
+  })
+  const [reportSubmitting, setReportSubmitting] = useState(false)
+  const [reportSuccess, setReportSuccess] = useState(false)
   
   // 🔊 SOUND - Multiple attempts to ensure it works!
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -176,7 +197,11 @@ useEffect(() => {
         sender: msg.senderId === currentUserId ? "me" : "them",
         timestamp: msg.timestamp?.toDate() || new Date(),
         status: msg.status || "sent",
-        likedBy: msg.likedBy || []  // ✅ NEW: Load likes from Firestore
+        likedBy: msg.likedBy || [],
+        // 📸 Image fields
+        imageUrl: msg.imageUrl,
+        imageType: msg.imageType,
+        imageViewed: msg.imageViewed
       }))
       
       setMessages(displayMessages)
@@ -235,6 +260,136 @@ useEffect(() => {
     }
   }, [matchId, currentUserId])
 
+  // 🚨 BLOCK & REPORT FUNCTIONS
+  const handleBlockAndReport = () => {
+    setShowMenuDropdown(false)
+    setShowReportModal(true)
+    // Pre-fill reporter info if available
+    if (currentUser?.name) {
+      setReportData(prev => ({ ...prev, name: currentUser.name }))
+    }
+  }
+
+  // Email validation helper
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const handleSubmitReport = async () => {
+    // Validate required fields
+    if (!reportData.email.trim()) {
+      alert('Please enter your email address')
+      return
+    }
+    
+    if (!isValidEmail(reportData.email)) {
+      alert('Please enter a valid email address')
+      return
+    }
+    
+    if (!reportData.description.trim()) {
+      alert('Please describe the issue')
+      return
+    }
+
+    setReportSubmitting(true)
+
+    try {
+      // Get reporter's full profile from Firebase
+      let reporterProfile: any = null
+      try {
+        const reporterDoc = await getDoc(doc(db, 'users', currentUserId))
+        if (reporterDoc.exists()) {
+          reporterProfile = reporterDoc.data()
+        }
+      } catch (e) {
+        console.log('⚠️ Could not load reporter profile:', e)
+      }
+
+      // Get reported user's full profile from Firebase
+      let reportedProfile: any = null
+      try {
+        const reportedDoc = await getDoc(doc(db, 'users', otherUserId))
+        if (reportedDoc.exists()) {
+          reportedProfile = reportedDoc.data()
+        }
+      } catch (e) {
+        console.log('⚠️ Could not load reported profile:', e)
+      }
+
+      // 1. Save report to Firestore with full details
+      await addDoc(collection(db, 'reports'), {
+        // Reporter details (who is reporting)
+        reporterId: currentUserId,
+        reporterName: reportData.name || reporterProfile?.name || 'Unknown',
+        reporterEmail: reportData.email,
+        reporterPhone: reportData.phone || '',
+        reporterFirebaseEmail: reporterProfile?.email || null,
+        reporterGender: reporterProfile?.gender || null,
+        reporterAge: reporterProfile?.age || null,
+        reporterPhoto: reporterProfile?.photos?.[0] || reporterProfile?.photoURL || null,
+        
+        // Reported user details (who is being reported)
+        reportedUserId: otherUserId,
+        reportedUserName: reportedProfile?.name || matchUser.name || 'Unknown',
+        reportedUserEmail: reportedProfile?.email || null,
+        reportedUserPhone: reportedProfile?.phoneNumber || null,
+        reportedUserGender: reportedProfile?.gender || null,
+        reportedUserAge: reportedProfile?.age || null,
+        reportedUserPhoto: reportedProfile?.photos?.[0] || reportedProfile?.photoURL || null,
+        reportedUserBio: reportedProfile?.bio || null,
+        
+        // Match context
+        matchId: matchId,
+        
+        // Report content
+        description: reportData.description,
+        
+        // Metadata
+        timestamp: serverTimestamp(),
+        status: 'pending'
+      })
+
+      // 2. Block the user - add to swipedLeft (like PASS)
+      const userRef = doc(db, 'users', currentUserId)
+      await updateDoc(userRef, {
+        swipedLeft: arrayUnion(otherUserId)
+      })
+
+      // 3. Remove from matches
+      await updateDoc(userRef, {
+        matches: arrayUnion() // This won't add anything, we need to filter
+      })
+
+      // 4. Delete the active match
+      try {
+        const activeMatchRef = doc(db, 'activeMatches', matchId)
+        await deleteDoc(activeMatchRef)
+        console.log('✅ Active match deleted')
+      } catch (e) {
+        console.log('⚠️ Could not delete active match:', e)
+      }
+
+      console.log('✅ Report submitted and user blocked')
+      setReportSuccess(true)
+
+      // Close modal and go back after 2 seconds
+      setTimeout(() => {
+        setShowReportModal(false)
+        setReportSuccess(false)
+        setReportData({ name: '', email: '', phone: '', description: '' })
+        onBack()
+      }, 2000)
+
+    } catch (error) {
+      console.error('❌ Error submitting report:', error)
+      alert('Failed to submit report. Please try again.')
+    } finally {
+      setReportSubmitting(false)
+    }
+  }
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -249,6 +404,164 @@ useEffect(() => {
 
   // ❤️ NEW: Toggle like on a message
   const [likeAnimations, setLikeAnimations] = useState<{[key: string]: boolean}>({})
+  
+  // 📸 NEW: Image messaging state
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [showImageOptions, setShowImageOptions] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [viewOnceEnabled, setViewOnceEnabled] = useState(false)
+  const [viewingImage, setViewingImage] = useState<{url: string, messageId: string, isViewOnce: boolean} | null>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  
+  // 📸 Handle image selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📸 handleImageSelect called')
+    const file = e.target.files?.[0]
+    
+    if (!file) {
+      console.log('📸 No file selected')
+      return
+    }
+    
+    console.log('📸 File selected:', file.name)
+    console.log('   Type:', file.type)
+    console.log('   Size:', file.size, 'bytes')
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      console.log('❌ File too large!')
+      alert('התמונה גדולה מדי. מקסימום 5MB')
+      return
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      console.log('❌ Not an image file!')
+      alert('יש לבחור קובץ תמונה בלבד')
+      return
+    }
+    
+    setSelectedImage(file)
+    
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      console.log('📸 Image preview ready - opening modal NOW')
+      setImagePreview(reader.result as string)
+      // ✅ CRITICAL FIX: Only show modal AFTER preview is ready!
+      setShowImageOptions(true)
+      console.log('📸 Modal should be visible now!')
+    }
+    reader.onerror = () => {
+      console.error('❌ Error reading file')
+      alert('שגיאה בקריאת הקובץ')
+    }
+    reader.readAsDataURL(file)
+    // ❌ REMOVED: setShowImageOptions(true) - was called too early!
+    console.log('📸 Reading file...')
+  }
+  
+  // 📸 Cancel image selection
+  const cancelImageSelection = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+    setShowImageOptions(false)
+    setViewOnceEnabled(false)
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
+  }
+  
+  // 📸 Send the selected image
+  const sendSelectedImage = async () => {
+    console.log('📸 sendSelectedImage called')
+    console.log('   selectedImage:', selectedImage ? 'exists' : 'null')
+    console.log('   matchId:', matchId || 'MISSING!')
+    console.log('   currentUserId:', currentUserId || 'MISSING!')
+    console.log('   otherUserId:', otherUserId || 'MISSING!')
+    
+    // Check for missing required values
+    if (!selectedImage) {
+      console.error('❌ No image selected!')
+      alert('לא נבחרה תמונה')
+      return
+    }
+    
+    if (!matchId || !currentUserId || !otherUserId) {
+      console.error('❌ Missing IDs - matchId:', matchId, 'currentUserId:', currentUserId, 'otherUserId:', otherUserId)
+      alert('שגיאה: חסרים פרטי משתמש. נסה לסגור ולפתוח את הצ\'אט מחדש.')
+      return
+    }
+    
+    setIsUploadingImage(true)
+    console.log('📤 Starting image upload...')
+    
+    try {
+      // Upload image to Firebase Storage
+      console.log('📤 Uploading to Firebase Storage...')
+      const imageUrl = await uploadChatImage(matchId, currentUserId, selectedImage)
+      console.log('✅ Image uploaded, URL:', imageUrl.substring(0, 50) + '...')
+      
+      // Send image message
+      console.log('📤 Sending image message...')
+      await sendImageMessage(
+        matchId,
+        currentUserId,
+        otherUserId,
+        imageUrl,
+        viewOnceEnabled ? 'view-once' : 'normal',
+        currentUser?.name,
+        currentUser?.photo
+      )
+      
+      console.log(`✅ ${viewOnceEnabled ? 'View-once' : 'Normal'} image sent successfully!`)
+      
+      // Reset state
+      cancelImageSelection()
+      
+    } catch (error) {
+      console.error('❌ Error sending image:', error)
+      
+      // Show user-friendly error message
+      if (error instanceof Error) {
+        if (error.message.includes('storage')) {
+          alert('שגיאה בהעלאת התמונה. בדוק את החיבור לאינטרנט.')
+        } else if (error.message.includes('permission')) {
+          alert('אין הרשאה להעלות תמונות. נסה להתחבר מחדש.')
+        } else {
+          alert(`שגיאה בשליחת התמונה: ${error.message}`)
+        }
+      } else {
+        alert('שגיאה לא צפויה בשליחת התמונה')
+      }
+    } finally {
+      setIsUploadingImage(false)
+      console.log('📸 Upload process finished')
+    }
+  }
+  
+  // 📸 Handle viewing an image (especially view-once)
+  const handleViewImage = async (imageUrl: string, messageId: string, isViewOnce: boolean, alreadyViewed: boolean) => {
+    // If it's view-once and already viewed, don't show
+    if (isViewOnce && alreadyViewed) {
+      return
+    }
+    
+    setViewingImage({ url: imageUrl, messageId, isViewOnce })
+    
+    // If it's view-once and we're the recipient, mark as viewed
+    if (isViewOnce && !alreadyViewed) {
+      const message = messages.find(m => m.id === messageId)
+      if (message && message.sender === 'them') {
+        await markImageAsViewed(matchId, messageId)
+      }
+    }
+  }
+  
+  // 📸 Close image viewer
+  const closeImageViewer = () => {
+    setViewingImage(null)
+  }
   
   const toggleMessageLike = async (messageId: string) => {
     if (!matchId || !currentUserId) return
@@ -510,6 +823,10 @@ useEffect(() => {
       )
       console.log('✅ Message sent successfully')
       
+      // 📊 Track message sent
+      const isFirstMessage = messages.length === 0 || !messages.some(m => m.sender === 'me')
+      GA.messageSent(messageText.length, isFirstMessage)
+      
       // 🔊 PLAY SOUND - Critical!
       const soundPlayed = await playMessageSound()
       if (soundPlayed) {
@@ -660,7 +977,15 @@ useEffect(() => {
   )
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920]">
+    <div 
+      className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920]"
+      style={{ 
+        WebkitUserSelect: 'none', 
+        userSelect: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitTapHighlightColor: 'transparent'
+      }}
+    >
       {/* Header */}
       <div className="bg-[#0d2920]/80 border-b border-[#4ade80]/20 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex items-center justify-between p-4">
@@ -699,13 +1024,49 @@ useEffect(() => {
             </button>
           </div>
 
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="rounded-full text-white hover:bg-white/10"
-          >
-            <MoreVertical className="h-5 w-5" />
-          </Button>
+          {/* ⋮ More Options Menu */}
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setShowMenuDropdown(!showMenuDropdown)}
+              className="rounded-full text-white hover:bg-white/10"
+            >
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {showMenuDropdown && (
+                <>
+                  {/* Backdrop to close menu */}
+                  <div 
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowMenuDropdown(false)}
+                  />
+                  
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-56 bg-[#1a4d3e] border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden z-50"
+                  >
+                    <button
+                      onClick={handleBlockAndReport}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/20 transition-colors"
+                    >
+                      <UserX className="h-5 w-5" />
+                      <div className="text-left">
+                        <div className="font-semibold">Block & Report</div>
+                        <div className="text-xs text-red-400/60">Report inappropriate behavior</div>
+                      </div>
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         <motion.div
@@ -778,7 +1139,57 @@ useEffect(() => {
                       : "bg-[#1a4d3e] text-white rounded-bl-md border border-[#4ade80]/20"
                     }
                   `}>
-                    <p className="font-sans text-base">{message.text}</p>
+                    {/* 📸 IMAGE MESSAGE */}
+                    {message.imageUrl ? (
+                      <div className="relative">
+                        {/* View-once image that hasn't been viewed yet (by recipient) */}
+                        {message.imageType === 'view-once' && !message.imageViewed && message.sender === 'them' ? (
+                          <button
+                            onClick={() => handleViewImage(message.imageUrl!, message.id, true, false)}
+                            className="flex flex-col items-center gap-2 p-4 bg-black/20 rounded-xl min-w-[150px]"
+                          >
+                            <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center">
+                              <Eye className="w-6 h-6 text-pink-400" />
+                            </div>
+                            <span className="text-sm font-medium">תמונה חד-פעמית</span>
+                            <span className="text-xs opacity-70">לחץ לצפייה</span>
+                          </button>
+                        ) : message.imageType === 'view-once' && message.imageViewed ? (
+                          /* View-once image that was already viewed */
+                          <div className="flex flex-col items-center gap-2 p-4 bg-black/20 rounded-xl min-w-[150px] opacity-60">
+                            <div className="w-12 h-12 rounded-full bg-gray-500/20 flex items-center justify-center">
+                              <EyeOff className="w-6 h-6 text-gray-400" />
+                            </div>
+                            <span className="text-sm font-medium">נצפתה</span>
+                            <span className="text-xs opacity-70">תמונה חד-פעמית</span>
+                          </div>
+                        ) : message.imageType === 'view-once' && message.sender === 'me' && !message.imageViewed ? (
+                          /* View-once sent by me, not yet viewed */
+                          <div className="flex flex-col items-center gap-2 p-4 bg-black/20 rounded-xl min-w-[150px]">
+                            <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center">
+                              <Eye className="w-6 h-6 text-pink-400" />
+                            </div>
+                            <span className="text-sm font-medium">תמונה חד-פעמית</span>
+                            <span className="text-xs opacity-70">ממתין לצפייה</span>
+                          </div>
+                        ) : (
+                          /* Normal image - clickable to view full size */
+                          <button
+                            onClick={() => handleViewImage(message.imageUrl!, message.id, false, false)}
+                            className="block"
+                          >
+                            <img 
+                              src={message.imageUrl} 
+                              alt="תמונה" 
+                              className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
+                            />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      /* Regular text message */
+                      <p className="font-sans text-base">{message.text}</p>
+                    )}
                   </div>
                   
                   {/* ❤️ LIKE BUTTON - Shows on tap/hover */}
@@ -853,8 +1264,8 @@ useEffect(() => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ✅ Suggested Messages - Always visible to help start conversation */}
-      {messages.length < 3 && !loading && (
+      {/* ✅ Suggested Messages - Always visible to help conversation */}
+      {messages.length < 5 && !loading && (
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -874,6 +1285,7 @@ useEffect(() => {
                 key={index}
                 onClick={() => {
                   setInputText(suggestion)
+                  GA.tipUsed(index)
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -903,40 +1315,380 @@ useEffect(() => {
         </motion.div>
       )}
 
-      {/* Input Area */}
-      <div className="bg-[#0d2920]/90 border-t border-[#4ade80]/20 p-4 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 relative">
-            <Input
-              value={inputText}
-              onChange={handleInputChange}
-              onKeyPress={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Type a message..."
-              className="h-12 rounded-full bg-[#1a4d3e]/50 border-[#4ade80]/20 text-white placeholder:text-white/40 pr-12"
+      {/* Input Area - or Read-Only Notice */}
+      {timeRemaining > 0 ? (
+        // ✅ ACTIVE: Can send messages
+        <div className="bg-[#0d2920]/90 border-t border-[#4ade80]/20 p-4 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            {/* 📸 Camera Button */}
+            <motion.button
+              onClick={() => imageInputRef.current?.click()}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="h-12 w-12 rounded-full flex items-center justify-center bg-[#1a4d3e]/50 hover:bg-[#1a4d3e] transition-colors"
+            >
+              <Camera className="h-5 w-5 text-white/70" />
+            </motion.button>
+            
+            {/* Hidden file input */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
             />
+            
+            <div className="flex-1 relative">
+              <Input
+                value={inputText}
+                onChange={handleInputChange}
+                onKeyPress={(e) => e.key === "Enter" && handleSend()}
+                placeholder="Type a message..."
+                className="h-12 rounded-full bg-[#1a4d3e]/50 border-[#4ade80]/20 text-white placeholder:text-white/40 pr-12"
+              />
+            </div>
+            
+            <motion.button
+              onClick={handleSend}
+              disabled={!inputText.trim()}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`
+                h-12 w-12 rounded-full flex items-center justify-center
+                ${inputText.trim() 
+                  ? "bg-[#4ade80] hover:bg-[#3bc970]" 
+                  : "bg-[#1a4d3e]/50 cursor-not-allowed"
+                }
+                transition-colors
+              `}
+            >
+              <Send className={`h-5 w-5 ${inputText.trim() ? "text-[#0d2920]" : "text-white/30"}`} />
+            </motion.button>
           </div>
-          
-          <motion.button
-            onClick={handleSend}
-            disabled={!inputText.trim()}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className={`
-              h-12 w-12 rounded-full flex items-center justify-center
-              ${inputText.trim() 
-                ? "bg-[#4ade80] hover:bg-[#3bc970]" 
-                : "bg-[#1a4d3e]/50 cursor-not-allowed"
-              }
-              transition-colors
-            `}
-          >
-            <Send className={`h-5 w-5 ${inputText.trim() ? "text-[#0d2920]" : "text-white/30"}`} />
-          </motion.button>
         </div>
-      </div>
+      ) : (
+        // ✅ EXPIRED: Read-only mode
+        <div className="bg-[#0d2920]/90 border-t border-[#4ade80]/20 p-4 backdrop-blur-sm">
+          <div className="text-center py-2">
+            <p className="text-white/60 text-sm">
+              ⏰ This chat has expired
+            </p>
+            <p className="text-white/40 text-xs mt-1">
+              Messages are read-only • Check if they left their number! 📱
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 🎬 GENTLE ANIMATION */}
       <GentleSendAnimation />
+
+      {/* 🚨 REPORT MODAL */}
+      <AnimatePresence>
+        {showReportModal && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+              onClick={() => !reportSubmitting && setShowReportModal(false)}
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-md mx-auto bg-gradient-to-br from-[#1a4d3e] to-[#0d2920] rounded-3xl border-2 border-red-500/30 shadow-2xl z-50 overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-red-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <Flag className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Block & Report</h2>
+                    <p className="text-xs text-white/60">Report {matchUser.name}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => !reportSubmitting && setShowReportModal(false)}
+                  className="rounded-full text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              {/* Content */}
+              {reportSuccess ? (
+                <div className="p-8 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="h-16 w-16 mx-auto rounded-full bg-green-500/20 flex items-center justify-center mb-4"
+                  >
+                    <CheckCheck className="h-8 w-8 text-green-400" />
+                  </motion.div>
+                  <h3 className="text-xl font-bold text-white mb-2">Report Submitted</h3>
+                  <p className="text-white/60">Thank you for helping keep I4IGUANA safe.</p>
+                  <p className="text-white/40 text-sm mt-2">User has been blocked.</p>
+                </div>
+              ) : (
+                <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                  {/* Warning */}
+                  <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                    <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-300">
+                      This will block {matchUser.name} and remove this match. This action cannot be undone.
+                    </p>
+                  </div>
+
+                  {/* Your Name */}
+                  <div>
+                    <label className="block text-sm text-white/70 mb-2">Your Name</label>
+                    <Input
+                      value={reportData.name}
+                      onChange={(e) => setReportData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Enter your name"
+                      className="h-12 rounded-xl bg-[#0d2920]/50 border-white/20 text-white placeholder:text-white/40"
+                    />
+                  </div>
+
+                  {/* Email - REQUIRED */}
+                  <div>
+                    <label className="block text-sm text-white/70 mb-2">Email *</label>
+                    <Input
+                      type="email"
+                      value={reportData.email}
+                      onChange={(e) => setReportData(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="your@email.com"
+                      required
+                      className={`h-12 rounded-xl bg-[#0d2920]/50 border-white/20 text-white placeholder:text-white/40 ${
+                        reportData.email && !isValidEmail(reportData.email) ? 'border-red-500' : ''
+                      }`}
+                    />
+                    {reportData.email && !isValidEmail(reportData.email) && (
+                      <p className="text-red-400 text-xs mt-1">Please enter a valid email</p>
+                    )}
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="block text-sm text-white/70 mb-2">Phone (optional)</label>
+                    <Input
+                      type="tel"
+                      value={reportData.phone}
+                      onChange={(e) => setReportData(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="05X-XXXXXXX"
+                      className="h-12 rounded-xl bg-[#0d2920]/50 border-white/20 text-white placeholder:text-white/40"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm text-white/70 mb-2">What happened? *</label>
+                    <Textarea
+                      value={reportData.description}
+                      onChange={(e) => setReportData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Please describe the issue, inappropriate behavior, or any feedback you'd like to share..."
+                      rows={4}
+                      className="rounded-xl bg-[#0d2920]/50 border-white/20 text-white placeholder:text-white/40 resize-none"
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      onClick={() => setShowReportModal(false)}
+                      disabled={reportSubmitting}
+                      variant="outline"
+                      className="flex-1 h-12 rounded-xl border-white/20 text-white hover:bg-white/10"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSubmitReport}
+                      disabled={reportSubmitting || !reportData.description.trim() || !reportData.email.trim() || !isValidEmail(reportData.email)}
+                      className="flex-1 h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      {reportSubmitting ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Submitting...
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <UserX className="h-4 w-4" />
+                          Block & Report
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 📸 IMAGE PREVIEW MODAL - Before sending */}
+      <AnimatePresence>
+        {showImageOptions && imagePreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 bg-black/50 safe-area-top">
+              <button
+                onClick={cancelImageSelection}
+                className="p-2 rounded-full hover:bg-white/10 active:bg-white/20"
+              >
+                <X className="h-6 w-6 text-white" />
+              </button>
+              <h3 className="text-white font-medium text-lg">📸 שליחת תמונה</h3>
+              <div className="w-10" />
+            </div>
+
+            {/* Image Preview - takes available space */}
+            <div className="flex-1 flex items-center justify-center p-4 min-h-0 overflow-hidden">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              />
+            </div>
+
+            {/* Options - Fixed at bottom with safe area */}
+            <div className="p-4 pb-6 bg-gradient-to-t from-black via-black/90 to-transparent" dir="rtl">
+              {/* View-once toggle */}
+              <button
+                onClick={() => setViewOnceEnabled(!viewOnceEnabled)}
+                className={`
+                  w-full flex items-center justify-between p-4 rounded-2xl mb-4
+                  ${viewOnceEnabled 
+                    ? 'bg-pink-500/20 border-2 border-pink-500' 
+                    : 'bg-white/10 border-2 border-transparent'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center
+                    ${viewOnceEnabled ? 'bg-pink-500' : 'bg-white/20'}
+                  `}>
+                    <Eye className={`h-5 w-5 ${viewOnceEnabled ? 'text-white' : 'text-white/60'}`} />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-medium">צפייה חד-פעמית</p>
+                    <p className="text-white/60 text-sm">התמונה תיעלם לאחר צפייה</p>
+                  </div>
+                </div>
+                <div className={`
+                  w-6 h-6 rounded-full border-2
+                  ${viewOnceEnabled 
+                    ? 'bg-pink-500 border-pink-500' 
+                    : 'border-white/40'
+                  }
+                  flex items-center justify-center
+                `}>
+                  {viewOnceEnabled && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-3 h-3 bg-white rounded-full"
+                    />
+                  )}
+                </div>
+              </button>
+
+              {/* Send Button - BIG and visible! */}
+              <motion.button
+                onClick={() => {
+                  console.log('📸 Send button clicked!')
+                  sendSelectedImage()
+                }}
+                disabled={isUploadingImage}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-full py-5 rounded-2xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] text-[#0d2920] font-bold text-xl disabled:opacity-50 shadow-lg shadow-green-500/30 active:shadow-none"
+              >
+                {isUploadingImage ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-6 h-6 border-3 border-[#0d2920]/30 border-t-[#0d2920] rounded-full animate-spin" />
+                    <span>שולח...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-3">
+                    <Send className="h-6 w-6" />
+                    <span>{viewOnceEnabled ? 'שלח תמונה חד-פעמית 👁️' : 'שלח תמונה 📤'}</span>
+                  </div>
+                )}
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 📸 IMAGE VIEWER MODAL - For viewing images */}
+      <AnimatePresence>
+        {viewingImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black flex flex-col"
+            onClick={closeImageViewer}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4">
+              <button
+                onClick={closeImageViewer}
+                className="p-2 rounded-full hover:bg-white/10"
+              >
+                <X className="h-6 w-6 text-white" />
+              </button>
+              {viewingImage.isViewOnce && (
+                <div className="flex items-center gap-2 text-pink-400 text-sm">
+                  <Eye className="h-4 w-4" />
+                  <span>תמונה חד-פעמית</span>
+                </div>
+              )}
+              <div className="w-10" />
+            </div>
+
+            {/* Image */}
+            <div className="flex-1 flex items-center justify-center p-4">
+              <motion.img
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                src={viewingImage.url}
+                alt="תמונה"
+                className="max-w-full max-h-full object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            {/* View-once notice */}
+            {viewingImage.isViewOnce && (
+              <div className="p-4 text-center">
+                <p className="text-pink-400 text-sm">
+                  התמונה תיעלם כשתסגור את המסך
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

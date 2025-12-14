@@ -16,7 +16,8 @@ import {
   limit,
   writeBatch
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { db, storage } from './firebase'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 
 export interface ChatMessage {
   id: string
@@ -27,7 +28,12 @@ export interface ChatMessage {
   timestamp: Timestamp
   status: 'sent' | 'delivered' | 'read'
   createdAt: Timestamp
-  likedBy?: string[]  // ✅ NEW: Array of user IDs who liked this message
+  likedBy?: string[]  // Array of user IDs who liked this message
+  // ✅ NEW: Image support
+  imageUrl?: string        // URL to the image in Firebase Storage
+  imageType?: 'normal' | 'view-once'  // Normal image or disappears after viewing
+  imageViewed?: boolean    // Has the view-once image been viewed?
+  imageViewedAt?: Timestamp // When was it viewed?
 }
 
 export interface ChatMetadata {
@@ -67,16 +73,26 @@ export async function sendMessage(
     
     const docRef = await addDoc(messagesRef, messageData)
     
-    await updateChatMetadata(matchId, text, recipientId)
+    await updateChatMetadata(matchId, text, recipientId, senderId)
     
-    // ✅ NEW: Send real-time notification to recipient!
-    await sendMessageNotification(
+    // ✅ Send in-app notification (stored in Firestore)
+    await sendInAppNotification(
       recipientId, 
       senderId, 
       matchId, 
       text, 
       senderName || 'Someone',
       senderPhoto
+    )
+    
+    // ✅ CRITICAL: Send REAL push notification via OneSignal API!
+    await sendRealPushNotification(
+      recipientId,
+      senderName || 'Someone',
+      senderPhoto || '',
+      text,
+      matchId,
+      senderId
     )
     
     console.log('✅ Message sent:', docRef.id)
@@ -88,8 +104,52 @@ export async function sendMessage(
   }
 }
 
-// ✅ NEW: Send notification to recipient
-async function sendMessageNotification(
+// ✅ Send REAL push notification via OneSignal API
+async function sendRealPushNotification(
+  recipientId: string,
+  senderName: string,
+  senderPhoto: string,
+  messageText: string,
+  chatId: string,
+  senderId: string
+): Promise<void> {
+  try {
+    console.log('📤 Sending REAL push notification to:', recipientId)
+    
+    const response = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        type: 'message',
+        targetUserId: recipientId,
+        title: `💬 ${senderName}`,
+        message: messageText.length > 50 ? messageText.substring(0, 50) + '...' : messageText,
+        data: {
+          chatId,
+          fromUserId: senderId,
+          fromUserName: senderName,
+          fromUserPhoto: senderPhoto
+        }
+      })
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      console.log('✅ Push notification sent successfully:', result)
+    } else {
+      const error = await response.json()
+      console.error('❌ Push notification failed:', error)
+    }
+  } catch (error) {
+    console.error('❌ Error sending push notification:', error)
+    // Don't throw - push failure shouldn't break the message
+  }
+}
+
+// ✅ Send in-app notification (stored in Firestore for app UI)
+async function sendInAppNotification(
   recipientId: string,
   senderId: string,
   matchId: string,
@@ -119,9 +179,9 @@ async function sendMessageNotification(
       isRead: false
     })
     
-    console.log('🔔 Message notification sent to:', recipientId)
+    console.log('🔔 In-app notification sent to:', recipientId)
   } catch (error) {
-    console.error('❌ Error sending message notification:', error)
+    console.error('❌ Error sending in-app notification:', error)
     // Don't throw - notification failure shouldn't break the message
   }
 }
@@ -129,7 +189,8 @@ async function sendMessageNotification(
 async function updateChatMetadata(
   matchId: string,
   lastMessage: string,
-  recipientId: string
+  recipientId: string,
+  senderId?: string
 ): Promise<void> {
   try {
     const chatMetaRef = doc(db, 'chats', matchId)
@@ -144,10 +205,14 @@ async function updateChatMetadata(
     
     unreadCount[recipientId] = (unreadCount[recipientId] || 0) + 1
     
+    // ✅ CRITICAL FIX: Include participants for proper deletion on account delete!
+    const participants = senderId ? [senderId, recipientId].sort() : [recipientId]
+    
     await setDoc(chatMetaRef, {
       lastMessage: lastMessage.substring(0, 100),
       lastMessageTime: serverTimestamp(),
-      unreadCount
+      unreadCount,
+      participants  // ✅ NEW: Required for delete-account-service to find chats!
     }, { merge: true })
     
   } catch (error) {
@@ -374,5 +439,163 @@ export async function userHasSentMessage(matchId: string, userId: string): Promi
   } catch (error) {
     console.error('❌ Error checking user messages:', error)
     return false
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📸 IMAGE MESSAGING FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Upload image to Firebase Storage and return the download URL
+ */
+export async function uploadChatImage(
+  matchId: string,
+  senderId: string,
+  imageFile: File | Blob
+): Promise<string> {
+  console.log('📤 uploadChatImage called')
+  console.log('   matchId:', matchId)
+  console.log('   senderId:', senderId)
+  console.log('   imageFile type:', imageFile instanceof File ? 'File' : 'Blob')
+  console.log('   imageFile size:', imageFile.size, 'bytes')
+  
+  if (!matchId || !senderId) {
+    throw new Error('Missing matchId or senderId')
+  }
+  
+  if (!imageFile || imageFile.size === 0) {
+    throw new Error('Invalid image file')
+  }
+  
+  try {
+    // Create unique filename
+    const timestamp = Date.now()
+    const extension = imageFile instanceof File ? (imageFile.name.split('.').pop() || 'jpg') : 'jpg'
+    const filename = `chat-images/${matchId}/${senderId}_${timestamp}.${extension}`
+    
+    console.log('📤 Uploading to path:', filename)
+    
+    const storageRef = ref(storage, filename)
+    
+    console.log('📤 Starting uploadBytes...')
+    const uploadResult = await uploadBytes(storageRef, imageFile)
+    console.log('✅ uploadBytes complete, getting download URL...')
+    
+    const downloadUrl = await getDownloadURL(uploadResult.ref)
+    console.log('✅ Image uploaded successfully!')
+    console.log('   Download URL:', downloadUrl.substring(0, 80) + '...')
+    
+    return downloadUrl
+    
+  } catch (error) {
+    console.error('❌ Error uploading image:', error)
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('unauthorized') || error.message.includes('permission')) {
+        throw new Error('storage/permission-denied: No permission to upload images')
+      }
+      if (error.message.includes('quota')) {
+        throw new Error('storage/quota-exceeded: Storage quota exceeded')
+      }
+      if (error.message.includes('network') || error.message.includes('fetch')) {
+        throw new Error('storage/network-error: Network error during upload')
+      }
+      throw new Error(`storage/upload-failed: ${error.message}`)
+    }
+    
+    throw new Error('storage/unknown-error: Failed to upload image')
+  }
+}
+
+/**
+ * Send an image message (normal or view-once)
+ */
+export async function sendImageMessage(
+  matchId: string,
+  senderId: string,
+  recipientId: string,
+  imageUrl: string,
+  imageType: 'normal' | 'view-once' = 'normal',
+  senderName?: string,
+  senderPhoto?: string
+): Promise<string> {
+  try {
+    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    
+    const messageData = {
+      matchId,
+      senderId,
+      recipientId,
+      text: imageType === 'view-once' ? '📷 תמונה חד-פעמית' : '📷 תמונה',
+      senderName: senderName || 'Someone',
+      senderPhoto: senderPhoto || '',
+      timestamp: serverTimestamp(),
+      status: 'sent',
+      createdAt: serverTimestamp(),
+      // Image specific fields
+      imageUrl,
+      imageType,
+      imageViewed: false,
+    }
+    
+    console.log(`📤 Sending ${imageType} image message`)
+    
+    const docRef = await addDoc(messagesRef, messageData)
+    
+    // Update chat metadata
+    await updateChatMetadata(
+      matchId, 
+      imageType === 'view-once' ? '📷 תמונה חד-פעמית' : '📷 תמונה', 
+      recipientId, 
+      senderId
+    )
+    
+    console.log('✅ Image message sent:', docRef.id)
+    return docRef.id
+    
+  } catch (error) {
+    console.error('❌ Error sending image message:', error)
+    throw new Error('Failed to send image message')
+  }
+}
+
+/**
+ * Mark a view-once image as viewed
+ * After this, the image cannot be viewed again
+ */
+export async function markImageAsViewed(
+  matchId: string,
+  messageId: string
+): Promise<void> {
+  try {
+    const messageRef = doc(db, 'chats', matchId, 'messages', messageId)
+    
+    await updateDoc(messageRef, {
+      imageViewed: true,
+      imageViewedAt: serverTimestamp()
+    })
+    
+    console.log('👁️ Image marked as viewed:', messageId)
+    
+  } catch (error) {
+    console.error('❌ Error marking image as viewed:', error)
+  }
+}
+
+/**
+ * Delete a view-once image from storage after it's been viewed
+ * Called after the image viewing modal is closed
+ */
+export async function deleteViewOnceImage(imageUrl: string): Promise<void> {
+  try {
+    // Extract the path from the URL
+    const storageRef = ref(storage, imageUrl)
+    await deleteObject(storageRef)
+    console.log('🗑️ View-once image deleted from storage')
+  } catch (error) {
+    // Image might already be deleted or URL format different
+    console.warn('⚠️ Could not delete view-once image:', error)
   }
 }

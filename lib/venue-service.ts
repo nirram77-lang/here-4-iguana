@@ -383,3 +383,127 @@ export async function incrementMatchCount(venueId: string): Promise<void> {
     console.error('❌ Error incrementing match count:', error)
   }
 }
+
+/**
+ * ✅ NEW: Get all ACTIVE venues (for venue discovery feature)
+ */
+export async function getActiveVenues(): Promise<Venue[]> {
+  try {
+    const q = query(
+      collection(db, 'venues'),
+      where('active', '==', true)
+    )
+    
+    const snapshot = await getDocs(q)
+    const venues: Venue[] = []
+    
+    snapshot.forEach(docSnap => {
+      venues.push({ ...docSnap.data(), id: docSnap.id } as Venue)
+    })
+    
+    console.log(`✅ Loaded ${venues.length} active venues`)
+    return venues
+  } catch (error) {
+    console.error('❌ Error getting active venues:', error)
+    return []
+  }
+}
+
+/**
+ * ✅ NEW: Search venues by name
+ */
+export async function searchVenuesByName(searchTerm: string): Promise<Venue[]> {
+  try {
+    // Get all active venues first
+    const allVenues = await getActiveVenues()
+    
+    // Filter by search term (case-insensitive)
+    const term = searchTerm.toLowerCase()
+    const filtered = allVenues.filter(venue => 
+      venue.name.toLowerCase().includes(term) ||
+      venue.displayName.toLowerCase().includes(term) ||
+      venue.location.address?.toLowerCase().includes(term)
+    )
+    
+    console.log(`🔍 Search "${searchTerm}" found ${filtered.length} venues`)
+    return filtered
+  } catch (error) {
+    console.error('❌ Error searching venues:', error)
+    return []
+  }
+}
+
+/**
+ * ✅ NEW: Log failed venue search for analytics
+ */
+export async function logFailedVenueSearch(
+  searchTerm: string, 
+  userLocation?: { lat: number; lng: number }
+): Promise<void> {
+  try {
+    const searchId = searchTerm.toLowerCase().replace(/\s+/g, '-').substring(0, 50)
+    const searchRef = doc(db, 'venueSearches', searchId)
+    const searchDoc = await getDoc(searchRef)
+    
+    if (searchDoc.exists()) {
+      // Increment count
+      const currentData = searchDoc.data()
+      await updateDoc(searchRef, {
+        count: (currentData.count || 0) + 1,
+        lastSearched: Timestamp.now()
+      })
+    } else {
+      // Create new record
+      await setDoc(searchRef, {
+        searchTerm,
+        count: 1,
+        firstSearched: Timestamp.now(),
+        lastSearched: Timestamp.now(),
+        location: userLocation || null
+      })
+    }
+    
+    console.log(`📝 Logged failed search: "${searchTerm}"`)
+  } catch (error) {
+    console.error('❌ Error logging failed search:', error)
+  }
+}
+
+/**
+ * ✅ NEW: Get failed venue searches (for admin dashboard)
+ */
+export async function getFailedVenueSearches(): Promise<Array<{
+  id: string
+  searchTerm: string
+  count: number
+  lastSearched: Timestamp
+}>> {
+  try {
+    const snapshot = await getDocs(collection(db, 'venueSearches'))
+    const searches: Array<{
+      id: string
+      searchTerm: string
+      count: number
+      lastSearched: Timestamp
+    }> = []
+    
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data()
+      searches.push({
+        id: docSnap.id,
+        searchTerm: data.searchTerm,
+        count: data.count || 1,
+        lastSearched: data.lastSearched
+      })
+    })
+    
+    // Sort by count (most searched first)
+    searches.sort((a, b) => b.count - a.count)
+    
+    console.log(`📊 Loaded ${searches.length} failed venue searches`)
+    return searches
+  } catch (error) {
+    console.error('❌ Error getting failed searches:', error)
+    return []
+  }
+}

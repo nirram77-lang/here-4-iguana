@@ -217,7 +217,7 @@ export default function PhoneVerification({
         errorMessage = 'Code expired. Please request a new one.'
         setResendTimer(0) // Allow immediate resend
       } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = '⏳ Too many attempts. Please wait 1 hour before trying again, or use a different phone number.'
+        errorMessage = '⏳ Too many attempts. Please wait 15-30 minutes and try again.'
       } else if (err.message) {
         errorMessage = err.message
       }

@@ -293,9 +293,18 @@ export const findNearbyUsers = async (
     // ✅ FIXED: Use user's actual preferences for lookingFor
     const currentUserGender = currentUserProfile.gender
     const userLookingFor = currentUserProfile.preferences?.lookingFor
-    const lookingFor = userLookingFor && userLookingFor !== 'both' 
-      ? userLookingFor 
-      : (currentUserGender === 'male' ? 'female' : 'male')
+    
+    // ✅ Determine what genders to show
+    let lookingFor: 'male' | 'female' | 'both'
+    if (userLookingFor === 'both') {
+      lookingFor = 'both'
+    } else if (userLookingFor === 'male' || userLookingFor === 'female') {
+      lookingFor = userLookingFor
+    } else {
+      // Default: "She Decides" - opposite gender
+      lookingFor = currentUserGender === 'male' ? 'female' : 'male'
+    }
+    console.log(`🔍 Looking for: ${lookingFor} (preference: ${userLookingFor || 'default'})`)
     
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]
@@ -310,67 +319,10 @@ export const findNearbyUsers = async (
     const usersRef = collection(db, "users")
     const nearbyUsers: UserProfileWithDistance[] = []
 
-    // 🎯 ALWAYS fetch dummy/test users first (marked with isDummy: true)
-    const dummyQuery = query(
-      usersRef,
-      where("isDummy", "==", true),
-      limit(50)
-    )
-    
-    const dummySnapshot = await getDocs(dummyQuery)
-    console.log(`🎭 Found ${dummySnapshot.size} dummy users`)
-    
-    dummySnapshot.forEach((doc) => {
-      const user = doc.data() as UserProfile
-      
-      // Skip current user
-      if (user.uid === currentUserId) return
-      
-      // ✅ Skip deleted dummy users
-      if ((user as any).deleted === true) return
-      
-      // ✅ "She Decides" - Simple opposite gender filtering
-      if (user.gender !== lookingFor) return
-      
-      // ✅ Check if other user accepts our gender (backwards compatibility)
-      const otherUserLookingFor = user.preferences?.lookingFor || 'both'
-      if (otherUserLookingFor !== 'both' && currentUserGender !== otherUserLookingFor) return
-      
-      // ✅ NEW: Two-way age filtering
-      const otherUserAge = user.age
-      if (otherUserAge) {
-        if (otherUserAge < currentUserAgeRange[0] || otherUserAge > currentUserAgeRange[1]) {
-          console.log(`⚠️ Dummy ${user.name} (age ${otherUserAge}) filtered - outside age range ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}`)
-          return
-        }
-      }
-      
-      const otherUserAgeRange = user.preferences?.ageRange || [18, 80]
-      if (currentUserAge) {
-        if (currentUserAge < otherUserAgeRange[0] || currentUserAge > otherUserAgeRange[1]) {
-          console.log(`⚠️ Dummy ${user.name} filtered - current user (age ${currentUserAge}) outside their age range ${otherUserAgeRange[0]}-${otherUserAgeRange[1]}`)
-          return
-        }
-      }
-      
-      // Calculate distance (or use fake distance for dummies within range)
-      const distance = user.location ? calculateDistance(
-        userLocation.latitude,
-        userLocation.longitude,
-        user.location.latitude,
-        user.location.longitude
-      ) : Math.floor(Math.random() * (maxDistance - minDistance)) + minDistance
-      
-      // ✅ FIX: Filter dummy users by distance range too!
-      if (distance >= minDistance && distance <= maxDistance) {
-        nearbyUsers.push({ ...user, distance })
-        console.log(`✅ Dummy user ${user.name} added: ${Math.round(distance)}m`)
-      } else {
-        console.log(`❌ Dummy user ${user.name} filtered out: ${Math.round(distance)}m (out of range)`)
-      }
-    })
+    // ✅ DUMMY users are ONLY shown in Simulator - not in real app
+    // Simulator has its own query in /admin/super/simulator
 
-    // Then fetch real nearby users
+    // Fetch real nearby users only
     for (const hash of geohashes) {
       const q = query(
         usersRef,
@@ -407,12 +359,18 @@ export const findNearbyUsers = async (
         if (user.swipedRight?.includes(currentUserId)) return
         if (user.swipedLeft?.includes(currentUserId)) return
 
-        // ✅ "She Decides" - Simple opposite gender filtering
-        if (user.gender !== lookingFor) return
+        // ✅ Gender filtering - supports 'both' for same-sex matching
+        if (lookingFor !== 'both' && user.gender !== lookingFor) {
+          console.log(`⚠️ Skipping ${user.name} - wrong gender (${user.gender}, looking for ${lookingFor})`)
+          return
+        }
         
-        // ✅ Check if other user accepts our gender (backwards compatibility)
+        // ✅ Check if other user accepts our gender (two-way compatibility)
         const otherUserLookingFor = user.preferences?.lookingFor || 'both'
-        if (otherUserLookingFor !== 'both' && currentUserGender !== otherUserLookingFor) return
+        if (otherUserLookingFor !== 'both' && currentUserGender !== otherUserLookingFor) {
+          console.log(`⚠️ Skipping ${user.name} - they're looking for ${otherUserLookingFor}, we are ${currentUserGender}`)
+          return
+        }
         
         // ✅ NEW: Two-way age filtering
         const otherUserAge = user.age
@@ -731,9 +689,18 @@ export const findNearbyAvailableUsers = async (
     // ✅ FIXED: Use user's actual preferences for lookingFor
     const currentUserGender = currentUserProfile.gender
     const userLookingFor = currentUserProfile.preferences?.lookingFor
-    const lookingFor = userLookingFor && userLookingFor !== 'both' 
-      ? userLookingFor 
-      : (currentUserGender === 'male' ? 'female' : 'male')
+    
+    // ✅ Determine what genders to show
+    let lookingFor: 'male' | 'female' | 'both'
+    if (userLookingFor === 'both') {
+      lookingFor = 'both'
+    } else if (userLookingFor === 'male' || userLookingFor === 'female') {
+      lookingFor = userLookingFor
+    } else {
+      // Default: "She Decides" - opposite gender
+      lookingFor = currentUserGender === 'male' ? 'female' : 'male'
+    }
+    console.log(`🔍 Looking for: ${lookingFor} (preference: ${userLookingFor || 'default'})`)
     
     // ✅ 12-hour match cooldown - load users on cooldown
     const matchesOnCooldown = await getMatchesOnCooldown(currentUserId)
@@ -743,53 +710,7 @@ export const findNearbyAvailableUsers = async (
     const usersRef = collection(db, "users")
     const nearbyUsers: UserProfileWithDistance[] = []
 
-    // Fetch dummy users (marked with isDummy: true)
-    const dummyQuery = query(
-      usersRef,
-      where("isDummy", "==", true),
-      limit(50)
-    )
-    
-    const dummySnapshot = await getDocs(dummyQuery)
-    console.log(`🎭 Found ${dummySnapshot.size} dummy users`)
-    
-    dummySnapshot.forEach((doc) => {
-      const user = doc.data() as UserProfile
-      
-      if (user.uid === currentUserId) return
-      
-      // ✅ Filter by isAvailable in code (avoid composite index)
-      const isAvailable = (user as any).isAvailable ?? true
-      if (!isAvailable) return
-      if ((user as any).deleted === true) return
-      
-      // ✅ FIX: Filter already swiped dummy users (same as real users!)
-      if (currentUserProfile.swipedRight?.includes(user.uid)) return
-      if (currentUserProfile.swipedLeft?.includes(user.uid)) return
-      if (user.swipedRight?.includes(currentUserId)) return
-      if (user.swipedLeft?.includes(currentUserId)) return
-      
-      // ✅ 12-hour cooldown: Skip users that matched within last 12 hours
-      if (matchesOnCooldown.has(user.uid)) {
-        console.log(`⏰ Skipping ${user.name} - match cooldown (12h)`)
-        return
-      }
-      
-      // ✅ "She Decides" - Filter by opposite gender
-      if (user.gender !== lookingFor) return
-      
-      const distance = user.location ? calculateDistance(
-        userLocation.latitude,
-        userLocation.longitude,
-        user.location.latitude,
-        user.location.longitude
-      ) : Math.floor(Math.random() * (maxDistance - minDistance)) + minDistance
-      
-      if (distance >= minDistance && distance <= maxDistance) {
-        nearbyUsers.push({ ...user, distance })
-        console.log(`✅ Available dummy: ${user.name} (${Math.round(distance)}m)`)
-      }
-    })
+    // ✅ DUMMY users are ONLY shown in Simulator - not in real app
 
     // Fetch real nearby users
     for (const hash of geohashes) {
@@ -825,8 +746,16 @@ export const findNearbyAvailableUsers = async (
           return
         }
 
-        // ✅ "She Decides" - Filter by opposite gender
-        if (user.gender !== lookingFor) return
+        // ✅ Gender filtering - supports 'both' for same-sex matching
+        if (lookingFor !== 'both' && user.gender !== lookingFor) {
+          return
+        }
+        
+        // ✅ Check if other user accepts our gender (two-way compatibility)
+        const otherUserLookingFor = user.preferences?.lookingFor || 'both'
+        if (otherUserLookingFor !== 'both' && currentUserGender !== otherUserLookingFor) {
+          return
+        }
 
         const distance = calculateDistance(
           userLocation.latitude,
@@ -958,6 +887,9 @@ export const getActiveMatchExpiration = async (
 export const getActiveMatchForUser = async (userId: string): Promise<{
   matchedUser: any | null
   expiresAt: Date | null
+  status?: string  // ✅ NEW: 'matched' | 'successful' | 'meeting'
+  meetingStartedAt?: Date | null  // ✅ NEW: When meeting started
+  matchId?: string  // ✅ NEW: For reference
 } | null> => {
   try {
     console.log(`🔍 Searching for active match for user: ${userId}`)
@@ -1011,10 +943,15 @@ export const getActiveMatchForUser = async (userId: string): Promise<{
     
     console.log(`✅ Active match found! Matched with: ${matchedUserProfile.name}`)
     console.log(`⏰ Match expires at: ${expiresAt.toLocaleString()}`)
+    console.log(`📊 Match status: ${matchData.status || 'matched'}`)
     
+    // ✅ NEW: Return status and meetingStartedAt for Enjoy Mode restoration
     return {
       matchedUser: matchedUserProfile,
-      expiresAt
+      expiresAt,
+      status: matchData.status || 'matched',
+      meetingStartedAt: matchData.meetingStartedAt ? matchData.meetingStartedAt.toDate() : null,
+      matchId: matchDoc.id
     }
   } catch (error) {
     console.error('Error getting active match for user:', error)
@@ -1058,10 +995,20 @@ export const clearActiveMatch = async (
     
     await setDoc(doc(db, 'activeMatches', matchId), {
       isActive: false,
+      status: 'expired',  // ✅ Timer expired
       clearedAt: Timestamp.now()
     }, { merge: true })
     
-    console.log(`✅ Active match cleared: ${matchId}`)
+    // ✅ CRITICAL: Update 'matches' collection for 12-hour cooldown!
+    // This ensures they can't match again for 12 hours
+    await setDoc(doc(db, 'matches', matchId), {
+      users: [userId, matchedUserId].sort(),
+      status: 'expired',
+      timestamp: Timestamp.now(),  // ✅ Update timestamp for cooldown!
+      expiredAt: Timestamp.now()
+    }, { merge: true })
+    
+    console.log(`✅ Active match cleared + 12h cooldown set: ${matchId}`)
   } catch (error) {
     console.error('Error clearing active match:', error)
     throw new Error('Failed to clear active match')
@@ -1078,34 +1025,68 @@ export const markMatchAsSuccessful = async (
 ): Promise<void> => {
   try {
     const matchId = [userId, matchedUserId].sort().join('_')
-    console.log(`🎉 Marking match as successful: ${matchId}`)
+    console.log(`🎉 Marking match as MEETING: ${matchId}`)
     
+    // ✅ CRITICAL FIX: Keep isActive TRUE during meeting!
+    // This allows us to restore Enjoy Mode after app restart
     await setDoc(doc(db, 'activeMatches', matchId), {
-      isActive: false,  // No longer active
-      status: 'successful',  // They're meeting!
-      meetingConfirmedBy: userId,  // ✅ Who confirmed?
-      meetingConfirmedAt: Timestamp.now(),  // ✅ When?
-      completedAt: Timestamp.now()
+      isActive: true,  // ✅ CHANGED: Keep active so we can restore after app restart!
+      status: 'meeting',  // ✅ NEW: They're meeting!
+      meetingConfirmedBy: userId,  // Who confirmed (the woman)
+      meetingStartedAt: Timestamp.now(),  // ✅ NEW: When the meeting was confirmed
+      meetingConfirmedAt: Timestamp.now(),
     }, { merge: true })
     
-    // ✅ CRITICAL FIX: Also save to 'matches' collection for 12-hour cooldown!
-    // The getMatchesOnCooldown() function looks in 'matches' collection
+    // ✅ Also save to 'matches' collection for 12-hour cooldown
     await setDoc(doc(db, 'matches', matchId), {
       users: [userId, matchedUserId].sort(),
-      status: 'successful',
+      status: 'meeting',  // ✅ Changed from 'successful' to 'meeting'
       timestamp: Timestamp.now(),
-      completedAt: Timestamp.now(),
+      meetingStartedAt: Timestamp.now(),
       meetingConfirmedBy: userId
     }, { merge: true })
-    console.log(`✅ Match saved to 'matches' collection for 12h cooldown`)
+    console.log(`✅ Match saved to 'matches' collection with 'meeting' status`)
     
-    // ✅ NEW: Send notification to the OTHER user!
+    // ✅ Send notification to the OTHER user!
     await sendWeAreMeetingNotification(userId, matchedUserId)
     
-    console.log(`✅ Match marked as successful by ${userId}: ${matchId}`)
+    console.log(`✅ Match marked as MEETING by ${userId}: ${matchId}`)
   } catch (error) {
-    console.error('Error marking match as successful:', error)
-    throw new Error('Failed to mark match as successful')
+    console.error('Error marking match as meeting:', error)
+    throw new Error('Failed to mark match as meeting')
+  }
+}
+
+/**
+ * ✅ NEW: Mark meeting as completed (after Enjoy Mode ends)
+ * Called when the 20-minute cooldown expires or user exits early
+ */
+export const markMeetingAsCompleted = async (
+  matchId: string,
+  exitReason: 'timeout' | 'manual',
+  exitedByUserId?: string  // ✅ NEW: Track who exited
+): Promise<void> => {
+  try {
+    console.log(`✅ Marking meeting as completed: ${matchId}, reason: ${exitReason}, exitedBy: ${exitedByUserId || 'unknown'}`)
+    
+    await setDoc(doc(db, 'activeMatches', matchId), {
+      isActive: false,  // ✅ NEW: Now we can set to false - meeting is over!
+      status: 'completed',  // ✅ Changed from 'successful' to 'completed' for clarity
+      meetingCompletedAt: Timestamp.now(),
+      meetingExitReason: exitReason,
+      meetingExitedBy: exitedByUserId || null,  // ✅ NEW: Who exited
+    }, { merge: true })
+    
+    await setDoc(doc(db, 'matches', matchId), {
+      status: 'completed',
+      completedAt: Timestamp.now(),
+      meetingExitReason: exitReason,
+      meetingExitedBy: exitedByUserId || null,
+    }, { merge: true })
+    
+    console.log(`✅ Meeting marked as completed: ${matchId}`)
+  } catch (error) {
+    console.error('Error marking meeting as completed:', error)
   }
 }
 
@@ -1124,7 +1105,7 @@ async function sendWeAreMeetingNotification(
     const senderName = senderData?.name || senderData?.displayName || 'Your match'
     const senderPhoto = senderData?.photos?.[0] || senderData?.photoURL || ''
     
-    // Send to notifications collection (real-time!)
+    // 1️⃣ Save to notifications collection (real-time in-app!)
     await addDoc(collection(db, 'notifications'), {
       userId: recipientId,
       type: 'meeting',
@@ -1138,7 +1119,38 @@ async function sendWeAreMeetingNotification(
       isRead: false
     })
     
-    console.log('🔔 "We\'re Meeting" notification sent to:', recipientId)
+    console.log('🔔 In-app notification sent to:', recipientId)
+    
+    // 2️⃣ Send PUSH notification via OneSignal API!
+    try {
+      const matchId = [senderId, recipientId].sort().join('_')
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'meeting',
+          targetUserId: recipientId,
+          title: '🎉 We\'re Meeting!',
+          message: `${senderName} confirmed you're meeting! Have a great time! 💕`,
+          data: {
+            matchId,
+            fromUserId: senderId,
+            fromUserName: senderName,
+            fromUserPhoto: senderPhoto
+          }
+        })
+      })
+      
+      if (response.ok) {
+        console.log('✅ PUSH notification sent to:', recipientId)
+      } else {
+        const error = await response.json()
+        console.error('❌ Push API error:', error)
+      }
+    } catch (pushError) {
+      console.error('⚠️ Push notification failed (in-app still sent):', pushError)
+    }
+    
   } catch (error) {
     console.error('❌ Error sending "We\'re Meeting" notification:', error)
     // Don't throw - notification failure shouldn't break the meeting confirmation
@@ -1151,7 +1163,7 @@ async function sendWeAreMeetingNotification(
 export const getMatchStatus = async (
   userId: string,
   matchedUserId: string
-): Promise<'active' | 'successful' | 'expired' | null> => {
+): Promise<'active' | 'successful' | 'meeting' | 'expired' | null> => {
   try {
     const matchId = [userId, matchedUserId].sort().join('_')
     const matchDoc = await getDoc(doc(db, 'activeMatches', matchId))
@@ -1162,9 +1174,9 @@ export const getMatchStatus = async (
     
     const data = matchDoc.data()
     
-    // Check status
-    if (data.status === 'successful') {
-      return 'successful'
+    // Check status - 'meeting' means they clicked "We're Meeting!"
+    if (data.status === 'successful' || data.status === 'meeting') {
+      return data.status  // Return 'successful' or 'meeting'
     }
     
     if (data.isActive) {
@@ -1338,7 +1350,7 @@ export const createMatchNotifications = async (
   try {
     const matchId = [user1Id, user2Id].sort().join('_')
     
-    // Notification for user 1
+    // 1️⃣ In-app notification for user 1
     await createNotification(user1Id, {
       type: 'match',
       title: 'New Match! 🦎',
@@ -1350,7 +1362,7 @@ export const createMatchNotifications = async (
       matchId
     })
     
-    // Notification for user 2
+    // 2️⃣ In-app notification for user 2
     await createNotification(user2Id, {
       type: 'match',
       title: 'New Match! 🦎',
@@ -1361,6 +1373,39 @@ export const createMatchNotifications = async (
       fromUserPhoto: user1Photo,
       matchId
     })
+    
+    // 3️⃣ PUSH notifications via OneSignal!
+    try {
+      // Push to user 1
+      await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'match',
+          targetUserId: user1Id,
+          title: '🦎 It\'s a Match!',
+          message: `You and ${user2Name} liked each other! Start chatting now! 💚`,
+          data: { matchId, fromUserId: user2Id, fromUserName: user2Name, fromUserPhoto: user2Photo }
+        })
+      })
+      
+      // Push to user 2
+      await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'match',
+          targetUserId: user2Id,
+          title: '🦎 It\'s a Match!',
+          message: `You and ${user1Name} liked each other! Start chatting now! 💚`,
+          data: { matchId, fromUserId: user1Id, fromUserName: user1Name, fromUserPhoto: user1Photo }
+        })
+      })
+      
+      console.log('✅ PUSH notifications sent to both users')
+    } catch (pushError) {
+      console.error('⚠️ Push notifications failed:', pushError)
+    }
     
     console.log(`✅ Match notifications created for ${user1Name} & ${user2Name}`)
   } catch (error) {
@@ -1397,11 +1442,16 @@ export const getUsersByVenue = async (
     console.log(`   preferences object:`, currentUserProfile.preferences)
     console.log(`   userLookingFor from preferences: "${userLookingFor}"`)
     
-    // If user explicitly set lookingFor preference, use it
-    // Otherwise, default to opposite gender (She Decides for straight dating)
-    const lookingFor = userLookingFor && userLookingFor !== 'both' 
-      ? userLookingFor 
-      : (currentUserGender === 'male' ? 'female' : 'male')
+    // ✅ Determine what genders to show
+    let lookingFor: 'male' | 'female' | 'both'
+    if (userLookingFor === 'both') {
+      lookingFor = 'both'
+    } else if (userLookingFor === 'male' || userLookingFor === 'female') {
+      lookingFor = userLookingFor
+    } else {
+      // Default: "She Decides" - opposite gender
+      lookingFor = currentUserGender === 'male' ? 'female' : 'male'
+    }
     
     console.log(`   FINAL lookingFor: "${lookingFor}"`)
     
@@ -1481,13 +1531,13 @@ export const getUsersByVenue = async (
         return
       }
       
-      // ✅ "She Decides" - Simple opposite gender filtering
-      if (userData.gender !== lookingFor) {
+      // ✅ Gender filtering - supports 'both' for same-sex matching
+      if (lookingFor !== 'both' && userData.gender !== lookingFor) {
         console.log(`   ⏭️ SKIP: Wrong gender (${userData.gender}) - looking for ${lookingFor}`)
         return
       }
       
-      // ✅ Check if other user accepts our gender (backwards compatibility)
+      // ✅ Check if other user accepts our gender (two-way compatibility)
       const otherUserLookingFor = userData.preferences?.lookingFor || 'both'
       if (otherUserLookingFor !== 'both' && currentUserGender !== otherUserLookingFor) {
         console.log(`   ⏭️ SKIP: They're looking for ${otherUserLookingFor}, not ${currentUserGender}`)

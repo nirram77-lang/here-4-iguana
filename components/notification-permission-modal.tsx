@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, X, MessageCircle, Heart, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { GA } from '@/lib/ga-events'
 
 interface NotificationPermissionModalProps {
   isOpen: boolean
@@ -33,6 +34,14 @@ export default function NotificationPermissionModal({
   const handleEnableNotifications = async () => {
     setLoading(true)
     setError(null)
+    
+    console.log('═══════════════════════════════════════════════════')
+    console.log('🔔 NOTIFICATION PERMISSION FLOW STARTED')
+    console.log('═══════════════════════════════════════════════════')
+    console.log('👤 User ID:', userId)
+    
+    // 📊 Track permission requested
+    GA.notificationPermissionRequested()
 
     // Safety timeout - close modal after 15 seconds no matter what
     const safetyTimeout = setTimeout(() => {
@@ -42,9 +51,6 @@ export default function NotificationPermissionModal({
     }, 15000)
 
     try {
-      // ✅ STEP 1: Request browser permission FIRST (this shows the native browser prompt)
-      console.log('🔔 Step 1: Requesting browser notification permission...')
-      
       // Check if Notification API is supported
       if (!('Notification' in window)) {
         console.log('❌ Notifications not supported in this browser')
@@ -54,22 +60,43 @@ export default function NotificationPermissionModal({
         return
       }
       
-      // Request permission - this triggers the native browser popup
-      const permission = await Notification.requestPermission()
-      console.log('🔔 Browser permission result:', permission)
+      // ✅ Check CURRENT permission status FIRST
+      const currentPermission = Notification.permission
+      console.log('🔔 Current permission status:', currentPermission)
       
-      if (permission === 'granted') {
+      let finalPermission = currentPermission
+      
+      // ✅ Only request if permission is 'default' (not yet decided)
+      // If already 'granted' or 'denied', browser won't show popup anyway
+      if (currentPermission === 'default') {
+        console.log('🔔 Requesting browser notification permission...')
+        finalPermission = await Notification.requestPermission()
+        console.log('🔔 Browser permission result:', finalPermission)
+      } else if (currentPermission === 'granted') {
+        console.log('✅ Browser permission already granted - skipping request popup')
+      } else if (currentPermission === 'denied') {
+        console.log('❌ Browser permission already denied')
+        clearTimeout(safetyTimeout)
+        setError('Notifications were blocked previously. Go to browser settings → Site Settings → Notifications → Allow for i4iguana.com')
+        GA.notificationPermissionDenied()
+        onPermissionDenied?.()
+        setLoading(false)
+        return
+      }
+      
+      if (finalPermission === 'granted') {
         console.log('✅ Browser permission granted!')
         
-        // ✅ STEP 2: Setup OneSignal (with fallback for older devices)
+        // ✅ STEP 2: Setup OneSignal
         try {
           // Wait for OneSignal to be ready
-          await new Promise(resolve => setTimeout(resolve, 1500))
+          console.log('🔔 Waiting for OneSignal to be ready...')
+          await new Promise(resolve => setTimeout(resolve, 2000))
           
           const OneSignal = (window as any).OneSignal
           
           if (OneSignal) {
-            console.log('🔔 Step 2: Setting up OneSignal...')
+            console.log('🔔 Setting up OneSignal...')
             
             // Helper function with timeout
             const withTimeout = (promise: Promise<any>, ms: number) => {
@@ -83,36 +110,52 @@ export default function NotificationPermissionModal({
             if (OneSignal.User && OneSignal.User.PushSubscription) {
               // Opt in to push notifications
               try {
+                console.log('🔔 Calling OneSignal.User.PushSubscription.optIn()...')
                 await withTimeout(OneSignal.User.PushSubscription.optIn(), 5000)
                 console.log('✅ OneSignal optIn successful')
               } catch (optInError: any) {
                 console.log('⚠️ OneSignal optIn error:', optInError.message)
                 // Try alternative method
                 try {
-                  await withTimeout(OneSignal.Notifications.requestPermission(), 5000)
-                  console.log('✅ OneSignal requestPermission successful (fallback)')
+                  if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+                    await withTimeout(OneSignal.Notifications.requestPermission(), 5000)
+                    console.log('✅ OneSignal requestPermission successful (fallback)')
+                  }
                 } catch (e) {
                   console.log('⚠️ OneSignal fallback also failed:', e)
                 }
               }
               
-              // Link user ID for targeting
+              // ✅ CRITICAL: Link user ID for targeting
               if (userId) {
+                console.log('═══════════════════════════════════════════════════')
+                console.log('🔗 LINKING USER TO ONESIGNAL')
+                console.log('   User ID:', userId)
+                console.log('═══════════════════════════════════════════════════')
                 try {
-                  await withTimeout(OneSignal.login(userId), 5000)
-                  console.log('✅ OneSignal user linked:', userId)
+                  console.log('🔔 Calling OneSignal.login()...')
+                  await withTimeout(OneSignal.login(userId), 8000)
+                  console.log('✅ OneSignal.login() SUCCESS! User linked:', userId)
+                  console.log('   Push notifications will now target this user!')
+                  
+                  // ✅ Save success flag
+                  localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
+                  localStorage.setItem('i4iguana_onesignal_linked', 'true')
                 } catch (loginError: any) {
-                  console.log('⚠️ OneSignal login error:', loginError.message)
+                  console.error('❌ OneSignal.login() FAILED:', loginError.message)
                   // Try setExternalUserId as fallback (older API)
                   try {
                     if (OneSignal.setExternalUserId) {
                       await OneSignal.setExternalUserId(userId)
                       console.log('✅ OneSignal setExternalUserId successful (fallback)')
+                      localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
                     }
                   } catch (e) {
-                    console.log('⚠️ setExternalUserId fallback failed:', e)
+                    console.error('❌ setExternalUserId fallback also failed:', e)
                   }
                 }
+              } else {
+                console.error('❌ NO USER ID PROVIDED! Push notifications will not work!')
               }
             } else {
               // Older OneSignal API fallback
@@ -136,12 +179,20 @@ export default function NotificationPermissionModal({
         // ✅ STEP 3: Show success message
         console.log('✅ Notifications enabled successfully!')
         clearTimeout(safetyTimeout)
+        
+        // 📊 Track permission granted
+        GA.notificationPermissionGranted()
+        
         onPermissionGranted?.()
         onClose()
         
-      } else if (permission === 'denied') {
+      } else if (finalPermission === 'denied') {
         clearTimeout(safetyTimeout)
         setError('Notifications were blocked. To enable them, go to your browser settings → Site Settings → Notifications → Allow for i4iguana.com')
+        
+        // 📊 Track permission denied
+        GA.notificationPermissionDenied()
+        
         onPermissionDenied?.()
         setLoading(false)
       } else {

@@ -255,7 +255,7 @@ export default function NotificationsScreen({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]">
+    <div className="flex h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] overflow-hidden fixed inset-0">
       {/* 🎬 HOLLYWOOD HEADER - Deep shadows + glow */}
       <div className="relative flex items-center gap-4 p-4 bg-gradient-to-b from-[#0d2920] to-[#0d2920]/80 border-b border-[#4ade80]/30 shadow-2xl">
         {/* Background glow effect */}
@@ -616,7 +616,12 @@ export default function NotificationsScreen({
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setViewingNotification(null)
-                      onNavigate('chat')
+                      // ✅ FIX: Use onNotificationClick to properly set selectedMatch
+                      if (onNotificationClick) {
+                        onNotificationClick(viewingNotification)
+                      } else {
+                        onNavigate('chat')
+                      }
                     }}
                     className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white transition-colors flex items-center justify-center gap-2"
                   >

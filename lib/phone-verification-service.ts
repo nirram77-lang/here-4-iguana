@@ -112,7 +112,7 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<Confir
     if (error.code === 'auth/invalid-phone-number') {
       throw new Error('Invalid phone number format.')
     } else if (error.code === 'auth/too-many-requests') {
-      throw new Error('Too many attempts. Please try again later.')
+      throw new Error('⏳ Too many attempts. Please wait 15-30 minutes and try again.')
     } else if (error.code === 'auth/quota-exceeded') {
       throw new Error('Daily limit reached. Please try again tomorrow.')
     } else if (error.code === 'auth/operation-not-allowed') {
