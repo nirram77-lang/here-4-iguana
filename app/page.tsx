@@ -1,27 +1,85 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { trackPageView, trackSectionView } from '@/lib/analytics-service'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [trackedSections, setTrackedSections] = useState<Set<string>>(new Set())
+
+  // Refs for section tracking
+  const heroRef = useRef<HTMLElement>(null)
+  const featuresRef = useRef<HTMLElement>(null)
+  const howItWorksRef = useRef<HTMLElement>(null)
+  const downloadRef = useRef<HTMLElement>(null)
+  const partnersRef = useRef<HTMLElement>(null)
+  const contactRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY)
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    
+    // ✅ Track page view on load
+    trackPageView('website', 'hero')
+    
+    // ✅ Capture install prompt for PWA
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault()
+      // @ts-ignore
+      window.deferredPrompt = e
+      console.log('✅ Install prompt captured')
+    }
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    }
   }, [])
+
+  // ✅ Track section views when user scrolls to them
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const sectionId = entry.target.id
+            if (sectionId && !trackedSections.has(sectionId)) {
+              trackSectionView(`website_${sectionId}`)
+              setTrackedSections(prev => new Set([...prev, sectionId]))
+            }
+          }
+        })
+      },
+      { threshold: 0.3 } // 30% of section visible
+    )
+
+    // Observe all sections
+    const sections = document.querySelectorAll('section[id]')
+    sections.forEach(section => observer.observe(section))
+
+    return () => observer.disconnect()
+  }, [trackedSections])
 
   return (
     <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden">
+      
+      {/* Floating Hearts - Fixed on screen */}
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+        <div className="absolute bottom-0 left-[10%] text-pink-400/50 text-3xl animate-floatHeart" style={{animationDelay: '0s'}}>💕</div>
+        <div className="absolute bottom-0 left-[30%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '1.5s'}}>💕</div>
+        <div className="absolute bottom-0 right-[15%] text-pink-400/50 text-3xl animate-floatHeart" style={{animationDelay: '3s'}}>💕</div>
+        <div className="absolute bottom-0 right-[35%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '4.5s'}}>💕</div>
+      </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* NAVIGATION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrollY > 50 ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
+        scrollY > 50 || menuOpen ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -50,10 +108,10 @@ export default function LandingPage() {
             </div>
 
             {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-8">
               <a href="#how-it-works" className="text-gray-300 hover:text-green-400 transition-colors">How It Works</a>
               <a href="#features" className="text-gray-300 hover:text-green-400 transition-colors">Features</a>
-              <a href="#for-venues" className="text-gray-300 hover:text-green-400 transition-colors">For Venues</a>
+              <a href="#partners" className="text-gray-300 hover:text-green-400 transition-colors">For Venues</a>
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
               
               {/* HE Language Button */}
@@ -68,16 +126,15 @@ export default function LandingPage() {
                 </span>
               </Link>
               
-              {/* Join as Venue Button */}
               <Link 
                 href="/join"
-                className="px-5 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold hover:bg-green-500/10 transition-all flex items-center gap-2"
+                className="relative px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black hover:shadow-lg hover:shadow-green-500/50 transition-all"
+                style={{ animation: 'subtle-glow 2s ease-in-out infinite' }}
               >
-                <span>📋</span>
-                <span>Join as Venue</span>
+                <span className="flex items-center gap-2">
+                  🏢 Join as Venue
+                </span>
               </Link>
-              
-              {/* Open App Button */}
               <Link 
                 href="/download"
                 className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
@@ -101,13 +158,15 @@ export default function LandingPage() {
 
           {/* Mobile Menu */}
           {menuOpen && (
-            <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4">
-              <a href="#how-it-works" className="block text-gray-300 hover:text-green-400">How It Works</a>
-              <a href="#features" className="block text-gray-300 hover:text-green-400">Features</a>
-              <a href="#for-venues" className="block text-gray-300 hover:text-green-400">For Venues</a>
-              <a href="#download" className="block text-gray-300 hover:text-green-400">Download</a>
+            <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4 bg-[#0a1f1a]">
+              <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">How It Works</a>
+              <a href="#features" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Features</a>
+              <a href="#partners" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">For Venues</a>
+              <a href="#download" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Download</a>
+              <a href="#contact" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Contact</a>
               <Link 
                 href="/he" 
+                onClick={() => setMenuOpen(false)}
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
               >
                 <span>🇮🇱</span>
@@ -115,12 +174,15 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="/join"
-                className="block w-full text-center px-6 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold"
+                onClick={() => setMenuOpen(false)}
+                className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-semibold text-black"
+                style={{ animation: 'subtle-glow 2s ease-in-out infinite' }}
               >
-                📋 Join as Venue
+                🏢 Join as Venue
               </Link>
               <Link 
                 href="/download"
+                onClick={() => setMenuOpen(false)}
                 className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold"
               >
                 Open App
@@ -142,12 +204,6 @@ export default function LandingPage() {
           {/* Animated Circles */}
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-          
-          {/* Floating Hearts */}
-          <div className="absolute bottom-0 left-[10%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '0s'}}>💕</div>
-          <div className="absolute bottom-0 left-[25%] text-pink-400/20 text-xl animate-floatHeart" style={{animationDelay: '2s'}}>💕</div>
-          <div className="absolute bottom-0 right-[15%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '4s'}}>💕</div>
-          <div className="absolute bottom-0 right-[35%] text-pink-400/20 text-lg animate-floatHeart" style={{animationDelay: '6s'}}>💕</div>
           
           {/* Radar Effect */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px]">
@@ -262,12 +318,88 @@ export default function LandingPage() {
 
           {/* Steps */}
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Step 1 */}
+            {/* Step 1 - Install App */}
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
                   1
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Install App</h3>
+                <p className="text-gray-400 mb-4">
+                  Add I4IGUANA to your home screen for the best experience. Quick access, instant notifications.
+                </p>
+                {/* Install Button with Tooltip */}
+                <div className="relative group/install">
+                  <button
+                    id="install-app-btn"
+                    onClick={() => {
+                      // @ts-ignore
+                      if (window.deferredPrompt) {
+                        // @ts-ignore
+                        window.deferredPrompt.prompt()
+                        // @ts-ignore
+                        window.deferredPrompt.userChoice.then((choiceResult: any) => {
+                          // @ts-ignore
+                          window.deferredPrompt = null
+                        })
+                      } else {
+                        // Fallback: redirect to /app
+                        window.location.href = '/app'
+                      }
+                    }}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Install App
+                  </button>
+                  
+                  {/* Tooltip - appears on hover */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-72 opacity-0 invisible group-hover/install:opacity-100 group-hover/install:visible transition-all duration-300 z-50">
+                    {/* Arrow */}
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] rotate-45 border-r border-b border-green-500/30"></div>
+                    
+                    {/* Content Box */}
+                    <div className="relative bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] border border-green-500/30 rounded-xl p-4 shadow-2xl shadow-green-500/20">
+                      <div className="absolute inset-0 bg-green-500/5 rounded-xl blur-xl"></div>
+                      
+                      <div className="relative">
+                        <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">
+                          <span>💡</span>
+                          Not seeing install prompt?
+                        </h4>
+                        
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                            <span className="text-green-400">🤖</span>
+                            <span className="text-gray-300">Android: <span className="text-white font-medium">⋮</span> → Install app</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                            <span className="text-blue-400">🍎</span>
+                            <span className="text-gray-300">iPhone: <span className="text-white font-medium">⬆️</span> → Add to Home</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-green-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm">Works Offline</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2 - Check In */}
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
+              <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
+                  2
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Check In</h3>
                 <p className="text-gray-400">
@@ -283,28 +415,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Step 2 */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
-              <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
-                  2
-                </div>
-                <h3 className="text-2xl font-bold mb-4">Discover</h3>
-                <p className="text-gray-400">
-                  See who's nearby within 10-500 meters. Real profiles, real photos, real people - right now.
-                </p>
-                <div className="mt-6 flex items-center gap-2 text-green-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span className="text-sm">Verified Profiles</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3 */}
+            {/* Step 3 - She Decides */}
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
@@ -368,104 +479,46 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Visual - Phone Mockup with match-screen.png */}
+            {/* Visual - Real App Screenshot */}
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-pink-500/20 rounded-3xl blur-3xl"></div>
-              <div className="relative bg-[#0a1f1a] border border-white/10 rounded-3xl p-8 overflow-hidden">
-                {/* Phone Mockup */}
-                <div className="relative mx-auto w-64 h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 rounded-[40px] border-4 border-gray-700 shadow-2xl">
-                  {/* Notch */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl"></div>
+              {/* Glow Effects */}
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/30 to-pink-500/30 rounded-3xl blur-3xl animate-pulse"></div>
+              <div className="absolute -inset-4 bg-gradient-to-r from-green-400/20 via-transparent to-pink-400/20 rounded-3xl blur-2xl"></div>
+              
+              <div className="relative">
+                {/* Phone Frame */}
+                <div className="relative mx-auto w-[280px] md:w-[300px]">
+                  {/* Shadow */}
+                  <div className="absolute -inset-4 bg-gradient-to-b from-green-500/20 to-pink-500/20 rounded-[50px] blur-xl"></div>
                   
-                  {/* Screen Content - Using match-screen.png */}
-                  <div className="absolute inset-4 top-8 rounded-[28px] overflow-hidden">
-                    <img 
-                      src="/match-screen.png" 
-                      alt="It's a Match! - I4IGUANA Dating App"
-                      className="w-full h-full object-cover"
-                    />
+                  {/* Device Frame */}
+                  <div className="relative bg-gradient-to-b from-gray-800 to-gray-900 rounded-[40px] p-2 shadow-2xl border border-white/10">
+                    {/* Notch */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-b-2xl z-20"></div>
+                    
+                    {/* Screen with Real Screenshot */}
+                    <div className="relative rounded-[32px] overflow-hidden">
+                      <img 
+                        src="/match-screen.png" 
+                        alt="It's a Match! - I4IGUANA Dating App"
+                        className="w-full h-auto"
+                      />
+                      
+                      {/* Animated Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 via-transparent to-transparent pointer-events-none"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Floating Elements */}
+                  <div className="absolute -right-4 top-20 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-bounce">
+                    💕 Match!
+                  </div>
+                  <div className="absolute -left-4 bottom-32 bg-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg" style={{animationDelay: '0.5s'}}>
+                    📍 0m away
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* FOR VENUE OWNERS */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <section id="for-venues" className="py-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5"></div>
-        
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full mb-6">
-              <span className="text-emerald-400">🏢</span>
-              <span className="text-emerald-400 text-sm font-medium">For Venue Owners</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Boost Your <span className="text-green-400">Business</span>
-            </h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Partner with I4IGUANA and turn your venue into a premium dating destination.
-              Increase foot traffic and become the place where connections happen.
-            </p>
-          </div>
-
-          {/* Benefits Grid */}
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-[#0d2920] border border-green-500/20 rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Featured Venue</h3>
-              <p className="text-gray-400 text-sm">Get premium placement on the app map and attract more visitors</p>
-            </div>
-
-            <div className="bg-[#0d2920] border border-green-500/20 rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">More Visibility</h3>
-              <p className="text-gray-400 text-sm">Users see your venue when they're nearby and ready to meet</p>
-            </div>
-
-            <div className="bg-[#0d2920] border border-green-500/20 rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Boost Revenue</h3>
-              <p className="text-gray-400 text-sm">Increase sales with a steady stream of dating customers</p>
-            </div>
-          </div>
-
-          {/* CTA Box */}
-          <div className="bg-gradient-to-r from-[#0d2920] to-[#1a4d3e] border-2 border-green-500/30 rounded-3xl p-8 md:p-12 text-center">
-            <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              Ready to Join? 🦎
-            </h3>
-            <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-              Fill out the form and our team will contact you within 24-48 hours
-            </p>
-            <Link 
-              href="/join"
-              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all"
-            >
-              <span>📝</span>
-              <span>Fill Out Join Form</span>
-            </Link>
-            <p className="text-gray-500 text-sm mt-4">
-              Or email us: <a href="mailto:venues@i4iguana.com" className="text-green-400 hover:underline">venues@i4iguana.com</a>
-            </p>
           </div>
         </div>
       </section>
@@ -486,43 +539,278 @@ export default function LandingPage() {
             Your next connection is just meters away.
           </p>
 
-          {/* App Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+          {/* ✅ NEW: Platform Badges - iPhone & Android */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mb-8">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/20">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              <span className="font-semibold">iPhone</span>
+              <span className="text-green-400">✓</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/20">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>
+              </svg>
+              <span className="font-semibold">Android</span>
+              <span className="text-green-400">✓</span>
+            </div>
+          </div>
+
+          {/* App Button */}
+          <div className="flex flex-col items-center justify-center gap-4 mb-12">
             <Link 
               href="/download"
-              className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-3"
+              className="group px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-xl shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-4"
             >
-              <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.9 17.39c-.26.8-.78 1.49-1.4 2.1-1.02 1.02-2.43 1.51-3.82 1.51H6.05c-1.4 0-2.8-.49-3.82-1.51-1.01-1.02-1.51-2.43-1.51-3.82V6.05c0-1.4.49-2.8 1.51-3.82 1.02-1.02 2.43-1.51 3.82-1.51h6.63c1.4 0 2.8.49 3.82 1.51.62.62 1.14 1.3 1.4 2.1.24.73.28 1.52.28 2.28v8.5c0 .76-.04 1.55-.28 2.28zM12 6.21c-2.86 0-5.19 2.33-5.19 5.19s2.33 5.19 5.19 5.19 5.19-2.33 5.19-5.19-2.33-5.19-5.19-5.19z"/>
-              </svg>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
               <div className="text-left">
-                <div className="text-xs opacity-80">Android</div>
-                <div className="text-lg font-bold">Web App</div>
+                <div className="text-sm opacity-80">Works on iPhone & Android</div>
+                <div className="text-xl font-bold">Open Web App</div>
               </div>
             </Link>
             
-            <Link 
-              href="/download"
-              className="group px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-2xl font-bold text-lg shadow-lg hover:shadow-gray-500/30 hover:scale-105 transition-all flex items-center gap-3 border border-white/20"
-            >
-              <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-              </svg>
-              <div className="text-left">
-                <div className="text-xs opacity-80">iOS</div>
-                <div className="text-lg font-bold">App Store</div>
+            <p className="text-gray-500 text-sm">
+              No app store download needed • Instant access
+            </p>
+            
+            {/* ✅ NEW: Hollywood Installation Tip Tooltip */}
+            <div className="mt-6 group relative inline-block">
+              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 rounded-full cursor-pointer hover:from-amber-500/30 hover:to-orange-500/30 transition-all">
+                <span className="text-xl">💡</span>
+                <span className="text-amber-300 text-sm font-medium">Installation tip</span>
+                <svg className="w-4 h-4 text-amber-400 group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
-            </Link>
+              
+              {/* Tooltip Content */}
+              <div className="absolute left-1/2 -translate-x-1/2 mt-3 w-80 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                {/* Arrow */}
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] rotate-45 border-l border-t border-green-500/30"></div>
+                
+                {/* Content Box */}
+                <div className="relative bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] border border-green-500/30 rounded-2xl p-5 shadow-2xl shadow-green-500/20">
+                  {/* Glow Effect */}
+                  <div className="absolute inset-0 bg-green-500/5 rounded-2xl blur-xl"></div>
+                  
+                  <div className="relative">
+                    <h4 className="text-white font-bold text-lg mb-3 flex items-center gap-2">
+                      <span className="text-2xl">📲</span>
+                      Not seeing the install prompt?
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      {/* Android */}
+                      <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                        <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52z"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-green-400 font-semibold text-sm">Android / Chrome</p>
+                          <p className="text-gray-300 text-xs mt-1">
+                            Tap <span className="text-white font-bold">⋮</span> (menu) → <span className="text-green-400 font-medium">"Install app"</span>
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* iPhone */}
+                      <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                        <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-blue-400 font-semibold text-sm">iPhone / Safari</p>
+                          <p className="text-gray-300 text-xs mt-1">
+                            Tap <span className="text-white font-bold">⬆️</span> (share) → <span className="text-blue-400 font-medium">"Add to Home Screen"</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <p className="text-gray-500 text-xs mt-4 text-center">
+                      ✨ Works like a native app - no App Store needed!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* QR Code */}
-          <div className="inline-block p-6 bg-white rounded-2xl">
+          {/* QR Code with enhanced styling */}
+          <div className="inline-block p-8 bg-white rounded-3xl shadow-2xl shadow-green-500/20">
             <img 
-              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.i4iguana.com/download&bgcolor=ffffff&color=0d2920"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://i4iguana.com/app&bgcolor=ffffff&color=0d2920"
               alt="Scan to download"
-              className="w-36 h-36"
+              className="w-44 h-44 mx-auto"
             />
-            <p className="text-gray-800 text-sm mt-2 font-medium">Scan to Open App</p>
+            <p className="text-gray-800 text-lg mt-4 font-bold">Scan with your phone</p>
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <div className="flex items-center gap-1 text-gray-600">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                <span className="text-sm font-medium">iPhone</span>
+              </div>
+              <span className="text-gray-400">•</span>
+              <div className="flex items-center gap-1 text-gray-600">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>
+                </svg>
+                <span className="text-sm font-medium">Android</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* VENUE OWNERS / BUSINESS SECTION */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <section id="partners" className="py-24 px-6 bg-gradient-to-b from-[#0a1f1a] to-[#0d2920]">
+        <div className="max-w-5xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 rounded-full text-green-400 text-sm font-medium mb-6">
+              <span>🏢</span>
+              <span>For Venue Owners</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              Bring <span className="text-green-400">Real Connections</span> to Your Venue
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+              Join the I4IGUANA network and transform your bar, club, or venue into a hotspot for meaningful connections. More engagement, more customers, more buzz.
+            </p>
+          </div>
+
+          {/* Benefits Grid */}
+          <div className="grid md:grid-cols-3 gap-6 mb-16">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:border-green-500/50 transition-all">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📈</span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Increase Traffic</h3>
+              <p className="text-gray-400 text-sm">Users check in at your venue to find matches nearby. More app users = more customers.</p>
+            </div>
+            
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:border-green-500/50 transition-all">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🎯</span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Targeted Audience</h3>
+              <p className="text-gray-400 text-sm">Singles aged 21-45 actively looking to meet people. Your ideal customer base.</p>
+            </div>
+            
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:border-green-500/50 transition-all">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">✨</span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Free to Join</h3>
+              <p className="text-gray-400 text-sm">No fees, no commitments. We provide QR stickers and promote your venue in the app.</p>
+            </div>
+          </div>
+
+          {/* CTA Button */}
+          <div className="text-center mb-16">
+            <Link 
+              href="/join"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full font-bold text-xl text-black hover:shadow-2xl hover:shadow-green-500/50 hover:scale-105 transition-all"
+              style={{ animation: 'subtle-glow 2s ease-in-out infinite' }}
+            >
+              <span className="text-2xl">🦎</span>
+              <span>Join Now - Free!</span>
+              <span className="text-2xl">→</span>
+            </Link>
+            <p className="text-gray-400 text-sm mt-4">Fill a short form and we'll get back to you within 24 hours</p>
+          </div>
+
+          {/* Business Card */}
+          <div className="max-w-md mx-auto">
+            <div className="bg-gradient-to-br from-[#0d2920] to-[#1a4d3e] rounded-3xl p-8 border border-green-500/30 shadow-2xl shadow-green-500/10 relative overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-green-500/5 rounded-full blur-2xl"></div>
+              
+              {/* Card Content */}
+              <div className="relative z-10">
+                {/* Logo & Name */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-black/30 rounded-2xl flex items-center justify-center border border-green-500/30">
+                    <img src="/notification-icon-192.png" alt="I4IGUANA" className="w-12 h-12" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">Nir Ram</h3>
+                    <p className="text-green-400 font-medium">Founder & CEO</p>
+                  </div>
+                </div>
+                
+                {/* Company */}
+                <div className="mb-6 pb-6 border-b border-white/10">
+                  <p className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
+                    I4IGUANA
+                  </p>
+                  <p className="text-gray-400 text-sm mt-1">Real-Time Dating Revolution</p>
+                </div>
+                
+                {/* Contact Details */}
+                <div className="space-y-4">
+                  <a href="tel:+972522653170" className="flex items-center gap-4 text-white hover:text-green-400 transition-colors group">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">052-265-3170</span>
+                  </a>
+                  
+                  <a href="mailto:nir@i4iguana.com" className="flex items-center gap-4 text-white hover:text-green-400 transition-colors group">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">nir@i4iguana.com</span>
+                  </a>
+                  
+                  <a href="https://i4iguana.com" className="flex items-center gap-4 text-white hover:text-green-400 transition-colors group">
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">i4iguana.com</span>
+                  </a>
+                </div>
+                
+                {/* CTA */}
+                <div className="mt-8 space-y-3">
+                  <a 
+                    href="/join"
+                    className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-center font-bold text-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
+                  >
+                    📝 Join Now - Digital Form
+                  </a>
+                  <a 
+                    href="tel:+972522653170"
+                    className="block w-full py-4 bg-white/10 border border-white/20 rounded-xl text-center font-bold text-lg hover:bg-white/20 transition-all"
+                  >
+                    📞 Let's Talk Partnership
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-center text-gray-500 text-sm mt-6">
+              🦎 Join 6+ venues already in the network
+            </p>
           </div>
         </div>
       </section>
@@ -567,6 +855,10 @@ export default function LandingPage() {
                 Real-time dating revolution. Meet real people at real places. 
                 She decides, you meet - instantly.
               </p>
+              {/* ✅ NEW: Creator Credit */}
+              <p className="text-gray-500 text-sm mt-4">
+                Created by <span className="text-green-400 font-medium">Nir Ram</span>
+              </p>
             </div>
 
             {/* Links */}
@@ -592,9 +884,14 @@ export default function LandingPage() {
 
           {/* Bottom */}
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-gray-500 text-sm">
-              © {new Date().getFullYear()} I4IGUANA. All rights reserved.
-            </p>
+            <div className="text-center md:text-left">
+              <p className="text-gray-400 text-sm font-medium">
+                © {new Date().getFullYear()} I4IGUANA. All rights reserved.
+              </p>
+              <p className="text-gray-500 text-xs mt-1">
+                A product by <span className="text-green-400">Nir Ram</span> • All copyrights reserved
+              </p>
+            </div>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
               <span>Made with</span>
               <span className="text-pink-400 animate-pulse">💕</span>
@@ -646,23 +943,31 @@ export default function LandingPage() {
             transform: translateY(0);
           }
         }
-        @keyframes floatHeart {
-          0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(-100px) scale(1); opacity: 0; }
-        }
         .animate-fadeIn {
           animation: fadeIn 1s ease-out forwards;
         }
         .animate-fadeInUp {
           animation: fadeInUp 1s ease-out forwards;
         }
-        .animate-floatHeart {
-          animation: floatHeart 10s ease-in-out infinite;
-        }
         html {
           scroll-behavior: smooth;
+        }
+        @keyframes subtle-glow {
+          0%, 100% { 
+            box-shadow: 0 0 5px rgba(74, 222, 128, 0.3);
+          }
+          50% { 
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.6), 0 0 30px rgba(74, 222, 128, 0.3);
+          }
+        }
+        @keyframes floatHeart {
+          0% { transform: translateY(0) scale(1); opacity: 0; }
+          20% { opacity: 0.8; }
+          80% { opacity: 0.8; }
+          100% { transform: translateY(-100vh) scale(1.3); opacity: 0; }
+        }
+        .animate-floatHeart {
+          animation: floatHeart 8s ease-in-out infinite;
         }
       `}</style>
     </div>
