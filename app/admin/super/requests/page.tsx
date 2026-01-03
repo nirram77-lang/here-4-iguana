@@ -46,14 +46,14 @@ interface VenueRequest {
   id: string
   venueName: string
   venueType: string
-  address: string
-  city: string
-  location: {
+  address?: string
+  city?: string
+  location?: {
     latitude: number
     longitude: number
   }
   ownerName: string
-  ownerPhone: string
+  ownerPhone?: string
   ownerEmail: string
   website?: string
   instagram?: string
@@ -111,7 +111,7 @@ export default function VenueRequestsPage() {
       return (
         req.venueName.toLowerCase().includes(search) ||
         req.ownerName.toLowerCase().includes(search) ||
-        req.city.toLowerCase().includes(search) ||
+        (req.city?.toLowerCase().includes(search) || false) ||
         req.ownerEmail.toLowerCase().includes(search)
       )
     }
@@ -135,9 +135,9 @@ export default function VenueRequestsPage() {
         name: request.venueName.toLowerCase().replace(/\s+/g, '-'),
         displayName: request.venueName,
         location: {
-          latitude: request.location.latitude,
-          longitude: request.location.longitude,
-          address: `${request.address}, ${request.city}`
+          latitude: request.location?.latitude || 0,
+          longitude: request.location?.longitude || 0,
+          address: `${request.address || ''}, ${request.city || ''}`
         },
         radius: 500,
         qrCode: '', // Will be generated later
@@ -319,10 +319,9 @@ export default function VenueRequestsPage() {
               <Button
                 key={status}
                 onClick={() => setFilter(status)}
-                variant={filter === status ? 'default' : 'outline'}
                 className={filter === status 
-                  ? 'bg-[#4ade80] text-black hover:bg-[#22c55e]' 
-                  : 'border-white/20 text-white hover:bg-white/10'
+                  ? 'bg-[#4ade80] text-black hover:bg-[#22c55e] font-bold' 
+                  : 'bg-white/10 border border-white/30 text-white hover:bg-white/20 font-medium'
                 }
               >
                 {status === 'all' && 'הכל'}
@@ -363,14 +362,14 @@ export default function VenueRequestsPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h3 className="text-white font-bold">{request.venueName}</h3>
-                      <p className="text-white/60 text-sm">{request.city}</p>
+                      <p className="text-white/60 text-sm">{request.city || 'לא צוין'}</p>
                     </div>
                     {getStatusBadge(request.status)}
                   </div>
                   <div className="flex items-center gap-4 text-white/50 text-xs">
                     <span>{request.ownerName}</span>
                     <span>•</span>
-                    <span>{new Date(request.createdAt?.toDate()).toLocaleDateString('he-IL')}</span>
+                    <span>{request.createdAt?.toDate ? request.createdAt.toDate().toLocaleDateString('he-IL') : new Date(request.createdAt as unknown as string).toLocaleDateString('he-IL')}</span>
                   </div>
                 </motion.div>
               ))
@@ -408,7 +407,7 @@ export default function VenueRequestsPage() {
                         <MapPin className="w-4 h-4" />
                         כתובת
                       </div>
-                      <p className="text-white">{selectedRequest.address}, {selectedRequest.city}</p>
+                      <p className="text-white">{selectedRequest.address || selectedRequest.city || 'לא צוין'}</p>
                     </div>
                     
                     <div className="bg-white/5 rounded-xl p-4">
@@ -416,17 +415,23 @@ export default function VenueRequestsPage() {
                         <MapPin className="w-4 h-4 text-[#4ade80]" />
                         קואורדינטות
                       </div>
-                      <p className="text-white font-mono text-sm">
-                        {selectedRequest.location.latitude}, {selectedRequest.location.longitude}
-                      </p>
-                      <a 
-                        href={`https://maps.google.com/?q=${selectedRequest.location.latitude},${selectedRequest.location.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#4ade80] text-sm flex items-center gap-1 mt-1 hover:underline"
-                      >
-                        פתח במפות <ExternalLink className="w-3 h-3" />
-                      </a>
+                      {selectedRequest.location?.latitude && selectedRequest.location?.longitude ? (
+                        <>
+                          <p className="text-white font-mono text-sm">
+                            {selectedRequest.location.latitude}, {selectedRequest.location.longitude}
+                          </p>
+                          <a 
+                            href={`https://maps.google.com/?q=${selectedRequest.location.latitude},${selectedRequest.location.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#4ade80] text-sm flex items-center gap-1 mt-1 hover:underline"
+                          >
+                            פתח במפות <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </>
+                      ) : (
+                        <p className="text-white/40 text-sm">לא צוין - יש להזין ידנית</p>
+                      )}
                     </div>
                   </div>
 
@@ -443,9 +448,13 @@ export default function VenueRequestsPage() {
                       </div>
                       <div className="bg-white/5 rounded-xl p-4">
                         <div className="text-white/60 text-sm mb-1">טלפון</div>
-                        <a href={`tel:${selectedRequest.ownerPhone}`} className="text-[#4ade80] font-medium hover:underline">
-                          {selectedRequest.ownerPhone}
-                        </a>
+                        {selectedRequest.ownerPhone ? (
+                          <a href={`tel:${selectedRequest.ownerPhone}`} className="text-[#4ade80] font-medium hover:underline">
+                            {selectedRequest.ownerPhone}
+                          </a>
+                        ) : (
+                          <span className="text-white/40">לא צוין</span>
+                        )}
                       </div>
                       <div className="bg-white/5 rounded-xl p-4">
                         <div className="text-white/60 text-sm mb-1">אימייל</div>

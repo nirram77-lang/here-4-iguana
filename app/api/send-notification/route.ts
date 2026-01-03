@@ -66,32 +66,23 @@ export async function POST(request: NextRequest) {
     console.log('✅ API Key configured (starts with:', ONESIGNAL_REST_API_KEY.substring(0, 8) + '...)')
     console.log('🎯 Target user:', body.targetUserId)
     
-    // Build OneSignal notification payload
+    // ✅ v2.8.22 FIX: Simplified payload to avoid size limits
+    // Only include essential data, limit to avoid 2048 byte limit
     const notificationPayload = {
       app_id: ONESIGNAL_APP_ID,
-      // Target specific user by external_user_id (set via OneSignal.login())
-      include_aliases: {
-        external_id: [body.targetUserId]
-      },
+      include_external_user_ids: [body.targetUserId],
       target_channel: "push",
       headings: { en: body.title },
       contents: { en: body.message },
-      // Custom data for handling notification clicks
+      // ✅ Minimal data - just type and matchId
       data: {
-        type: body.type,
-        ...body.data
+        type: body.type || 'message',
+        matchId: body.data?.matchId || ''
       },
       // iOS specific
       ios_badgeType: "Increase",
       ios_badgeCount: 1,
-      // Android specific  
-      android_channel_id: "default",
-      // Icons
-      small_icon: "notification_icon",
-      chrome_web_icon: "https://i4iguana.com/notification-icon-192.png",
-      firefox_icon: "https://i4iguana.com/notification-icon-192.png",
-      // URL to open when clicked
-      url: "https://i4iguana.com/app",
+      // ✅ v2.8.22 FIX: Only use web_url, remove url to avoid conflict
       web_url: "https://i4iguana.com/app"
     }
     

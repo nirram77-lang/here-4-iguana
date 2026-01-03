@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Save, Loader2, User, ChevronLeft, ChevronRight, X, Plus, Wine, Cigarette, Ruler, Briefcase, GraduationCap, Heart, Trash2, Home, Bell, MessageCircle, CheckCircle, Calendar, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ import { auth, db } from '../lib/firebase'
 import { uploadToCloudinary } from '../lib/cloudinary'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
+import LanguageSettings from '@/components/language-settings'  // ✅ v2.8.7: Language settings
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface ProfileData {
   displayName: string
@@ -43,6 +45,8 @@ interface ProfileScreenProps {
 }
 
 export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refreshKey = 0 }: ProfileScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [profileData, setProfileData] = useState<ProfileData>({
     displayName: '',
@@ -77,6 +81,14 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
   // ✅ NEW: Drag & Drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  
+  // ✅ FIX iOS: Touch drag state
+  const [touchDragIndex, setTouchDragIndex] = useState<number | null>(null)
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null)
+  const thumbnailsRef = useRef<HTMLDivElement>(null)
+  
+  // ✅ FIX iOS: Use ref for file input instead of dynamic creation
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Height slider state
   const [heightValue, setHeightValue] = useState(170)
@@ -246,22 +258,28 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     }
   }
 
+  // ✅ FIX iOS: Use ref instead of dynamic input creation
   const handlePhotoClick = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = (e: any) => handleFileChange(e)
-    input.click()
+    if (fileInputRef.current) {
+      // Reset value to allow selecting same file again
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
+    }
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !currentUser) return
+    if (!file || !currentUser) {
+      console.log('📸 No file selected or no user')
+      return
+    }
+    
+    console.log('📸 File selected:', file.name, file.type, file.size)
 
     if (profileData.photos.length >= 6) {
       toast({
-        title: "מקסימום תמונות",
-        description: "ניתן להעלות עד 6 תמונות",
+        title: t('profileToasts.maxPhotos'),
+        description: t('profileToasts.maxPhotosDesc'),
         variant: "destructive",
       })
       return
@@ -269,26 +287,40 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
 
     try {
       setUploading(true)
+      console.log('📸 Starting upload to Cloudinary...')
       const imageUrl = await uploadToCloudinary(file)
+      console.log('📸 Upload successful:', imageUrl)
       
       const updatedPhotos = [...profileData.photos, imageUrl]
+      const newPhotoURL = profileData.photoURL || imageUrl
+      
+      // ✅ FIX: Update local state
       setProfileData({
         ...profileData,
         photos: updatedPhotos,
-        photoURL: profileData.photoURL || imageUrl
+        photoURL: newPhotoURL
       })
       
       setCurrentPhotoIndex(updatedPhotos.length - 1)
       
+      // ✅ FIX iOS: Auto-save to Firestore immediately after upload
+      console.log('📸 Auto-saving to Firestore...')
+      const userRef = doc(db, 'users', currentUser.uid)
+      await updateDoc(userRef, {
+        photos: updatedPhotos,
+        photoURL: newPhotoURL
+      })
+      console.log('📸 Saved to Firestore!')
+      
       toast({
-        title: "תמונה הועלתה!",
-        description: "התמונה הועלתה בהצלחה.",
+        title: t('profileToasts.photoUploaded'),
+        description: t('profileToasts.photoUploadedDesc'),
       })
     } catch (error) {
       console.error('Error uploading photo:', error)
       toast({
-        title: "שגיאה",
-        description: "העלאת התמונה נכשלה.",
+        title: t('profileToasts.uploadError'),
+        description: t('profileToasts.uploadErrorDesc'),
         variant: "destructive",
       })
     } finally {
@@ -301,8 +333,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     if (profileData.photos.length <= 1) {
       console.log('🚫 Cannot delete last photo - profile must have at least 1 photo')
       toast({
-        title: "Cannot Delete",
-        description: "Your profile must have at least one photo.",
+        title: t('profileToasts.cannotDeleteLast'),
+        description: t('profileToasts.mustHavePhoto'),
         variant: "destructive",
       })
       return
@@ -345,8 +377,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       } catch (error) {
         console.error('❌ Error saving photo deletion:', error)
         toast({
-          title: "Error",
-          description: "Failed to save. Please click Save Changes.",
+          title: t('profileToasts.uploadError'),
+          description: t('profileToasts.uploadErrorDesc'),
           variant: "destructive",
         })
       }
@@ -368,6 +400,104 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     setDragOverIndex(null)
   }
 
+  // ✅ FIX iOS: Touch event handlers for mobile drag & drop
+  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    const touch = e.touches[0]
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY }
+    setTouchDragIndex(index)
+    console.log('📱 Touch start on photo:', index + 1)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchDragIndex === null || !touchStartPos.current || !thumbnailsRef.current) return
+    
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - touchStartPos.current.x
+    
+    // Only process if moved significantly horizontally
+    if (Math.abs(deltaX) > 30) {
+      const thumbnails = thumbnailsRef.current.querySelectorAll('[data-photo-index]')
+      let targetIndex = touchDragIndex
+      
+      thumbnails.forEach((thumb, idx) => {
+        const rect = thumb.getBoundingClientRect()
+        if (touch.clientX >= rect.left && touch.clientX <= rect.right) {
+          targetIndex = idx
+        }
+      })
+      
+      if (targetIndex !== touchDragIndex) {
+        setDragOverIndex(targetIndex)
+      }
+    }
+  }
+
+  const handleTouchEnd = async () => {
+    if (touchDragIndex !== null && dragOverIndex !== null && touchDragIndex !== dragOverIndex) {
+      console.log(`📱 Touch drop: photo ${touchDragIndex + 1} → position ${dragOverIndex + 1}`)
+      await reorderPhotos(touchDragIndex, dragOverIndex)
+    }
+    
+    setTouchDragIndex(null)
+    setDragOverIndex(null)
+    touchStartPos.current = null
+  }
+
+  // ✅ Shared reorder function for both drag & touch
+  const reorderPhotos = async (fromIndex: number, toIndex: number) => {
+    console.log(`📦 Reordering photo ${fromIndex + 1} → position ${toIndex + 1}`)
+
+    const newPhotos = [...profileData.photos]
+    const [movedPhoto] = newPhotos.splice(fromIndex, 1)
+    newPhotos.splice(toIndex, 0, movedPhoto)
+
+    setProfileData({ ...profileData, photos: newPhotos })
+    
+    // Update current photo index if needed
+    if (currentPhotoIndex === fromIndex) {
+      setCurrentPhotoIndex(toIndex)
+    } else if (fromIndex < currentPhotoIndex && toIndex >= currentPhotoIndex) {
+      setCurrentPhotoIndex(currentPhotoIndex - 1)
+    } else if (fromIndex > currentPhotoIndex && toIndex <= currentPhotoIndex) {
+      setCurrentPhotoIndex(currentPhotoIndex + 1)
+    }
+
+    // Auto-save to Firestore
+    if (currentUser) {
+      try {
+        console.log('💾 Auto-saving photo order to Firestore...')
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          photos: newPhotos,
+          photoURL: newPhotos[0] || ''
+        })
+        console.log('✅ Photo order saved!')
+        
+        toast({
+          title: t('profileToasts.photosReordered'),
+          description: t('profileToasts.mainPhotoChanged'),
+        })
+      } catch (error) {
+        console.error('❌ Error saving photo order:', error)
+        toast({
+          title: t('profileToasts.reorderError'),
+          description: t('profileToasts.reorderErrorDesc'),
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  // ✅ Simple arrow button handlers for iOS
+  const movePhotoLeft = async (index: number) => {
+    if (index <= 0) return
+    await reorderPhotos(index, index - 1)
+  }
+
+  const movePhotoRight = async (index: number) => {
+    if (index >= profileData.photos.length - 1) return
+    await reorderPhotos(index, index + 1)
+  }
+
   const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
     
@@ -377,50 +507,9 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       return
     }
 
-    console.log(`📦 Dropping photo ${draggedIndex + 1} at position ${dropIndex + 1}`)
-
-    // Reorder photos array
-    const newPhotos = [...profileData.photos]
-    const [draggedPhoto] = newPhotos.splice(draggedIndex, 1)
-    newPhotos.splice(dropIndex, 0, draggedPhoto)
-
-    // Update local state
-    setProfileData({ ...profileData, photos: newPhotos })
+    await reorderPhotos(draggedIndex, dropIndex)
     setDraggedIndex(null)
     setDragOverIndex(null)
-    
-    // Update current photo index if needed
-    if (currentPhotoIndex === draggedIndex) {
-      setCurrentPhotoIndex(dropIndex)
-    } else if (draggedIndex < currentPhotoIndex && dropIndex >= currentPhotoIndex) {
-      setCurrentPhotoIndex(currentPhotoIndex - 1)
-    } else if (draggedIndex > currentPhotoIndex && dropIndex <= currentPhotoIndex) {
-      setCurrentPhotoIndex(currentPhotoIndex + 1)
-    }
-
-    // ✅ Auto-save to Firestore
-    if (currentUser) {
-      try {
-        console.log('💾 Auto-saving photo order to Firestore...')
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-          photos: newPhotos,
-          photoURL: newPhotos[0] || ''  // Update main photo
-        })
-        console.log('✅ Photo order saved!')
-        
-        toast({
-          title: "Photos reordered",
-          description: "Your photo order has been updated!",
-        })
-      } catch (error) {
-        console.error('❌ Error saving photo order:', error)
-        toast({
-          title: "Error",
-          description: "Failed to save photo order",
-          variant: "destructive",
-        })
-      }
-    }
   }
 
   const handleSaveChanges = async () => {
@@ -429,8 +518,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     // ✅ NEW: Validate age before saving
     if (ageError) {
       toast({
-        title: "Invalid Age",
-        description: ageError,
+        title: t('profileToasts.invalidAge'),
+        description: t('profileToasts.invalidAgeDesc'),
         variant: "destructive",
       })
       return
@@ -438,8 +527,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     
     if (profileData.age < 18) {
       toast({
-        title: "Invalid Age",
-        description: "You must be at least 18 years old",
+        title: t('profileToasts.invalidAge'),
+        description: t('profileToasts.mustBe18'),
         variant: "destructive",
       })
       return
@@ -480,8 +569,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     } catch (error) {
       console.error('❌ Error saving profile:', error)
       toast({
-        title: "Error Saving Profile",
-        description: "Please try again.",
+        title: t('profileToasts.saveError'),
+        description: t('profileToasts.saveErrorDesc'),
         variant: "destructive",
       })
     } finally {
@@ -591,6 +680,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       localStorage.setItem('i4iguana_just_deleted', 'true')
       localStorage.setItem('force_notification_setup', 'true')  // ← NEW: Force notification modal on re-register
       console.log('✅ Set force_notification_setup flag')
+      console.log('✅ Set i4iguana_just_deleted = true')
       
       // ✅ Clear ALL other localStorage and sessionStorage
       localStorage.removeItem('hasScannedQR')
@@ -600,6 +690,17 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       localStorage.removeItem('i4iguana_notification_modal_shown')  // ← NEW: Clear notification modal flag
       localStorage.removeItem('i4iguana_onesignal_linked')  // ← NEW: Clear OneSignal linked flag
       localStorage.removeItem('googleDisplayName')  // ← CRITICAL: Clear Google name so new login gets fresh name
+      // ✅ v2.8.23: Clear language selection so language selection screen appears
+      localStorage.removeItem('i4iguana_language')
+      localStorage.removeItem('i4iguana_language_selected')
+      console.log('✅ Cleared i4iguana_language_selected')
+      // ✅ NEW: Clear all state persistence flags on DELETE (not on logout!)
+      localStorage.removeItem('i4iguana_was_authenticated')
+      localStorage.removeItem('i4iguana_auth_wait_start')
+      localStorage.removeItem('i4iguana_auth_initializing')
+      localStorage.removeItem('i4iguana_last_screen')
+      localStorage.removeItem('i4iguana_enjoy_mode')
+      localStorage.removeItem('i4iguana_matched_user_id')
       
       // ✅ Clear match sound timestamps for all users
       Object.keys(localStorage).forEach(key => {
@@ -617,8 +718,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     } catch (error) {
       console.error('Error deleting account:', error)
       toast({
-        title: "Error",
-        description: "Failed to delete account. Please try again.",
+        title: t('profileToasts.deleteError'),
+        description: t('profileToasts.deleteErrorDesc'),
         variant: "destructive",
       })
     } finally {
@@ -634,24 +735,50 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4ade80] mx-auto mb-4"></div>
-          <p className="text-white/60">Loading profile...</p>
+          <p className="text-white/60" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{t('loading.profile')}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] pb-24 custom-scrollbar mobile-scrollbar">
-      {/* Header */}
+    <div 
+      className="bg-gradient-to-b from-[#0d2920] via-[#1a4d3e] to-[#0d2920] custom-scrollbar mobile-scrollbar overflow-y-auto"
+      style={{ 
+        height: 'var(--app-height, 100dvh)',
+        minHeight: 'var(--app-height, 100dvh)',
+        maxHeight: 'var(--app-height, 100dvh)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 96px)'
+      }}
+    >
+      {/* ✅ FIX iOS: Hidden file input - must be in DOM for iOS Safari */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        className="hidden"
+        aria-hidden="true"
+      />
+      
+      {/* Header - with iOS safe area padding */}
       <motion.div
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         className="sticky top-0 z-30 bg-gradient-to-r from-[#0d2920] to-[#1a4d3e] backdrop-blur-xl border-b-2 border-[#4ade80]/30 px-6 py-4"
+        style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
       >
-        <div className="flex items-center justify-between max-w-md mx-auto">
+        <div className="flex items-center justify-between max-w-md mx-auto" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <User className="h-7 w-7 text-[#4ade80]" />
-            My Profile
+            <span className="text-2xl">👤</span>
+            {isRTL ? 'הפרופיל שלי' : 'My Profile'}
           </h1>
           <div className="flex gap-2">
             <Button
@@ -659,7 +786,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
               variant="outline"
               className="border-2 border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl px-4 py-2"
             >
-              Logout
+              {isRTL ? 'התנתקות' : 'Logout'}
             </Button>
           </div>
         </div>
@@ -738,39 +865,69 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             )}
           </div>
 
-          {/* Photo thumbnails */}
+          {/* Photo thumbnails - with touch support for iOS */}
           <div className="p-4 bg-[#0d2920]/50">
-            <div className="flex gap-2 overflow-x-auto pb-2 photo-scroll">
+            <div 
+              ref={thumbnailsRef}
+              className="flex gap-2 overflow-x-auto pb-2 photo-scroll"
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               {allPhotos.map((photo, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentPhotoIndex(index)}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, index)}
-                  className={`relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all cursor-move ${
-                    index === currentPhotoIndex
-                      ? 'border-[#4ade80] scale-110'
-                      : 'border-white/20 hover:border-white/40'
-                  } ${
-                    dragOverIndex === index && draggedIndex !== index
-                      ? 'border-yellow-400 scale-105'
-                      : ''
-                  } ${
-                    draggedIndex === index
-                      ? 'opacity-50'
-                      : ''
-                  }`}
-                >
-                  <img src={photo} alt={`Thumb ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                <div key={index} className="relative flex-shrink-0">
+                  <button
+                    data-photo-index={index}
+                    onClick={() => setCurrentPhotoIndex(index)}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onTouchStart={(e) => handleTouchStart(e, index)}
+                    className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                      index === currentPhotoIndex
+                        ? 'border-[#4ade80] scale-110'
+                        : 'border-white/20 hover:border-white/40'
+                    } ${
+                      (dragOverIndex === index || (touchDragIndex !== null && dragOverIndex === index)) && draggedIndex !== index && touchDragIndex !== index
+                        ? 'border-yellow-400 scale-105'
+                        : ''
+                    } ${
+                      draggedIndex === index || touchDragIndex === index
+                        ? 'opacity-50'
+                        : ''
+                    }`}
+                  >
+                    <img src={photo} alt={`Thumb ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                    
+                    {/* Photo number badge */}
+                    <div className="absolute top-1 left-1 bg-black/70 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center pointer-events-none">
+                      {index + 1}
+                    </div>
+                  </button>
                   
-                  {/* ✅ NEW: Photo number badge */}
-                  <div className="absolute top-1 left-1 bg-black/70 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center pointer-events-none">
-                    {index + 1}
-                  </div>
-                </button>
+                  {/* ✅ iOS FIX: Arrow buttons for easy reordering on touch devices */}
+                  {allPhotos.length > 1 && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
+                      {index > 0 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); movePhotoLeft(index); }}
+                          className="w-5 h-5 bg-black/80 rounded-full flex items-center justify-center text-white text-xs hover:bg-[#4ade80] transition-colors"
+                        >
+                          ‹
+                        </button>
+                      )}
+                      {index < allPhotos.length - 1 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); movePhotoRight(index); }}
+                          className="w-5 h-5 bg-black/80 rounded-full flex items-center justify-center text-white text-xs hover:bg-[#4ade80] transition-colors"
+                        >
+                          ›
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
               
               {allPhotos.length < 6 && (
@@ -784,10 +941,12 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
               )}
             </div>
             
-            {/* ✅ NEW: Drag & Drop hint */}
+            {/* Reorder hint */}
             {allPhotos.length > 1 && (
-              <p className="text-xs text-white/40 text-center mt-2">
-                💡 Drag photos to reorder (Photo #1 is your main photo)
+              <p className="text-xs text-white/40 text-center mt-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {isRTL 
+                  ? '👆 השתמש בחצים או גרור כדי לסדר (תמונה #1 היא הראשית) ⭐' 
+                  : '👆 Use arrows or drag to reorder (Photo #1 is your main) ⭐'}
               </p>
             )}
           </div>
@@ -800,32 +959,35 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
           transition={{ delay: 0.1 }}
           className="bg-gradient-to-br from-[#1a4d3e] to-[#0d2920] rounded-3xl border-2 border-[#4ade80]/30 p-6 space-y-4 shadow-2xl"
         >
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <User className="h-5 w-5 text-[#4ade80]" />
-            Basic Information
+          <h2 className="text-xl font-bold text-white flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            <span className="text-2xl">👤</span>
+            {isRTL ? 'מידע בסיסי' : 'Basic Information'}
           </h2>
           
           <div className="space-y-4">
             <div>
-              <label className="text-white/80 text-sm mb-2 block">Name</label>
+              <label className="text-white/80 text-sm mb-2 block" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {isRTL ? 'שם' : 'Name'}
+              </label>
               <Input
                 value={profileData.displayName}
                 onChange={(e) => setProfileData({ ...profileData, displayName: e.target.value })}
-                placeholder="Your name"
+                placeholder={isRTL ? 'השם שלך' : 'Your name'}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
+                style={{ direction: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}
               />
             </div>
 
             {/* ✅ Age via Birth Date - With Validation */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                 <label className="text-white/80 text-sm flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-[#4ade80]" />
-                  Birth Date
+                  <span className="text-lg">🎂</span>
+                  {isRTL ? 'תאריך לידה' : 'Birth Date'}
                 </label>
                 {profileData.age && !ageError && (
-                  <span className="text-[#4ade80] text-xl font-bold">
-                    {profileData.age} years old
+                  <span className="text-[#4ade80] text-xl font-bold" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                    {isRTL ? `${profileData.age} שנים` : `${profileData.age} years old`}
                   </span>
                 )}
               </div>
@@ -849,6 +1011,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     className="mt-2 flex items-center gap-2 text-red-400 text-sm"
+                    style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                   >
                     <AlertCircle className="h-4 w-4" />
                     {ageError}
@@ -858,7 +1021,10 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             </div>
 
             <div>
-              <label className="text-white/80 text-sm mb-2 block">Bio</label>
+              <label className="text-white/80 text-sm mb-2 block" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg mr-1">✏️</span>
+                {isRTL ? 'ביו' : 'Bio'}
+              </label>
               <Textarea
                 value={profileData.bio}
                 onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
@@ -876,12 +1042,12 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
           transition={{ delay: 0.2 }}
           className="bg-gradient-to-br from-[#1a4d3e] to-[#0d2920] rounded-3xl border-2 border-[#4ade80]/30 p-6 space-y-4 shadow-2xl"
         >
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Heart className="h-5 w-5 text-[#4ade80]" />
-            Interests
+          <h2 className="text-xl font-bold text-white flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            <span className="text-2xl">💜</span>
+            {isRTL ? 'תחביבים ותחומי עניין' : 'Interests'}
           </h2>
           
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
             {profileData.hobbies.map((hobby, index) => (
               <motion.div
                 key={index}
@@ -906,7 +1072,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                 className="bg-[#4ade80]/10 border-2 border-dashed border-[#4ade80]/40 hover:border-[#4ade80] hover:bg-[#4ade80]/20 rounded-full px-4 py-2 flex items-center gap-2 transition-all"
               >
                 <Plus className="h-4 w-4 text-[#4ade80]" />
-                <span className="text-[#4ade80] text-sm font-medium">Add Interest</span>
+                <span className="text-[#4ade80] text-sm font-medium">{isRTL ? 'הוסף תחביב' : 'Add Interest'}</span>
               </button>
             )}
           </div>
@@ -919,56 +1085,56 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
           transition={{ delay: 0.3 }}
           className="bg-gradient-to-br from-[#1a4d3e] to-[#0d2920] rounded-3xl border-2 border-[#4ade80]/30 p-6 space-y-4 shadow-2xl"
         >
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Wine className="h-5 w-5 text-[#4ade80]" />
-            Lifestyle
+          <h2 className="text-xl font-bold text-white flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            <span className="text-2xl">🌟</span>
+            {isRTL ? 'סגנון חיים' : 'Lifestyle'}
           </h2>
 
           <div className="space-y-4">
             <div>
-              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
-                <Wine className="h-4 w-4 text-[#4ade80]" />
-                Drinking
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg">🍷</span>
+                {isRTL ? 'שתייה' : 'Drinking'}
               </label>
               <Select
                 value={profileData.drinking}
                 onValueChange={(value: any) => setProfileData({ ...profileData, drinking: value })}
               >
-                <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-xl">
+                <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-xl" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="never">Never</SelectItem>
-                  <SelectItem value="social">Socially</SelectItem>
-                  <SelectItem value="regular">Regularly</SelectItem>
+                  <SelectItem value="never">{isRTL ? 'לא שותה' : 'Never'}</SelectItem>
+                  <SelectItem value="social">{isRTL ? 'חברתית' : 'Socially'}</SelectItem>
+                  <SelectItem value="regular">{isRTL ? 'באופן קבוע' : 'Regularly'}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
-                <Cigarette className="h-4 w-4 text-[#4ade80]" />
-                Smoking
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg">🚬</span>
+                {isRTL ? 'עישון' : 'Smoking'}
               </label>
               <Select
                 value={profileData.smoking}
                 onValueChange={(value: any) => setProfileData({ ...profileData, smoking: value })}
               >
-                <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-xl">
+                <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-xl" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="no">No</SelectItem>
-                  <SelectItem value="social">Socially</SelectItem>
-                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">{isRTL ? 'לא' : 'No'}</SelectItem>
+                  <SelectItem value="social">{isRTL ? 'חברתית' : 'Socially'}</SelectItem>
+                  <SelectItem value="yes">{isRTL ? 'כן' : 'Yes'}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-white text-lg font-semibold mb-4 block flex items-center gap-2">
-                <Ruler className="h-5 w-5 text-[#4ade80]" />
-                Height: <span className="text-[#4ade80] text-2xl font-bold">{displayValue}</span> <span className="text-white/60">{heightUnit}</span>
+              <label className="text-white text-lg font-semibold mb-4 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-xl">📏</span>
+                {isRTL ? 'גובה:' : 'Height:'} <span className="text-[#4ade80] text-2xl font-bold">{displayValue}</span> <span className="text-white/60">{heightUnit}</span>
               </label>
               <div className="space-y-4">
                 {/* ✅ Custom Slider with Progress Bar - NO transition for smooth dragging */}
@@ -1039,57 +1205,60 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
           transition={{ delay: 0.4 }}
           className="bg-gradient-to-br from-[#1a4d3e] to-[#0d2920] rounded-3xl border-2 border-[#4ade80]/30 p-6 space-y-4 shadow-2xl"
         >
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Briefcase className="h-5 w-5 text-[#4ade80]" />
-            Additional Details
+          <h2 className="text-xl font-bold text-white flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            <span className="text-2xl">✨</span>
+            {isRTL ? 'פרטים נוספים' : 'Additional Details'}
           </h2>
 
           <div className="space-y-4">
             <div>
-              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-[#4ade80]" />
-                Occupation
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg">💼</span>
+                {isRTL ? 'עיסוק' : 'Occupation'}
               </label>
               <Input
                 value={profileData.occupation}
                 onChange={(e) => setProfileData({ ...profileData, occupation: e.target.value })}
-                placeholder="What do you do?"
+                placeholder={isRTL ? 'במה את/ה עוסק/ת?' : 'What do you do?'}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
+                style={{ direction: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}
               />
             </div>
 
             <div>
-              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-[#4ade80]" />
-                Education
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg">🎓</span>
+                {isRTL ? 'השכלה' : 'Education'}
               </label>
               <Input
                 value={profileData.education}
                 onChange={(e) => setProfileData({ ...profileData, education: e.target.value })}
-                placeholder="Your education"
+                placeholder={isRTL ? 'ההשכלה שלך' : 'Your education'}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
+                style={{ direction: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}
               />
             </div>
 
             {/* ✅ NEW: City Field */}
             <div>
-              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
-                <Home className="h-4 w-4 text-[#4ade80]" />
-                City / עיר
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg">🏠</span>
+                {isRTL ? 'עיר מגורים' : 'City'}
               </label>
               <Input
                 value={profileData.city || ''}
                 onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
-                placeholder="Where do you live? / איפה אתה גר?"
+                placeholder={isRTL ? 'איפה את/ה גר/ה?' : 'Where do you live?'}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
+                style={{ direction: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}
               />
             </div>
 
             {/* ✅ NEW: Languages Field */}
             <div>
-              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-[#4ade80]" />
-                Languages / שפות
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg">🗣️</span>
+                {isRTL ? 'שפות' : 'Languages'}
               </label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {(profileData.languages || []).map((lang, index) => (
@@ -1140,52 +1309,64 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             </div>
 
             <div>
-              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2">
-                <Heart className="h-4 w-4 text-[#4ade80]" />
-                Looking For
+              <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <span className="text-lg">💕</span>
+                {isRTL ? 'מחפש/ת' : 'Looking For'}
               </label>
               <Select
                 value={profileData.lookingFor}
                 onValueChange={(value: any) => setProfileData({ ...profileData, lookingFor: value })}
               >
-                <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-xl">
+                <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-xl" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="relationship">Relationship</SelectItem>
-                  <SelectItem value="casual">Casual</SelectItem>
-                  <SelectItem value="friends">Friends</SelectItem>
+                  <SelectItem value="relationship">{isRTL ? '💑 מערכת יחסים' : '💑 Relationship'}</SelectItem>
+                  <SelectItem value="casual">{isRTL ? '😎 קז\'ואל' : '😎 Casual'}</SelectItem>
+                  <SelectItem value="friends">{isRTL ? '🤝 חברים' : '🤝 Friends'}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </motion.div>
 
-        {/* Save Button */}
+        {/* ✅ v2.8.8: Language Settings - MOVED ABOVE Save Button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
+          className="pt-4"
+        >
+          <LanguageSettings />
+        </motion.div>
+
+        {/* Save Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="pt-4"
         >
           <Button
             onClick={handleSaveChanges}
             disabled={saving || !!ageError}
             className={`w-full h-14 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] text-lg font-bold rounded-2xl shadow-lg disabled:opacity-50 ${ageError ? 'from-red-500 to-red-600 hover:from-red-600 hover:to-red-700' : ''}`}
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             {saving ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Saving...
+                <Loader2 className={`h-5 w-5 animate-spin ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                {isRTL ? 'שומר...' : 'Saving...'}
               </>
             ) : ageError ? (
               <>
-                <AlertCircle className="mr-2 h-5 w-5" />
-                Fix Age Error
+                <AlertCircle className={`h-5 w-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                {isRTL ? 'תקן שגיאת גיל' : 'Fix Age Error'}
               </>
             ) : (
               <>
-                <Save className="mr-2 h-5 w-5" />
-                Save Changes
+                <span className="text-xl">{isRTL ? '💾' : '💾'}</span>
+                <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'שמור שינויים' : 'Save Changes'}</span>
               </>
             )}
           </Button>
@@ -1202,9 +1383,10 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             onClick={() => setShowDeleteModal(true)}
             variant="outline"
             className="w-full h-12 border-2 border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
-            <Trash2 className="mr-2 h-5 w-5" />
-            Delete Account
+            <Trash2 className={`h-5 w-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+            {isRTL ? 'מחיקת חשבון' : 'Delete Account'}
           </Button>
         </motion.div>
 
@@ -1524,7 +1706,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             className="flex flex-col items-center gap-1 text-white/60 hover:text-[#4ade80] transition-colors"
           >
             <Home className="h-6 w-6" />
-            <span className="text-xs">Home</span>
+            <span className="text-xs">{t('nav.home')}</span>
           </motion.button>
           
           <motion.button
@@ -1534,7 +1716,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             className="flex flex-col items-center gap-1 text-white/60 hover:text-[#4ade80] transition-colors"
           >
             <Bell className="h-6 w-6" />
-            <span className="text-xs">Notifications</span>
+            <span className="text-xs">{t('nav.notifications')}</span>
           </motion.button>
           
           <motion.button
@@ -1543,7 +1725,7 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
             className="flex flex-col items-center gap-1 text-[#4ade80]"
           >
             <User className="h-6 w-6" />
-            <span className="text-xs">Profile</span>
+            <span className="text-xs">{t('nav.profile')}</span>
           </motion.button>
         </div>
       </motion.div>

@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, X, MessageCircle, Heart, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GA } from '@/lib/ga-events'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface NotificationPermissionModalProps {
   isOpen: boolean
@@ -28,6 +29,8 @@ export default function NotificationPermissionModal({
   onPermissionGranted,
   onPermissionDenied
 }: NotificationPermissionModalProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,18 +46,28 @@ export default function NotificationPermissionModal({
     // 📊 Track permission requested
     GA.notificationPermissionRequested()
 
-    // Safety timeout - close modal after 15 seconds no matter what
+    // Safety timeout - close modal after 20 seconds no matter what
     const safetyTimeout = setTimeout(() => {
       console.log('⏱️ Safety timeout - closing modal')
       setLoading(false)
       onClose()
-    }, 15000)
+    }, 20000)
 
     try {
+      // ✅ iOS Detection
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      const isStandalone = (window.navigator as any).standalone === true || window.matchMedia('(display-mode: standalone)').matches
+      
       // Check if Notification API is supported
       if (!('Notification' in window)) {
         console.log('❌ Notifications not supported in this browser')
-        setError('Notifications are not supported in this browser. Please use Chrome or Firefox.')
+        
+        // ✅ Special message for iOS Safari (not PWA)
+        if (isIOS && !isStandalone) {
+          setError('📱 להתראות באייפון:\n1. לחץ על כפתור השיתוף (↑)\n2. בחר "הוסף למסך הבית"\n3. פתח את האפליקציה ממסך הבית\n4. אז התראות יעבדו!')
+        } else {
+          setError('Notifications are not supported in this browser.')
+        }
         clearTimeout(safetyTimeout)
         setLoading(false)
         return
@@ -62,145 +75,162 @@ export default function NotificationPermissionModal({
       
       // ✅ Check CURRENT permission status FIRST
       const currentPermission = Notification.permission
-      console.log('🔔 Current permission status:', currentPermission)
+      console.log('🔔 Current browser permission status:', currentPermission)
       
-      let finalPermission = currentPermission
-      
-      // ✅ Only request if permission is 'default' (not yet decided)
-      // If already 'granted' or 'denied', browser won't show popup anyway
-      if (currentPermission === 'default') {
-        console.log('🔔 Requesting browser notification permission...')
-        finalPermission = await Notification.requestPermission()
-        console.log('🔔 Browser permission result:', finalPermission)
-      } else if (currentPermission === 'granted') {
-        console.log('✅ Browser permission already granted - skipping request popup')
-      } else if (currentPermission === 'denied') {
+      // ✅ If already denied, show helpful message
+      if (currentPermission === 'denied') {
         console.log('❌ Browser permission already denied')
         clearTimeout(safetyTimeout)
-        setError('Notifications were blocked previously. Go to browser settings → Site Settings → Notifications → Allow for i4iguana.com')
+        setError('Notifications were blocked. Go to browser settings → Site Settings → Notifications → Allow for i4iguana.com')
         GA.notificationPermissionDenied()
         onPermissionDenied?.()
         setLoading(false)
         return
       }
       
-      if (finalPermission === 'granted') {
-        console.log('✅ Browser permission granted!')
+      // ✅ CRITICAL: Wait for OneSignal to be ready
+      console.log('🔔 Waiting for OneSignal SDK...')
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      const OneSignal = (window as any).OneSignal
+      
+      if (!OneSignal) {
+        console.error('❌ OneSignal SDK not loaded!')
+        // Fallback: Try browser API directly
+        console.log('🔔 Trying browser API fallback...')
+        const permission = await Notification.requestPermission()
+        console.log('🔔 Browser permission result:', permission)
+        if (permission === 'granted') {
+          GA.notificationPermissionGranted()
+          onPermissionGranted?.()
+        } else {
+          GA.notificationPermissionDenied()
+          onPermissionDenied?.()
+        }
+        clearTimeout(safetyTimeout)
+        setLoading(false)
+        onClose()
+        return
+      }
+      
+      console.log('✅ OneSignal SDK found!')
+      
+      // ✅ STEP 1: Use OneSignal's API to request permission AND subscribe
+      // This is the CORRECT way - OneSignal handles everything!
+      try {
+        console.log('═══════════════════════════════════════════════════')
+        console.log('🔔 STEP 1: Requesting permission via OneSignal...')
+        console.log('═══════════════════════════════════════════════════')
         
-        // ✅ STEP 2: Setup OneSignal
-        try {
-          // Wait for OneSignal to be ready
-          console.log('🔔 Waiting for OneSignal to be ready...')
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          
-          const OneSignal = (window as any).OneSignal
-          
-          if (OneSignal) {
-            console.log('🔔 Setting up OneSignal...')
-            
-            // Helper function with timeout
-            const withTimeout = (promise: Promise<any>, ms: number) => {
-              return Promise.race([
-                promise,
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
-              ])
-            }
-            
-            // Check if OneSignal User API is available (v16)
-            if (OneSignal.User && OneSignal.User.PushSubscription) {
-              // Opt in to push notifications
-              try {
-                console.log('🔔 Calling OneSignal.User.PushSubscription.optIn()...')
-                await withTimeout(OneSignal.User.PushSubscription.optIn(), 5000)
-                console.log('✅ OneSignal optIn successful')
-              } catch (optInError: any) {
-                console.log('⚠️ OneSignal optIn error:', optInError.message)
-                // Try alternative method
-                try {
-                  if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
-                    await withTimeout(OneSignal.Notifications.requestPermission(), 5000)
-                    console.log('✅ OneSignal requestPermission successful (fallback)')
-                  }
-                } catch (e) {
-                  console.log('⚠️ OneSignal fallback also failed:', e)
-                }
-              }
-              
-              // ✅ CRITICAL: Link user ID for targeting
-              if (userId) {
-                console.log('═══════════════════════════════════════════════════')
-                console.log('🔗 LINKING USER TO ONESIGNAL')
-                console.log('   User ID:', userId)
-                console.log('═══════════════════════════════════════════════════')
-                try {
-                  console.log('🔔 Calling OneSignal.login()...')
-                  await withTimeout(OneSignal.login(userId), 8000)
-                  console.log('✅ OneSignal.login() SUCCESS! User linked:', userId)
-                  console.log('   Push notifications will now target this user!')
-                  
-                  // ✅ Save success flag
-                  localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
-                  localStorage.setItem('i4iguana_onesignal_linked', 'true')
-                } catch (loginError: any) {
-                  console.error('❌ OneSignal.login() FAILED:', loginError.message)
-                  // Try setExternalUserId as fallback (older API)
-                  try {
-                    if (OneSignal.setExternalUserId) {
-                      await OneSignal.setExternalUserId(userId)
-                      console.log('✅ OneSignal setExternalUserId successful (fallback)')
-                      localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
-                    }
-                  } catch (e) {
-                    console.error('❌ setExternalUserId fallback also failed:', e)
-                  }
-                }
-              } else {
-                console.error('❌ NO USER ID PROVIDED! Push notifications will not work!')
-              }
-            } else {
-              // Older OneSignal API fallback
-              console.log('⚠️ Using older OneSignal API...')
-              if (OneSignal.registerForPushNotifications) {
-                await OneSignal.registerForPushNotifications()
-              }
-              if (userId && OneSignal.setExternalUserId) {
-                await OneSignal.setExternalUserId(userId)
-              }
-            }
-            
-            console.log('✅ OneSignal setup complete')
-          } else {
-            console.log('⚠️ OneSignal not available - browser notifications still enabled')
-          }
-        } catch (oneSignalError) {
-          console.log('⚠️ OneSignal error (notifications may still work):', oneSignalError)
+        // Check if OneSignal has the v16 API
+        if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+          // ✅ v16 API - This triggers the browser prompt!
+          console.log('🔔 Calling OneSignal.Notifications.requestPermission()...')
+          const permissionResult = await OneSignal.Notifications.requestPermission()
+          console.log('🔔 OneSignal permission result:', permissionResult)
+        } else if (OneSignal.User && OneSignal.User.PushSubscription) {
+          // ✅ Try optIn which also requests permission
+          console.log('🔔 Calling OneSignal.User.PushSubscription.optIn()...')
+          await OneSignal.User.PushSubscription.optIn()
+          console.log('✅ OneSignal optIn completed')
+        } else if (OneSignal.registerForPushNotifications) {
+          // Legacy API
+          console.log('🔔 Using legacy registerForPushNotifications...')
+          await OneSignal.registerForPushNotifications()
         }
         
-        // ✅ STEP 3: Show success message
-        console.log('✅ Notifications enabled successfully!')
+        // ✅ Wait a moment for subscription to register
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // ✅ Check if subscription was successful
+        let isSubscribed = false
+        if (OneSignal.User && OneSignal.User.PushSubscription) {
+          isSubscribed = await OneSignal.User.PushSubscription.optedIn
+          console.log('🔔 OneSignal subscription status:', isSubscribed)
+        }
+        
+        // ✅ STEP 2: Link user ID for targeting
+        if (userId) {
+          console.log('═══════════════════════════════════════════════════')
+          console.log('🔗 STEP 2: Linking user to OneSignal')
+          console.log('   User ID:', userId)
+          console.log('═══════════════════════════════════════════════════')
+          
+          try {
+            console.log('🔔 Calling OneSignal.login()...')
+            await OneSignal.login(userId)
+            console.log('✅ OneSignal.login() SUCCESS!')
+            console.log('   Push notifications will now target user:', userId)
+            
+            // ✅ Save success flag
+            localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
+            localStorage.setItem('i4iguana_onesignal_linked', 'true')
+            localStorage.setItem('i4iguana_notifications_enabled', 'true')
+            
+          } catch (loginError: any) {
+            console.error('❌ OneSignal.login() failed:', loginError.message)
+            
+            // Try setExternalUserId as fallback
+            try {
+              if (OneSignal.setExternalUserId) {
+                await OneSignal.setExternalUserId(userId)
+                console.log('✅ setExternalUserId successful (fallback)')
+                localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
+              }
+            } catch (e) {
+              console.error('❌ setExternalUserId also failed:', e)
+            }
+          }
+        }
+        
+        // ✅ Check final status and respond
+        const finalPermission = Notification.permission
+        console.log('🔔 Final browser permission:', finalPermission)
+        
+        if (finalPermission === 'granted' || isSubscribed) {
+          console.log('═══════════════════════════════════════════════════')
+          console.log('✅ NOTIFICATIONS FULLY ENABLED!')
+          console.log('═══════════════════════════════════════════════════')
+          GA.notificationPermissionGranted()
+          onPermissionGranted?.()
+        } else if (finalPermission === 'denied') {
+          setError('Notifications were blocked. Check browser settings.')
+          GA.notificationPermissionDenied()
+          onPermissionDenied?.()
+        } else {
+          // Permission dismissed
+          console.log('ℹ️ Permission dismissed by user')
+        }
+        
         clearTimeout(safetyTimeout)
-        
-        // 📊 Track permission granted
-        GA.notificationPermissionGranted()
-        
-        onPermissionGranted?.()
+        setLoading(false)
         onClose()
         
-      } else if (finalPermission === 'denied') {
+      } catch (oneSignalError: any) {
+        console.error('❌ OneSignal error:', oneSignalError)
+        
+        // ✅ Fallback: Try browser API directly
+        console.log('🔔 Trying browser API as fallback...')
+        try {
+          const permission = await Notification.requestPermission()
+          console.log('🔔 Browser fallback result:', permission)
+          
+          if (permission === 'granted') {
+            GA.notificationPermissionGranted()
+            onPermissionGranted?.()
+          } else {
+            GA.notificationPermissionDenied()
+            onPermissionDenied?.()
+          }
+        } catch (browserError) {
+          console.error('❌ Browser API also failed:', browserError)
+        }
+        
         clearTimeout(safetyTimeout)
-        setError('Notifications were blocked. To enable them, go to your browser settings → Site Settings → Notifications → Allow for i4iguana.com')
-        
-        // 📊 Track permission denied
-        GA.notificationPermissionDenied()
-        
-        onPermissionDenied?.()
         setLoading(false)
-      } else {
-        // Permission dismissed
-        console.log('ℹ️ Permission dismissed by user')
-        clearTimeout(safetyTimeout)
         onClose()
       }
+      
     } catch (err: any) {
       console.error('Error enabling notifications:', err)
       setError(`Error: ${err.message || 'Unknown error'}`)
@@ -286,8 +316,9 @@ export default function NotificationPermissionModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                   className="text-2xl font-bold text-white text-center mb-2"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                 >
-                  Don't Miss a Match! 💚
+                  {t('notifications.dontMiss')}
                 </motion.h2>
 
                 {/* Subtitle */}
@@ -296,8 +327,9 @@ export default function NotificationPermissionModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
                   className="text-white/60 text-center text-sm mb-6"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                 >
-                  Get notified when someone likes you or sends a message
+                  {t('notifications.getNotified')}
                 </motion.p>
 
                 {/* Benefits */}
@@ -307,33 +339,33 @@ export default function NotificationPermissionModal({
                   transition={{ delay: 0.5 }}
                   className="space-y-3 mb-6"
                 >
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                  <div className={`flex items-center gap-3 p-3 rounded-xl bg-white/5 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
                       <Heart className="h-5 w-5 text-pink-400" />
                     </div>
-                    <div>
-                      <p className="text-white font-medium text-sm">New Matches</p>
-                      <p className="text-white/50 text-xs">Know instantly when you match</p>
+                    <div className={isRTL ? 'text-right' : ''}>
+                      <p className="text-white font-medium text-sm">{t('notifications.newMatches')}</p>
+                      <p className="text-white/50 text-xs">{t('notifications.knowInstantly')}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                  <div className={`flex items-center gap-3 p-3 rounded-xl bg-white/5 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
                       <MessageCircle className="h-5 w-5 text-blue-400" />
                     </div>
-                    <div>
-                      <p className="text-white font-medium text-sm">Messages</p>
-                      <p className="text-white/50 text-xs">Never miss a conversation</p>
+                    <div className={isRTL ? 'text-right' : ''}>
+                      <p className="text-white font-medium text-sm">{t('notifications.messages')}</p>
+                      <p className="text-white/50 text-xs">{t('notifications.neverMiss')}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                  <div className={`flex items-center gap-3 p-3 rounded-xl bg-white/5 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
                       <Sparkles className="h-5 w-5 text-yellow-400" />
                     </div>
-                    <div>
-                      <p className="text-white font-medium text-sm">Special Events</p>
-                      <p className="text-white/50 text-xs">Venue announcements & more</p>
+                    <div className={isRTL ? 'text-right' : ''}>
+                      <p className="text-white font-medium text-sm">{t('notifications.specialEvents')}</p>
+                      <p className="text-white/50 text-xs">{t('notifications.venueAnnouncements')}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -343,7 +375,8 @@ export default function NotificationPermissionModal({
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm text-center"
+                    className="mb-4 p-4 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-200 text-sm text-right whitespace-pre-line"
+                    dir={error.includes('📱') ? 'rtl' : 'ltr'}
                   >
                     {error}
                   </motion.div>
@@ -369,8 +402,8 @@ export default function NotificationPermissionModal({
                       />
                     ) : (
                       <>
-                        <Bell className="mr-2 h-5 w-5" />
-                        Enable Notifications
+                        <Bell className={`${isRTL ? 'ml-2' : 'mr-2'} h-5 w-5`} />
+                        {t('notifications.enableNotifications')}
                       </>
                     )}
                   </Button>
@@ -379,7 +412,7 @@ export default function NotificationPermissionModal({
                     onClick={handleMaybeLater}
                     className="w-full py-3 text-white/60 hover:text-white text-sm font-medium transition-colors"
                   >
-                    Maybe Later
+                    {t('notifications.maybeLater')}
                   </button>
                 </motion.div>
 
@@ -389,8 +422,9 @@ export default function NotificationPermissionModal({
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.7 }}
                   className="text-white/30 text-xs text-center mt-4"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                 >
-                  You can change this anytime in settings
+                  {t('notifications.privacyNote')}
                 </motion.p>
               </div>
             </div>

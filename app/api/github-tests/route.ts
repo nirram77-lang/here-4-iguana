@@ -42,7 +42,7 @@ export async function GET() {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'I4IGUANA-Dashboard'
         },
-        next: { revalidate: 30 } // Cache for 30 seconds
+        next: { revalidate: 10 } // Cache for 10 seconds for near real-time
       }
     )
 

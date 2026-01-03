@@ -12,6 +12,7 @@ import {
   deleteNotification,
   getUnreadNotificationCount 
 } from "@/lib/firestore-service"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface NotificationsScreenProps {
   onNavigate: (screen: "home" | "notifications" | "profile" | "match" | "chat") => void
@@ -39,6 +40,8 @@ export default function NotificationsScreen({
   hasActiveMatch = false,
   onNotificationClick 
 }: NotificationsScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -114,7 +117,12 @@ export default function NotificationsScreen({
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifs: Notification[] = []
       snapshot.forEach(doc => {
-        notifs.push({ id: doc.id, ...doc.data() } as Notification)
+        const data = doc.data()
+        // ✅ FILTER: Only show message and venue notifications
+        // Ignore old notification types (match, meeting, meeting_completed)
+        if (data.type === 'message' || data.type === 'venue' || data.type === 'venue_announcement') {
+          notifs.push({ id: doc.id, ...data } as Notification)
+        }
       })
       
       // ✅ Sort by timestamp descending (client-side)
@@ -126,7 +134,7 @@ export default function NotificationsScreen({
       
       setNotifications(notifs)
       setLoading(false)
-      console.log(`📬 Loaded ${notifs.length} notifications (real-time)`)
+      console.log(`📬 Loaded ${notifs.length} notifications (filtered: message + venue only)`)
       
       // Count unread
       const unread = notifs.filter(n => !n.isRead).length
@@ -192,9 +200,9 @@ export default function NotificationsScreen({
     }
   }
 
-  // Format time ago - ✅ FIXED: Handle both timestamp and createdAt, and null
+  // Format time ago - ✅ FIXED: Use translations for all languages
   const formatTimeAgo = (timestamp: Timestamp | undefined): string => {
-    if (!timestamp || !timestamp.toDate) return 'Just now'
+    if (!timestamp || !timestamp.toDate) return t('notifications.timeAgo.justNow')
     
     try {
       const now = new Date()
@@ -202,17 +210,17 @@ export default function NotificationsScreen({
       const diffMs = now.getTime() - notifTime.getTime()
       const diffMins = Math.floor(diffMs / 60000)
       
-      if (diffMins < 1) return 'Just now'
-      if (diffMins < 60) return `${diffMins}m ago`
+      if (diffMins < 1) return t('notifications.timeAgo.justNow')
+      if (diffMins < 60) return t('notifications.timeAgo.minutesAgo', { count: diffMins })
       
       const diffHours = Math.floor(diffMins / 60)
-      if (diffHours < 24) return `${diffHours}h ago`
+      if (diffHours < 24) return t('notifications.timeAgo.hoursAgo', { count: diffHours })
     
       const diffDays = Math.floor(diffHours / 24)
-      return `${diffDays}d ago`
+      return t('notifications.timeAgo.daysAgo', { count: diffDays })
     } catch (error) {
       console.error('Error formatting time:', error)
-      return 'Just now'
+      return t('notifications.timeAgo.justNow')
     }
   }
 
@@ -248,6 +256,11 @@ export default function NotificationsScreen({
         bgColor: 'bg-pink-500/20',
         borderColor: isRead ? 'border-pink-500/20' : 'border-pink-500/60',
         glowColor: 'shadow-pink-500/20'
+      },
+      meeting_completed: {
+        bgColor: 'bg-purple-500/20',
+        borderColor: isRead ? 'border-purple-500/20' : 'border-purple-500/60',
+        glowColor: 'shadow-purple-500/20'
       }
     }
     
@@ -255,9 +268,25 @@ export default function NotificationsScreen({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] overflow-hidden fixed inset-0">
-      {/* 🎬 HOLLYWOOD HEADER - Deep shadows + glow */}
-      <div className="relative flex items-center gap-4 p-4 bg-gradient-to-b from-[#0d2920] to-[#0d2920]/80 border-b border-[#4ade80]/30 shadow-2xl">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] overflow-hidden"
+      style={{ 
+        height: 'var(--app-height, 100dvh)',
+        minHeight: 'var(--app-height, 100dvh)',
+        maxHeight: 'var(--app-height, 100dvh)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%'
+      }}
+    >
+      {/* 🎬 HOLLYWOOD HEADER - Deep shadows + glow + iOS safe area */}
+      <div 
+        className="relative flex items-center gap-4 p-4 bg-gradient-to-b from-[#0d2920] to-[#0d2920]/80 border-b border-[#4ade80]/30 shadow-2xl"
+        style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
+      >
         {/* Background glow effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#4ade80]/5 via-transparent to-[#4ade80]/5 blur-xl" />
         
@@ -270,13 +299,13 @@ export default function NotificationsScreen({
           <ArrowLeft className="h-6 w-6" />
         </Button>
         
-        <div className="relative z-10 flex-1">
+        <div className="relative z-10 flex-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
           <h1 className="font-sans text-3xl font-black text-white tracking-tight">
-            Notifications
+            {t('notifications.title')}
           </h1>
           {unreadCount > 0 && (
             <p className="text-[#4ade80] text-sm font-semibold mt-0.5">
-              {unreadCount} new
+              {unreadCount} {t('notifications.new')}
             </p>
           )}
         </div>
@@ -318,11 +347,11 @@ export default function NotificationsScreen({
               >
                 🦎
               </motion.div>
-              <h2 className="text-2xl font-bold text-white mb-2">
-                You're all caught up!
+              <h2 className="text-2xl font-bold text-white mb-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('notifications.allCaughtUp')}
               </h2>
-              <p className="text-white/50 text-base">
-                No notifications yet. Start swiping to get matches!
+              <p className="text-white/50 text-base" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('notifications.notificationsAppear')}
               </p>
             </motion.div>
           ) : (
@@ -330,7 +359,9 @@ export default function NotificationsScreen({
             <AnimatePresence mode="popLayout">
               {groupedNotifications.map((group, index) => {
                 const style = getNotificationStyle(group.type as any, group.isRead)
-                const isSelected = selectedNotificationId === group.id
+                // ✅ FIX: Compare with first notification's ID, not group.id
+                const firstNotifId = group.notifications[0]?.id || group.id
+                const isSelected = selectedNotificationId === firstNotifId
                 
                 return (
                   <motion.div
@@ -402,9 +433,9 @@ export default function NotificationsScreen({
                         {group.type === 'like' && <span className="text-white/80">❤️</span>}
                         {group.senderName}
                       </h3>
-                      <p className="font-sans text-sm text-white/70 truncate">
+                      <p className="font-sans text-sm text-white/70 truncate" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                         {group.count > 1 
-                          ? `${group.count} הודעות חדשות` 
+                          ? `${group.count} ${t('notifications.newMessages')}` 
                           : group.lastMessage
                         }
                       </p>
@@ -504,6 +535,7 @@ export default function NotificationsScreen({
                     viewingNotification.type === 'match' ? '💚' :
                     viewingNotification.type === 'message' ? '💬' :
                     viewingNotification.type === 'meeting' ? '🎉' :
+                    viewingNotification.type === 'meeting_completed' ? '💬' :
                     '🦎'
                   )}
                 </motion.div>
@@ -511,12 +543,14 @@ export default function NotificationsScreen({
                 {/* Type Badge */}
                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-3 ${
                   viewingNotification.type === 'meeting' ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' :
+                  viewingNotification.type === 'meeting_completed' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
                   viewingNotification.type === 'match' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                   viewingNotification.type === 'message' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                   viewingNotification.type === 'venue_announcement' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
                   'bg-white/10 text-white/60 border border-white/20'
                 }`}>
                   {viewingNotification.type === 'meeting' ? '💕 Meeting Request!' :
+                   viewingNotification.type === 'meeting_completed' ? '💬 Chat History' :
                    viewingNotification.type === 'match' ? '💚 New Match!' :
                    viewingNotification.type === 'message' ? '💬 New Message' :
                    viewingNotification.type === 'venue_announcement' ? '📢 Announcement' :
@@ -549,6 +583,7 @@ export default function NotificationsScreen({
               <div className="px-6 pb-6">
                 <div className={`rounded-2xl p-6 border ${
                   viewingNotification.type === 'meeting' ? 'bg-pink-500/10 border-pink-500/20' :
+                  viewingNotification.type === 'meeting_completed' ? 'bg-purple-500/10 border-purple-500/20' :
                   viewingNotification.type === 'match' ? 'bg-green-500/10 border-green-500/20' :
                   'bg-[#0d2920]/60 border-[#4ade80]/20'
                 }`}>
@@ -578,17 +613,55 @@ export default function NotificationsScreen({
               {/* Action Buttons - Different per type */}
               <div className="px-6 pb-6 space-y-3">
                 {/* Primary Action Button - Based on notification type */}
+                
+                {/* Meeting notifications - View Match AND Go to Chat */}
                 {viewingNotification.type === 'meeting' && viewingNotification.matchId && (
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setViewingNotification(null)
+                        onNavigate('match')
+                      }}
+                      className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white transition-colors flex items-center justify-center gap-2"
+                    >
+                      💕 {t('notifications.viewMatch')}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setViewingNotification(null)
+                        if (onNotificationClick) {
+                          onNotificationClick(viewingNotification)
+                        } else {
+                          onNavigate('chat')
+                        }
+                      }}
+                      className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white transition-colors flex items-center justify-center gap-2"
+                    >
+                      💬 {t('notifications.goToChat')}
+                    </motion.button>
+                  </>
+                )}
+                
+                {/* Meeting Completed notifications - Go to Chat */}
+                {viewingNotification.type === 'meeting_completed' && viewingNotification.chatId && (
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setViewingNotification(null)
-                      onNavigate('match')
+                      if (onNotificationClick) {
+                        onNotificationClick(viewingNotification)
+                      } else {
+                        onNavigate('chat')
+                      }
                     }}
-                    className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white transition-colors flex items-center justify-center gap-2"
                   >
-                    💕 View Match
+                    💬 {t('notifications.viewChatHistory')}
                   </motion.button>
                 )}
 
@@ -606,7 +679,7 @@ export default function NotificationsScreen({
                     }}
                     className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white transition-colors flex items-center justify-center gap-2"
                   >
-                    💚 View Match
+                    💚 {t('notifications.viewMatch')}
                   </motion.button>
                 )}
 
@@ -625,7 +698,7 @@ export default function NotificationsScreen({
                     }}
                     className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white transition-colors flex items-center justify-center gap-2"
                   >
-                    💬 Go to Chat
+                    💬 {t('notifications.goToChat')}
                   </motion.button>
                 )}
 
@@ -636,7 +709,7 @@ export default function NotificationsScreen({
                   onClick={() => setViewingNotification(null)}
                   className="w-full py-4 rounded-xl font-bold text-lg bg-[#4ade80] hover:bg-[#22c55e] text-[#0d2920] transition-colors"
                 >
-                  {viewingNotification.type === 'venue_announcement' ? 'Got it! 👍' : 'Close'}
+                  {viewingNotification.type === 'venue_announcement' ? t('notifications.gotIt') + ' 👍' : t('common.close')}
                 </motion.button>
 
                 {/* Delete Button */}
@@ -644,22 +717,31 @@ export default function NotificationsScreen({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={async () => {
-                    const user = auth.currentUser
-                    if (user) {
-                      await deleteNotification(user.uid, viewingNotification.id)
+                    try {
+                      const user = auth.currentUser
+                      if (user && viewingNotification) {
+                        console.log(`🗑️ Attempting to delete notification: ${viewingNotification.id}`)
+                        await deleteNotification(user.uid, viewingNotification.id)
+                        console.log(`✅ Notification deleted successfully`)
+                        setViewingNotification(null)  // Only close if delete succeeded
+                      }
+                    } catch (error) {
+                      console.error('❌ Failed to delete notification:', error)
+                      // Still close the modal, the notification might not exist anymore
+                      setViewingNotification(null)
                     }
-                    setViewingNotification(null)  // Returns to notifications list
                   }}
                   className="w-full py-3 rounded-xl font-semibold text-sm bg-transparent border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Delete Notification
+                  {t('notifications.deleteNotification')}
                 </motion.button>
               </div>
 
               {/* Bottom decoration - Color based on type */}
               <div className={`h-2 bg-gradient-to-r ${
                 viewingNotification.type === 'meeting' ? 'from-pink-500 via-rose-500 to-pink-500' :
+                viewingNotification.type === 'meeting_completed' ? 'from-purple-500 via-violet-500 to-purple-500' :
                 viewingNotification.type === 'match' ? 'from-green-500 via-emerald-500 to-green-500' :
                 viewingNotification.type === 'message' ? 'from-blue-500 via-cyan-500 to-blue-500' :
                 'from-[#4ade80] via-[#22c55e] to-[#4ade80]'
@@ -679,7 +761,7 @@ export default function NotificationsScreen({
           className="relative z-10 flex flex-col items-center gap-1.5 transition-all hover:scale-110"
         >
           <div className="text-3xl opacity-60 hover:opacity-100 transition-opacity">🦎</div>
-          <span className="text-xs text-white/60 font-semibold">Home</span>
+          <span className="text-xs text-white/60 font-semibold">{t('nav.home')}</span>
         </button>
         
         <button className="relative z-10 flex flex-col items-center gap-1.5 transition-all hover:scale-110">
@@ -701,7 +783,7 @@ export default function NotificationsScreen({
               </motion.div>
             )}
           </div>
-          <span className="text-xs text-[#4ade80] font-bold">Notifications</span>
+          <span className="text-xs text-[#4ade80] font-bold">{t('nav.notifications')}</span>
         </button>
         
         <button 
@@ -709,7 +791,7 @@ export default function NotificationsScreen({
           className="relative z-10 flex flex-col items-center gap-1.5 transition-all hover:scale-110"
         >
           <User className="h-7 w-7 text-white/60 hover:text-white transition-colors" />
-          <span className="text-xs text-white/60 font-semibold">Profile</span>
+          <span className="text-xs text-white/60 font-semibold">{t('nav.profile')}</span>
         </button>
       </div>
     </div>

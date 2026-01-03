@@ -163,7 +163,7 @@ export const deleteUserAccount = async (userId: string): Promise<{
     // 3e. Delete all user's chat messages (in all chats they participated in)
     // Note: This is simplified - in production you'd want to delete entire chat rooms
     const chatsQuery = query(
-      collection(db, 'chats'),
+      collection(db, 'matches'),
       where('participants', 'array-contains', userId)
     )
     const chatsSnapshot = await getDocs(chatsQuery)

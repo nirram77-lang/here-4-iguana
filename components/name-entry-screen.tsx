@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowRight } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface NameEntryScreenProps {
   defaultName?: string  // Google name as placeholder
@@ -15,6 +16,9 @@ export default function NameEntryScreen({
   defaultName = "",
   onContinue 
 }: NameEntryScreenProps) {
+  // ✅ v2.8.23: Language support
+  const { t, isRTL } = useLanguage()
+  
   // ✅ Initialize with defaultName if available
   const [name, setName] = useState(defaultName || "")
   const [error, setError] = useState("")
@@ -65,7 +69,10 @@ export default function NameEntryScreen({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]"
+      style={{ minHeight: '100dvh', paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
+    >
       {/* Progress indicator */}
       <div className="p-4">
         <div className="flex gap-2">
@@ -100,7 +107,7 @@ export default function NameEntryScreen({
           transition={{ delay: 0.1 }}
           className="text-3xl font-bold text-white text-center mb-4"
         >
-          What should we call you?
+          {t('onboarding.name.title')}
         </motion.h1>
 
         {/* Subtitle */}
@@ -110,7 +117,7 @@ export default function NameEntryScreen({
           transition={{ delay: 0.2 }}
           className="text-white/60 text-center mb-8 max-w-sm"
         >
-          Enter the name you want others to see
+          {t('onboarding.name.subtitle')}
         </motion.p>
 
         {/* Input */}
@@ -124,7 +131,7 @@ export default function NameEntryScreen({
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
-            placeholder={defaultName || "Your name"}
+            placeholder={defaultName || t('onboarding.name.placeholder')}
             className="h-14 text-lg bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#4ade80] focus:ring-[#4ade80]"
             autoFocus
             maxLength={50}
@@ -133,7 +140,7 @@ export default function NameEntryScreen({
           {/* Character count */}
           <div className="flex justify-between mt-2">
             <span className={`text-sm ${error ? 'text-red-400' : 'text-white/40'}`}>
-              {error || "Not your Google name - pick what you like!"}
+              {error || t('onboarding.name.notGoogleName')}
             </span>
             <span className="text-sm text-white/40">
               {name.length}/50
@@ -153,8 +160,8 @@ export default function NameEntryScreen({
             disabled={!name.trim()}
             className="w-full h-14 rounded-xl text-lg font-bold bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#22c55e] hover:to-[#16a34a] text-[#0d2920] shadow-xl shadow-[#4ade80]/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continue
-            <ArrowRight className="ml-2 h-6 w-6" />
+            {t('common.continue')}
+            <ArrowRight className={`${isRTL ? 'mr-2 rotate-180' : 'ml-2'} h-6 w-6`} />
           </Button>
         </motion.div>
 

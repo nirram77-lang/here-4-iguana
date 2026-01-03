@@ -94,11 +94,21 @@ export async function performCheckIn(
       }
     }
     
+    // ✅ v2.8.22 FIX: Check if user document exists before updating
+    const userRef = doc(db, 'users', userId)
+    const userDocSnap = await getDoc(userRef)
+    
+    if (!userDocSnap.exists()) {
+      console.error('❌ User document does not exist! userId:', userId)
+      throw new Error('User document not found. Please re-login.')
+    }
+    
     // Update user document
-    await updateDoc(doc(db, 'users', userId), {
+    await updateDoc(userRef, {
       checkedInVenue: venueId,
       checkInData,
       lastCheckIn: now,
+      isAvailable: true,  // ✅ v2.8.5 CRITICAL: Always visible after check-in!
       // ✅ CRITICAL: Reset swipes on check-in - "Every day is a new game!"
       // This allows users to match again after 12-hour cooldown expires
       swipedRight: [],
@@ -473,6 +483,7 @@ export async function performCheckInBySelection(
       checkedInVenue: venueId,
       checkInData,
       lastCheckIn: now,
+      isAvailable: true,  // ✅ v2.8.5 CRITICAL: Always visible after check-in!
       // Reset swipes on check-in - "Every day is a new game!"
       swipedRight: [],
       swipedLeft: []

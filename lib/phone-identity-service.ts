@@ -64,8 +64,11 @@ export const getOrCreatePhoneIdentity = async (
       })
     }
     
+    // ✅ FIX: Ensure all fields have default values (for old phone identities)
     return {
       ...data,
+      matchesCountToday: data.matchesCountToday ?? 0,  // Default if missing
+      passesUsedToday: data.passesUsedToday ?? 0,
       currentUserId  // Return updated current user
     }
   } else {
@@ -77,7 +80,7 @@ export const getOrCreatePhoneIdentity = async (
       currentUserId,
       previousUserIds: [],
       lockedUntil: null,
-      passesLeft: 1,  // Free users get 1 pass
+      passesLeft: 4,  // ✅ v2.8.15: Free users get 4 passes (was 1)
       passesUsedToday: 0,
       matchesCountToday: 0,  // ✅ Initialize matches counter
       lastPassReset: Timestamp.now(),
@@ -278,7 +281,9 @@ export const incrementMatchCount = async (phoneNumber: string): Promise<number> 
   }
   
   const data = phoneDoc.data() as PhoneIdentity
-  const newCount = data.matchesCountToday + 1
+  // ✅ FIX: Handle undefined matchesCountToday for old phone identities
+  const currentCount = data.matchesCountToday ?? 0
+  const newCount = currentCount + 1
   
   await updateDoc(phoneRef, {
     matchesCountToday: newCount
@@ -301,23 +306,28 @@ export const isPhoneVerificationEnabled = (): boolean => {
 /**
  * Sync user's Firebase Auth profile with phone identity
  * This links the Google account data to the phone identity
+ * ✅ FIX: Don't update displayName - keep the user's chosen name from onboarding!
  */
 export const syncUserWithPhoneIdentity = async (
   userId: string,
   phoneNumber: string,
   userData: {
     email?: string
-    displayName?: string
+    displayName?: string  // Kept for interface compatibility but not used
     photoURL?: string
   }
 ): Promise<void> => {
   const userRef = doc(db, "users", userId)
   
+  // ✅ FIX: Only sync phoneNumber and photoURL, NOT displayName!
+  // The user's name should only be set during onboarding
   await setDoc(userRef, {
     phoneNumber,  // ✅ Link phone to user profile
     linkedAt: Timestamp.now(),
-    ...userData
+    // ✅ Only update email and photo, NOT displayName (keep onboarding name!)
+    ...(userData.email && { email: userData.email }),
+    ...(userData.photoURL && { photoURL: userData.photoURL }),
   }, { merge: true })
   
-  console.log(`✅ User ${userId} synced with phone ${phoneNumber}`)
+  console.log(`✅ User ${userId} synced with phone ${phoneNumber} (displayName preserved)`)
 }

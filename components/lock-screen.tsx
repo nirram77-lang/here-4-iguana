@@ -43,9 +43,9 @@ export default function LockScreen({
   const formattedTime = formatTime(remainingTime)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] flex items-center justify-center p-4 relative overflow-y-auto">
       {/* Animated Background Particles */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
@@ -72,7 +72,7 @@ export default function LockScreen({
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", damping: 20 }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-md relative z-10 my-4"
       >
         {/* 🚀 Launch Price Banner */}
         <motion.div
@@ -139,32 +139,43 @@ export default function LockScreen({
             </p>
           </div>
 
-          {/* Timer Display - Compact */}
+          {/* Timer Display - FLASHING! Hollywood Style 🎬 */}
           <motion.div 
-            className="bg-gradient-to-r from-[#1a4d3e] to-[#0d2920] rounded-xl p-4 mb-5 border border-[#4ade80]/40"
+            className="bg-gradient-to-r from-[#1a4d3e] to-[#0d2920] rounded-xl p-4 mb-5 border-2 border-[#4ade80]/60"
             animate={{
               boxShadow: [
-                "0 0 15px rgba(74,222,128,0.2)",
-                "0 0 25px rgba(74,222,128,0.4)",
-                "0 0 15px rgba(74,222,128,0.2)",
+                "0 0 15px rgba(74,222,128,0.3)",
+                "0 0 35px rgba(74,222,128,0.6)",
+                "0 0 15px rgba(74,222,128,0.3)",
+              ],
+              borderColor: [
+                "rgba(74,222,128,0.4)",
+                "rgba(74,222,128,0.8)",
+                "rgba(74,222,128,0.4)",
               ]
             }}
-            transition={{ duration: 2, repeat: Infinity }}
+            transition={{ duration: 1.5, repeat: Infinity }}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Timer className="h-4 w-4 text-[#4ade80]" />
-                <span className="text-white/80 text-sm">Next pass in:</span>
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                >
+                  <Timer className="h-5 w-5 text-[#4ade80]" />
+                </motion.div>
+                <span className="text-white/90 text-sm font-medium">Next <span className="text-[#4ade80] font-bold">FREE</span> pass in:</span>
               </div>
               <motion.span
                 key={formattedTime}
-                initial={{ scale: 1.1 }}
-                animate={{ scale: 1 }}
+                initial={{ scale: 1.2, opacity: 0.7 }}
+                animate={{ scale: 1, opacity: 1 }}
                 className="text-2xl font-bold text-[#4ade80] font-mono"
               >
                 {formattedTime}
               </motion.span>
             </div>
+            <p className="text-white/50 text-xs text-center mt-2">⏳ Wait 1 hour or upgrade now for unlimited matches</p>
           </motion.div>
 
           {/* Premium Plans Selection */}
@@ -299,7 +310,7 @@ export default function LockScreen({
             </div>
             <div>
               <span className="text-2xl">🦎</span>
-              <p className="text-white/70 text-xs mt-1">Wait 2h</p>
+              <p className="text-white/70 text-xs mt-1">Wait 1h</p>
             </div>
           </div>
         </motion.div>

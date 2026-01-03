@@ -6,14 +6,14 @@
 
 // ⏱️ PASS & LOCK CONFIGURATION
 export const PASS_CONFIG = {
-  // Free users get 3 passes per check-in
-  MAX_PASSES_FREE: 3,
+  // Free users get 4 passes per check-in (✅ v2.8.15: Was 3, now 4 for better pilot experience)
+  MAX_PASSES_FREE: 4,
   
   // Max matches before lockout (free users)
-  MAX_MATCHES_FREE: 3,
+  MAX_MATCHES_FREE: 4,
   
-  // Lock duration: 2 HOURS (in milliseconds)
-  LOCK_DURATION: 2 * 60 * 60 * 1000, // 7,200,000 ms = 2 hours
+  // Lock duration: 1 HOUR (✅ v2.8.15: Was 2 hours, now 1 hour for pilot!)
+  LOCK_DURATION: 1 * 60 * 60 * 1000, // 3,600,000 ms = 1 hour
   
   // Premium users: unlimited
   MAX_PASSES_PREMIUM: 999,
@@ -21,28 +21,32 @@ export const PASS_CONFIG = {
   
   // ✅ Required by stripe-webhook/route.ts
   PREMIUM_PASSES: 999,
-  FREE_PASSES: 3,
+  FREE_PASSES: 4,  // ✅ v2.8.15: Was 3, now 4
+  
+  // ✅ v2.8.20 FIX: Free matches before paywall = 4 (Match 5 shows paywall!)
+  // Was 1 (showing paywall on Match 2) - now fixed!
+  FREE_MATCHES_LIMIT: 4,  // First 4 matches are FREE, 5th requires payment
 }
 
 // 💰 PRICING - Launch Prices! 🚀
 export const PRICING = {
-  SKIP_TIMER: 2.90,       // $2.90 to skip 2-hour timer (1 Pass)
-  PREMIUM_WEEKLY: 4.90,   // $4.90/week for premium
-  PREMIUM_MONTHLY: 9.90,  // $9.90/month for premium
+  SKIP_TIMER: 2.90,       // $2.90 to skip 1-hour timer (1 Pass)
+  PREMIUM_WEEKLY: 5.90,   // $5.90/week for premium
+  PREMIUM_MONTHLY: 12.90,  // $12.90/month for premium - BEST VALUE!
 }
 
 // 💰 PREMIUM_PRICING (for Stripe API and UI) - Launch Prices! 🚀
 export const PREMIUM_PRICING = {
   WEEKLY: {
-    price: 4.90,
-    displayPrice: '$4.90',
+    price: 5.90,
+    displayPrice: '$5.90',
     currency: 'usd',
     duration: 7 * 24 * 60 * 60 * 1000, // 1 week in milliseconds
     stripePriceId: 'price_1SOA29GgzDjUcfZ0mpJ03Rn9',
   },
   MONTHLY: {
-    price: 9.90,
-    displayPrice: '$9.90',
+    price: 12.90,
+    displayPrice: '$12.90',
     currency: 'usd',
     duration: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
     stripePriceId: 'price_1SOA5KGgzDjUcfZ0ck2C4RMO',

@@ -185,7 +185,7 @@ export default function PremiumModal({ onSelectPlan, onClose, isOpen }: PremiumM
                   </div>
 
                   <ul className="space-y-2">
-                    {['Unlimited matches', 'No 2-hour wait', 'Cancel anytime'].map((feature, i) => (
+                    {['Unlimited matches', 'No 1-hour wait', 'Cancel anytime'].map((feature, i) => (
                       <motion.li 
                         key={i}
                         initial={{ x: -20, opacity: 0 }}
@@ -256,7 +256,7 @@ export default function PremiumModal({ onSelectPlan, onClose, isOpen }: PremiumM
                   </div>
 
                   <ul className="space-y-2 mb-3">
-                    {['Unlimited matches', 'No 2-hour wait', 'Priority support', 'Cancel anytime'].map((feature, i) => (
+                    {['Unlimited matches', 'No 1-hour wait', 'Priority support', 'Cancel anytime'].map((feature, i) => (
                       <motion.li 
                         key={i}
                         initial={{ x: -20, opacity: 0 }}

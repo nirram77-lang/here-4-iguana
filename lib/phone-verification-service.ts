@@ -8,32 +8,61 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 
 // Global reCAPTCHA verifier instance
 let recaptchaVerifier: RecaptchaVerifier | null = null
+let recaptchaWidgetId: number | null = null
+
+/**
+ * Clear and reset reCAPTCHA completely
+ */
+function clearRecaptchaCompletely(): void {
+  console.log('🧹 Clearing reCAPTCHA completely...')
+  
+  // Clear the verifier instance
+  if (recaptchaVerifier) {
+    try {
+      recaptchaVerifier.clear()
+      console.log('✅ Cleared verifier instance')
+    } catch (e) {
+      console.log('⚠️ Could not clear verifier:', e)
+    }
+    recaptchaVerifier = null
+  }
+  
+  // Reset widget ID
+  recaptchaWidgetId = null
+  
+  // Clear the container completely
+  const container = document.getElementById('recaptcha-container')
+  if (container) {
+    container.innerHTML = ''
+    console.log('✅ Cleared container innerHTML')
+  }
+  
+  // Also try to clear any grecaptcha widgets
+  if (typeof window !== 'undefined' && (window as any).grecaptcha) {
+    try {
+      const grecaptcha = (window as any).grecaptcha
+      if (grecaptcha.reset) {
+        grecaptcha.reset()
+        console.log('✅ Reset grecaptcha')
+      }
+    } catch (e) {
+      console.log('⚠️ Could not reset grecaptcha:', e)
+    }
+  }
+}
 
 /**
  * Initialize invisible reCAPTCHA verifier
  * This is called automatically before sending SMS
  */
 export function initializeRecaptcha(): RecaptchaVerifier {
-  // Clear existing verifier if it exists (to avoid stale state)
-  if (recaptchaVerifier) {
-    try {
-      recaptchaVerifier.clear()
-      console.log('🧹 Cleared existing reCAPTCHA verifier')
-    } catch (e) {
-      console.log('⚠️ Could not clear existing verifier:', e)
-    }
-    recaptchaVerifier = null
-  }
-
-  // Also clear any existing reCAPTCHA widgets from the DOM
-  const container = document.getElementById('recaptcha-container')
-  if (container) {
-    container.innerHTML = ''
-  }
-
+  // Always clear completely first
+  clearRecaptchaCompletely()
+  
   console.log('🔐 Initializing new reCAPTCHA verifier...')
 
   // Check if container exists
+  const container = document.getElementById('recaptcha-container')
   if (!container) {
     console.error('❌ recaptcha-container element not found!')
     throw new Error('reCAPTCHA container not found. Please refresh the page.')
@@ -47,12 +76,11 @@ export function initializeRecaptcha(): RecaptchaVerifier {
     },
     'expired-callback': () => {
       console.log('⚠️ reCAPTCHA expired - clearing')
-      if (recaptchaVerifier) {
-        try {
-          recaptchaVerifier.clear()
-        } catch (e) {}
-        recaptchaVerifier = null
-      }
+      clearRecaptchaCompletely()
+    },
+    'error-callback': () => {
+      console.log('❌ reCAPTCHA error - clearing')
+      clearRecaptchaCompletely()
     }
   })
 
@@ -95,18 +123,7 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<Confir
     console.error('   Error message:', error.message)
     
     // Clear the verifier on error
-    if (recaptchaVerifier) {
-      try {
-        recaptchaVerifier.clear()
-      } catch (e) {}
-      recaptchaVerifier = null
-    }
-    
-    // Also clear the container
-    const container = document.getElementById('recaptcha-container')
-    if (container) {
-      container.innerHTML = ''
-    }
+    clearRecaptchaCompletely()
     
     // User-friendly error messages in English
     if (error.code === 'auth/invalid-phone-number') {
@@ -193,18 +210,5 @@ export async function verifyPhoneCode(
  * Clear reCAPTCHA verifier (useful for cleanup)
  */
 export function clearRecaptcha(): void {
-  if (recaptchaVerifier) {
-    try {
-      recaptchaVerifier.clear()
-    } catch (error) {
-      console.error('Error clearing reCAPTCHA:', error)
-    }
-    recaptchaVerifier = null
-  }
-  
-  // Also clear the container
-  const container = document.getElementById('recaptcha-container')
-  if (container) {
-    container.innerHTML = ''
-  }
+  clearRecaptchaCompletely()
 }

@@ -25,8 +25,11 @@ import {
   RotateCcw,
   QrCode,
   Pencil,
-  Mail
+  Mail,
+  Rocket,
+  FlaskConical
 } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { auth, db } from '@/lib/firebase'
 import { 
@@ -56,6 +59,8 @@ interface UserData {
   deleted: boolean
   isDummy: boolean
   createdAt: any
+  lastLogin?: any  // ✅ v2.8.20: Track last login for sorting
+  lastActive?: any // ✅ v2.8.20: Track last activity
   swipedRight: string[]
   swipedLeft: string[]
   preferences?: {
@@ -94,6 +99,7 @@ export default function DatabaseManager() {
   
   // Data states
   const [users, setUsers] = useState<UserData[]>([])
+  const [dummyUsersCount, setDummyUsersCount] = useState(0)  // ✅ v2.8.5: Count from dummyUsers collection
   const [matches, setMatches] = useState<MatchData[]>([])
   const [chats, setChats] = useState<ChatData[]>([])
   const [phoneIdentities, setPhoneIdentities] = useState<PhoneIdentity[]>([])
@@ -169,6 +175,8 @@ export default function DatabaseManager() {
                    (userEmail && userEmail.toLowerCase().includes('test@')) ||
                    (!data.onboardingComplete && !data.photos?.length && !data.name),
           createdAt: data.createdAt,
+          lastLogin: data.lastLogin || data.lastActive || data.checkInData?.checkedInAt || data.createdAt,  // ✅ v2.8.20
+          lastActive: data.lastActive || data.checkInData?.checkedInAt || data.createdAt,  // ✅ v2.8.20
           swipedRight: data.swipedRight || [],
           swipedLeft: data.swipedLeft || [],
           preferences: data.preferences
@@ -176,6 +184,16 @@ export default function DatabaseManager() {
       })
       setUsers(usersData)
       console.log(`✅ Loaded ${usersData.length} users`)
+
+      // ✅ v2.8.5: Load Dummy Users count from separate collection
+      try {
+        const dummySnapshot = await getDocs(collection(db, 'dummyUsers'))
+        setDummyUsersCount(dummySnapshot.size)
+        console.log(`✅ Loaded ${dummySnapshot.size} dummy users from dummyUsers collection`)
+      } catch (err) {
+        console.log('⚠️ No dummyUsers collection yet')
+        setDummyUsersCount(0)
+      }
 
       // Load Matches
       const matchesSnapshot = await getDocs(collection(db, 'matches'))
@@ -193,7 +211,7 @@ export default function DatabaseManager() {
       console.log(`✅ Loaded ${matchesData.length} matches`)
 
       // Load Chats
-      const chatsSnapshot = await getDocs(collection(db, 'chats'))
+      const chatsSnapshot = await getDocs(collection(db, 'matches'))
       const chatsData: ChatData[] = []
       chatsSnapshot.forEach(doc => {
         const data = doc.data()
@@ -279,16 +297,29 @@ export default function DatabaseManager() {
 
   // Delete all dummy users
   const deleteAllDummy = async () => {
-    const dummyUsers = users.filter(u => u.isDummy)
-    if (!confirm(`Delete ${dummyUsers.length} dummy users?`)) return
+    const dummyUsersInUsers = users.filter(u => u.isDummy)
+    const totalDummy = dummyUsersInUsers.length + dummyUsersCount
+    
+    if (!confirm(`Delete ${totalDummy} dummy users? (${dummyUsersInUsers.length} from users + ${dummyUsersCount} from dummyUsers)`)) return
     
     setProcessing(true)
     try {
-      for (const user of dummyUsers) {
+      // Delete from users collection
+      for (const user of dummyUsersInUsers) {
         await deleteDoc(doc(db, 'users', user.uid))
       }
+      
+      // ✅ v2.8.5: Delete from dummyUsers collection
+      if (dummyUsersCount > 0) {
+        const dummySnapshot = await getDocs(collection(db, 'dummyUsers'))
+        for (const docSnap of dummySnapshot.docs) {
+          await deleteDoc(doc(db, 'dummyUsers', docSnap.id))
+        }
+        console.log(`✅ Deleted ${dummySnapshot.size} from dummyUsers collection`)
+      }
+      
       await loadAllData()
-      console.log(`✅ Deleted ${dummyUsers.length} dummy users`)
+      console.log(`✅ Deleted ${totalDummy} total dummy users`)
     } catch (error) {
       console.error('❌ Error deleting dummy users:', error)
     } finally {
@@ -497,6 +528,61 @@ export default function DatabaseManager() {
     } catch (error) {
       console.error('❌ Error resetting users:', error)
       alert(`Failed to reset users: ${error}`)
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  // ✅ v2.8.22: Reset match counts for test users (to test paywall)
+  const resetTestUsersMatchCounts = async () => {
+    setProcessing(true)
+    try {
+      console.log('🔄 Resetting match counts for test users...')
+      
+      // Test user emails to reset
+      const testEmails = ['jango5432@gmail.com', 'niroram77@gmail.com', 'nir.ram77@gmail.com']
+      let resetCount = 0
+      
+      // Find and reset phoneIdentities for test users
+      const phoneIdentitiesSnapshot = await getDocs(collection(db, 'phoneIdentities'))
+      
+      for (const phoneDoc of phoneIdentitiesSnapshot.docs) {
+        const phoneData = phoneDoc.data()
+        
+        // Check if this phone belongs to a test user by finding the user
+        const usersSnapshot = await getDocs(
+          query(collection(db, 'users'), where('phoneNumber', '==', phoneDoc.id))
+        )
+        
+        let isTestUser = false
+        usersSnapshot.forEach(userDoc => {
+          const userData = userDoc.data()
+          const userEmail = (userData.email || '').toLowerCase()
+          if (testEmails.some(te => te.toLowerCase() === userEmail)) {
+            isTestUser = true
+          }
+        })
+        
+        // Also check by email directly in phoneData if stored
+        if (phoneData.email && testEmails.some(te => te.toLowerCase() === phoneData.email.toLowerCase())) {
+          isTestUser = true
+        }
+        
+        if (isTestUser) {
+          await updateDoc(doc(db, 'phoneIdentities', phoneDoc.id), {
+            matchesCountToday: 0,
+            passesUsedToday: 0,
+            passesLeft: 4
+          })
+          resetCount++
+          console.log(`✅ Reset match counts for phone: ${phoneDoc.id}`)
+        }
+      }
+      
+      alert(`✅ Reset match counts for ${resetCount} test user phone(s)!\n\nThey can now test the paywall again.`)
+    } catch (error) {
+      console.error('❌ Error resetting match counts:', error)
+      alert(`Failed: ${error}`)
     } finally {
       setProcessing(false)
     }
@@ -717,6 +803,14 @@ export default function DatabaseManager() {
              u.uid.toLowerCase().includes(search)
     }
     return true
+  }).sort((a, b) => {
+    // ✅ v2.8.20: Sort by Last Active (most recent first)
+    const getTimestamp = (u: UserData) => {
+      const lastActive = u.lastLogin || u.lastActive || u.createdAt
+      if (!lastActive) return 0
+      return lastActive.toDate ? lastActive.toDate().getTime() : new Date(lastActive).getTime()
+    }
+    return getTimestamp(b) - getTimestamp(a)  // Descending (newest first)
   })
 
   // Stats
@@ -724,7 +818,7 @@ export default function DatabaseManager() {
   const stats = {
     totalUsers: users.length,
     realUsers: users.filter(u => u.onboardingComplete && u.photos?.length > 0 && !u.isDummy && !u.deleted).length,
-    dummyUsers: users.filter(u => u.isDummy).length,
+    dummyUsers: dummyUsersCount + users.filter(u => u.isDummy).length,  // ✅ v2.8.5: Count from both collections
     deletedUsers: users.filter(u => u.deleted).length,
     incompleteUsers: users.filter(u => !u.onboardingComplete && !u.isDummy && !u.deleted).length,
     checkedIn: users.filter(u => u.checkedInVenue).length,
@@ -769,6 +863,21 @@ export default function DatabaseManager() {
 
             <div className="flex items-center gap-3">
               <Button
+                onClick={() => router.push('/admin/super/control')}
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+              >
+                🎛️ Control
+              </Button>
+              
+              <Button
+                onClick={() => router.push('/admin/super/pilot')}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+              >
+                <Rocket className="mr-2 h-4 w-4" />
+                🚀 Pilot Launch
+              </Button>
+              
+              <Button
                 onClick={() => router.push('/admin/super/simulator')}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
               >
@@ -792,6 +901,17 @@ export default function DatabaseManager() {
                 <RefreshCw className={`mr-2 h-4 w-4 ${processing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
+              
+              {/* ✅ NEW: Test Suite Button */}
+              <Link href="/admin/super/test-suite">
+                <Button
+                  variant="outline"
+                  className="border-purple-500/50 text-purple-400 hover:bg-purple-500/20"
+                >
+                  <FlaskConical className="mr-2 h-4 w-4" />
+                  Test Suite
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -990,6 +1110,7 @@ export default function DatabaseManager() {
                       <th className="px-4 py-3 text-white font-bold">Age</th>
                       <th className="px-4 py-3 text-white font-bold">Age Range</th>
                       <th className="px-4 py-3 text-white font-bold">Venue</th>
+                      <th className="px-4 py-3 text-white font-bold">Last Active</th>
                       <th className="px-4 py-3 text-white font-bold">Status</th>
                       <th className="px-4 py-3 text-white font-bold">Swipes</th>
                       <th className="px-4 py-3 text-white font-bold">Actions</th>
@@ -1038,6 +1159,41 @@ export default function DatabaseManager() {
                           ) : (
                             <span className="text-white/40 text-xs">-</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {/* ✅ v2.8.20: Last Active column */}
+                          {(() => {
+                            const lastActive = user.lastLogin || user.lastActive || user.createdAt
+                            if (!lastActive) return <span className="text-white/30 text-xs">-</span>
+                            
+                            const date = lastActive.toDate ? lastActive.toDate() : new Date(lastActive)
+                            const now = new Date()
+                            const diffMs = now.getTime() - date.getTime()
+                            const diffHours = diffMs / (1000 * 60 * 60)
+                            const diffDays = diffMs / (1000 * 60 * 60 * 24)
+                            
+                            // Highlight recent users (last 24 hours) in green
+                            const isRecent = diffHours < 24
+                            const isNew = diffDays < 7
+                            
+                            const formatDate = () => {
+                              if (diffHours < 1) return `${Math.round(diffMs / (1000 * 60))} min ago`
+                              if (diffHours < 24) return `${Math.round(diffHours)} hrs ago`
+                              if (diffDays < 7) return `${Math.round(diffDays)} days ago`
+                              return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                            }
+                            
+                            return (
+                              <div className={`text-xs ${
+                                isRecent ? 'text-green-400 font-bold' : 
+                                isNew ? 'text-yellow-400' : 
+                                'text-white/50'
+                              }`}>
+                                {isRecent && <span className="mr-1">🟢</span>}
+                                {formatDate()}
+                              </div>
+                            )
+                          })()}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
@@ -1290,6 +1446,26 @@ export default function DatabaseManager() {
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   {processing ? 'Processing...' : 'Reset 3 Test Users'}
+                </Button>
+              </div>
+
+              {/* ✅ v2.8.22: Reset Match Counts for Test Users (Paywall Testing) */}
+              <div className="bg-[#0d2920]/50 rounded-xl border border-purple-500/30 p-6">
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-purple-400" />
+                  Reset Match Counts
+                </h3>
+                <p className="text-white/60 text-sm mb-4">
+                  Reset matchesCountToday & passesLeft for test users to test paywall:
+                  <br />• jango5432@gmail.com
+                  <br />• niroram77@gmail.com
+                </p>
+                <Button
+                  onClick={resetTestUsersMatchCounts}
+                  disabled={processing}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  {processing ? 'Processing...' : '🧪 Reset Match Counts'}
                 </Button>
               </div>
 

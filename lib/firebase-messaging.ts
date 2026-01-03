@@ -184,6 +184,78 @@ export const removeFCMToken = async (userId: string, token: string): Promise<voi
 };
 
 /**
+ * ✅ v2.8.6: Full unsubscribe from push notifications
+ * Call this on LOGOUT or when user disables notifications
+ * This removes the subscription from BOTH Browser AND Firestore
+ */
+export const unsubscribeFromPushNotifications = async (userId: string): Promise<boolean> => {
+  try {
+    console.log('🔔 Unsubscribing from push notifications...');
+    
+    // 1. Get saved token from localStorage
+    const savedToken = typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : null;
+    
+    // 2. Unsubscribe from Browser's PushManager
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      
+      if (subscription) {
+        await subscription.unsubscribe();
+        console.log('✅ Unsubscribed from Browser PushManager');
+      }
+    }
+    
+    // 3. Remove token from Firestore
+    if (savedToken && userId) {
+      await removeFCMToken(userId, savedToken);
+    }
+    
+    // 4. Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('fcm_token');
+    }
+    
+    // 5. Update user document
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        notificationsEnabled: false
+      });
+    } catch (e) {
+      // User might not exist, ignore
+    }
+    
+    console.log('✅ Fully unsubscribed from push notifications');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Error unsubscribing from push notifications:', error);
+    return false;
+  }
+};
+
+/**
+ * ✅ v2.8.6: Toggle push notifications on/off
+ * @param userId - User ID
+ * @param enabled - Whether to enable or disable
+ */
+export const togglePushNotifications = async (
+  userId: string, 
+  enabled: boolean
+): Promise<{ success: boolean; token?: string }> => {
+  if (enabled) {
+    // Enable notifications
+    const result = await setupPushNotifications(userId);
+    return { success: result.success, token: result.token || undefined };
+  } else {
+    // Disable notifications
+    const success = await unsubscribeFromPushNotifications(userId);
+    return { success };
+  }
+};
+
+/**
  * ✅ Setup foreground message handler
  * Shows in-app notification when message received while app is open
  */

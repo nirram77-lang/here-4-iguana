@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Gift, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface CouponRedeemProps {
   userId: string
@@ -18,6 +19,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
     message: string
     type?: 'pass' | 'weekly'
   } | null>(null)
+  const { t, isRTL } = useLanguage()
 
   const handleRedeem = async () => {
     if (!code.trim()) return
@@ -37,7 +39,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
       const couponSnap = await getDoc(couponRef)
 
       if (!couponSnap.exists()) {
-        setResult({ success: false, message: 'Invalid coupon code' })
+        setResult({ success: false, message: t('couponRedeem.invalidCode') })
         setLoading(false)
         return
       }
@@ -45,14 +47,14 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
       const coupon = couponSnap.data()
 
       if (coupon.status !== 'available') {
-        setResult({ success: false, message: 'This coupon has already been used' })
+        setResult({ success: false, message: t('couponRedeem.alreadyUsed') })
         setLoading(false)
         return
       }
 
       // Check if expired
       if (coupon.expiresAt && coupon.expiresAt.toDate() < new Date()) {
-        setResult({ success: false, message: 'This coupon has expired' })
+        setResult({ success: false, message: t('couponRedeem.expired') })
         setLoading(false)
         return
       }
@@ -75,7 +77,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
         })
         setResult({
           success: true,
-          message: '🎫 You received 1 FREE Pass!',
+          message: t('couponRedeem.successPass'),
           type: 'pass'
         })
       } else if (coupon.type === 'weekly') {
@@ -91,7 +93,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
         })
         setResult({
           success: true,
-          message: '⭐ You received 1 Week Premium FREE!',
+          message: t('couponRedeem.successWeek'),
           type: 'weekly'
         })
       }
@@ -103,21 +105,21 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
 
     } catch (error) {
       console.error('Error redeeming coupon:', error)
-      setResult({ success: false, message: 'Failed to redeem coupon. Please try again.' })
+      setResult({ success: false, message: t('couponRedeem.failed') })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 to-gray-800 rounded-2xl p-6 max-w-md mx-auto">
+    <div className="bg-gradient-to-b from-gray-900 to-gray-800 rounded-2xl p-6 max-w-md mx-auto" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
       {/* Header */}
       <div className="text-center mb-6">
         <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <Gift className="w-8 h-8 text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-white">Redeem Coupon</h2>
-        <p className="text-gray-400 mt-1">Enter your coupon code to get free benefits</p>
+        <h2 className="text-2xl font-bold text-white">{t('couponRedeem.title')}</h2>
+        <p className="text-gray-400 mt-1">{t('couponRedeem.subtitle')}</p>
       </div>
 
       {/* Input */}
@@ -128,7 +130,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="PASS-XXXXXX or WEEK-XXXXXX"
+              placeholder={t('couponRedeem.placeholder')}
               className="w-full bg-gray-700 border-2 border-gray-600 rounded-xl px-4 py-3 text-white text-center text-xl font-mono tracking-wider focus:outline-none focus:border-green-500 transition-colors"
               maxLength={12}
               disabled={loading}
@@ -143,10 +145,10 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Redeeming...
+                {t('couponRedeem.redeeming')}
               </span>
             ) : (
-              'Redeem Coupon'
+              t('couponRedeem.redeem')
             )}
           </button>
         </div>
@@ -167,7 +169,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
             )}
             <div>
               <p className={`font-bold ${result.success ? 'text-green-400' : 'text-red-400'}`}>
-                {result.success ? 'Success!' : 'Error'}
+                {result.success ? t('couponRedeem.success') : t('couponRedeem.error')}
               </p>
               <p className="text-white">{result.message}</p>
             </div>
@@ -178,7 +180,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
               onClick={onClose}
               className="w-full mt-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
             >
-              Continue
+              {t('couponRedeem.continue')}
             </button>
           )}
           
@@ -187,7 +189,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
               onClick={() => { setResult(null); setCode('') }}
               className="w-full mt-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
             >
-              Try Again
+              {t('couponRedeem.tryAgain')}
             </button>
           )}
         </div>
@@ -199,7 +201,7 @@ export default function CouponRedeem({ userId, userEmail, onSuccess, onClose }: 
           onClick={onClose}
           className="w-full mt-4 py-2 text-gray-400 hover:text-white transition-colors"
         >
-          Cancel
+          {t('couponRedeem.cancel')}
         </button>
       )}
     </div>

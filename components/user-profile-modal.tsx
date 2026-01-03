@@ -24,13 +24,15 @@ interface UserProfileModalProps {
     smoking?: 'no' | 'social' | 'yes'
   } | null
   isCurrentUser?: boolean
+  blurPhotos?: boolean  // ✅ NEW: Blur photos when match is locked
 }
 
 export default function UserProfileModal({ 
   isOpen, 
   onClose, 
   user,
-  isCurrentUser = false 
+  isCurrentUser = false,
+  blurPhotos = false  // ✅ NEW: Default to no blur
 }: UserProfileModalProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [mounted, setMounted] = useState(false)
@@ -159,8 +161,17 @@ export default function UserProfileModal({
                 <img
                   src={currentPhoto}
                   alt={userName}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full object-cover transition-all ${blurPhotos ? 'blur-xl' : ''}`}
                 />
+                
+                {/* 🔒 Lock overlay when photos are blurred */}
+                {blurPhotos && (
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center">
+                    <span className="text-5xl mb-2">🔒</span>
+                    <p className="text-white font-bold text-lg">Photos Locked</p>
+                    <p className="text-white/70 text-sm">Upgrade to Premium to see</p>
+                  </div>
+                )}
               
                 {/* Photo Navigation */}
                 {userPhotos.length > 1 && (

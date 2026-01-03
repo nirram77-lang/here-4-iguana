@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Power, PowerOff, Shield, Eye, EyeOff } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface AvailableToggleProps {
   isAvailable: boolean
@@ -11,6 +12,8 @@ interface AvailableToggleProps {
 }
 
 export default function AvailableToggle({ isAvailable, onToggle, disabled = false }: AvailableToggleProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [showTooltip, setShowTooltip] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -131,22 +134,22 @@ export default function AvailableToggle({ isAvailable, onToggle, disabled = fals
               <div className="absolute -top-2 right-6 w-4 h-4 bg-gray-900/95 rotate-45 border-l border-t border-white/10" />
               
               <div className="relative z-10 space-y-2">
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <Shield className="w-4 h-4 text-green-400" />
-                  <span className="text-white font-semibold text-sm">Privacy Control</span>
+                  <span className="text-white font-semibold text-sm">{t('available.privacyControl')}</span>
                 </div>
                 
                 {isAvailable ? (
-                  <div className="space-y-1">
-                    <p className="text-green-400 text-xs font-medium">✓ You're visible to others</p>
-                    <p className="text-green-400 text-xs font-medium">✓ Seeing nearby matches</p>
-                    <p className="text-gray-400 text-xs">Tap to hide yourself</p>
+                  <div className={`space-y-1 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <p className="text-green-400 text-xs font-medium">{t('available.visibleToOthers')}</p>
+                    <p className="text-green-400 text-xs font-medium">{t('available.seeingMatches')}</p>
+                    <p className="text-gray-400 text-xs">{t('available.tapToHide')}</p>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    <p className="text-gray-400 text-xs font-medium">✗ Hidden from search</p>
-                    <p className="text-gray-400 text-xs font-medium">✗ Not seeing new matches</p>
-                    <p className="text-green-400 text-xs">Tap to become visible</p>
+                  <div className={`space-y-1 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <p className="text-gray-400 text-xs font-medium">{t('available.hiddenFromSearch')}</p>
+                    <p className="text-gray-400 text-xs font-medium">{t('available.notSeeingMatches')}</p>
+                    <p className="text-green-400 text-xs">{t('available.tapToShow')}</p>
                   </div>
                 )}
               </div>

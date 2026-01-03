@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface MatchEndedScreenProps {
   isVisible: boolean
@@ -19,6 +20,8 @@ export default function MatchEndedScreen({
   reason = 'unknown',
   matchName
 }: MatchEndedScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [countdown, setCountdown] = useState(5)
   const [phase, setPhase] = useState<'sad' | 'searching'>('sad')
   const onCompleteRef = useRef(onComplete)
@@ -289,8 +292,9 @@ export default function MatchEndedScreen({
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.1 }}
                     className="text-[#4ade80] text-lg text-center mb-2"
+                    style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                   >
-                    Finding new matches for you...
+                    {t('loading.findingMatches')}
                   </motion.p>
 
                   {/* Sparkles */}

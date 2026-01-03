@@ -230,7 +230,7 @@ async function applyPremiumCoupon(
       premiumExpiresAt: Timestamp.fromDate(premiumExpiresAt),
       premiumSource: 'coupon',
       premiumCouponCode: coupon.code,
-      passesLeft: Math.max(phoneData.passesLeft || 0, 3), // Premium users get at least 3 passes
+      passesLeft: Math.max(phoneData.passesLeft || 0, 4), // ✅ v2.8.15: Premium users get at least 4 passes (was 3)
       lastCouponRedeemedAt: Timestamp.now()
     })
     
@@ -241,7 +241,7 @@ async function applyPremiumCoupon(
       success: true,
       message: `🎉 Welcome to Premium! Your ${durationDays}-day ${typeLabel} subscription is now active!`,
       couponType: durationDays === 7 ? 'weekly' : 'monthly',
-      reward: `${durationDays} days Premium + 3 daily passes`
+      reward: `${durationDays} days Premium + 4 daily passes`  // ✅ v2.8.15
     }
     
   } catch (error) {

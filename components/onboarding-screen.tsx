@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User } from 'firebase/auth'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -21,6 +21,17 @@ export default function OnboardingScreen({ user, onComplete }: OnboardingProps) 
     maxAge: 35,
     bio: ''
   })
+
+  // ✅ NEW: Real viewport height for old Android/iOS
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  
+  useEffect(() => {
+    const updateViewportHeight = () => setViewportHeight(window.innerHeight)
+    updateViewportHeight()
+    window.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('orientationchange', () => setTimeout(updateViewportHeight, 100))
+    return () => window.removeEventListener('resize', updateViewportHeight)
+  }, [])
 
   const totalSteps = 4
 
@@ -63,7 +74,14 @@ export default function OnboardingScreen({ user, onComplete }: OnboardingProps) 
   const progressPercentage = (step / totalSteps) * 100
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-green-900/20 to-black relative overflow-hidden">
+    <div 
+      className="bg-gradient-to-br from-black via-green-900/20 to-black relative overflow-hidden overflow-y-auto"
+      style={{ 
+        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        paddingBottom: '100px',
+        paddingTop: 'env(safe-area-inset-top, 0px)'
+      }}
+    >
       {/* Background Grid */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDU1LCAyMjUsIDEwMCwgMC4xKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30"></div>
 
@@ -344,7 +362,10 @@ export default function OnboardingScreen({ user, onComplete }: OnboardingProps) 
       </div>
 
       {/* Navigation Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent z-20">
+      <div 
+        className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent z-20"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 24px), 24px)' }}
+      >
         <div className="flex gap-3">
           {step > 1 && (
             <button

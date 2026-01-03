@@ -15,6 +15,7 @@ import {
   X,
   RefreshCw
 } from 'lucide-react'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface Venue {
   id: string
@@ -64,9 +65,9 @@ const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: numbe
 // Format distance for display
 const formatDistance = (meters: number): string => {
   if (meters < 1000) {
-    return `${Math.round(meters)} מ'`
+    return `${Math.round(meters)}m`
   }
-  return `${(meters / 1000).toFixed(1)} ק"מ`
+  return `${(meters / 1000).toFixed(1)}km`
 }
 
 export default function VenueSelectionScreen({
@@ -76,6 +77,8 @@ export default function VenueSelectionScreen({
   userLocation,
   onRequestLocation
 }: VenueSelectionScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [venues, setVenues] = useState<VenueWithDistance[]>([])
   const [filteredVenues, setFilteredVenues] = useState<VenueWithDistance[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -83,14 +86,98 @@ export default function VenueSelectionScreen({
   const [loadingVenue, setLoadingVenue] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [locationLoading, setLocationLoading] = useState(false)
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation)
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationTimestamp, setLocationTimestamp] = useState<number>(0)
+  const [viewportHeight, setViewportHeight] = useState<number>(800)
 
-  // Load venues on mount
+  // ❤️ Floating hearts animation - Hollywood style!
+  const [hearts] = useState(() => 
+    Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      size: Math.random() * 14 + 16,
+      duration: Math.random() * 8 + 18,
+      delay: Math.random() * 10,
+      opacity: Math.random() * 0.25 + 0.15
+    }))
+  )
+
+  // Track viewport height for hearts animation
   useEffect(() => {
-    if (isOpen) {
+    const updateHeight = () => setViewportHeight(window.innerHeight)
+    updateHeight()
+    window.addEventListener('resize', updateHeight)
+    return () => window.removeEventListener('resize', updateHeight)
+  }, [])
+
+  // ✅ v2.8.7 FIX: CLEAR state when modal CLOSES to prevent stale data!
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset all state when modal closes
+      setCurrentLocation(null)
+      setVenues([])
+      setFilteredVenues([])
+      setSearchQuery('')
+      setError(null)
+      setLoading(true)
+      console.log('🧹 Venue modal closed - cleared all state')
+    }
+  }, [isOpen])
+
+  // ✅ v2.8.7 FIX: Always fetch FRESH location when modal opens!
+  // This prevents showing old venues from previous location (e.g., Yes Planet when at home)
+  useEffect(() => {
+    const fetchFreshLocation = async () => {
+      if (!isOpen) return
+      
+      console.log('🔄 Venue modal opened - fetching FRESH location...')
+      setLocationLoading(true)
+      setLoading(true)  // Show loading while getting location
+      setError(null)
+      setVenues([])  // Clear old venues IMMEDIATELY
+      setFilteredVenues([])
+      
+      try {
+        // Always request fresh location from GPS
+        const freshLocation = await onRequestLocation()
+        
+        if (freshLocation) {
+          console.log(`📍 Fresh location: ${freshLocation.lat.toFixed(4)}, ${freshLocation.lng.toFixed(4)}`)
+          setCurrentLocation(freshLocation)
+          setLocationTimestamp(Date.now())
+        } else if (userLocation) {
+          // Fallback to prop if GPS fails
+          console.log('⚠️ GPS failed, using prop location')
+          setCurrentLocation(userLocation)
+        } else {
+          console.log('❌ No location available')
+          setError('Location access required to find nearby places')
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('❌ Error getting location:', err)
+        // Fallback to prop
+        if (userLocation) {
+          setCurrentLocation(userLocation)
+        } else {
+          setError('Could not get your location')
+          setLoading(false)
+        }
+      } finally {
+        setLocationLoading(false)
+      }
+    }
+    
+    fetchFreshLocation()
+  }, [isOpen]) // Only depends on isOpen - fresh fetch every time modal opens!
+
+  // Load venues when location is available
+  useEffect(() => {
+    if (isOpen && currentLocation && !locationLoading) {
+      console.log(`🏢 Loading venues for location: ${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`)
       loadVenues()
     }
-  }, [isOpen, currentLocation])
+  }, [isOpen, currentLocation, locationLoading])
 
   // Filter venues by search query
   useEffect(() => {
@@ -112,32 +199,73 @@ export default function VenueSelectionScreen({
     }
   }, [searchQuery, venues])
 
-  // Load active venues from Firestore
+  // Load venues from database + Firebase featured venues
   const loadVenues = async () => {
     setLoading(true)
     setError(null)
     
     try {
-      const { collection, getDocs, query, where } = await import('firebase/firestore')
-      const { db } = await import('@/lib/firebase')
+      // ✅ STEP 1: Load venues from local database (Tel Aviv)
+      const { ALL_VENUES } = await import('@/lib/tel-aviv-venues')
       
-      // Query only active venues
-      const q = query(
-        collection(db, 'venues'),
-        where('active', '==', true)
-      )
+      console.log(`🦎 Loaded ${ALL_VENUES.length} venues from database`)
       
-      const snapshot = await getDocs(q)
-      const venuesList: Venue[] = []
+      // Convert to Venue format
+      let allVenues: Venue[] = ALL_VENUES.map(v => ({
+        id: v.id,
+        name: v.name,
+        displayName: v.name,
+        location: {
+          latitude: v.lat,
+          longitude: v.lng,
+          address: v.address
+        },
+        radius: 500, // Default 500m check-in radius
+        active: true,
+        checkedInUsers: [],
+        stats: { activeNow: 0 }
+      }))
       
-      snapshot.forEach(doc => {
-        venuesList.push({ ...doc.data(), id: doc.id } as Venue)
-      })
+      // ✅ STEP 2: Load featured/partner venues from Firebase (Archie Bar, etc.)
+      try {
+        const { collection, getDocs, query, where } = await import('firebase/firestore')
+        const { db } = await import('@/lib/firebase')
+        
+        const q = query(
+          collection(db, 'venues'),
+          where('active', '==', true)
+        )
+        
+        const snapshot = await getDocs(q)
+        const firebaseVenues: Venue[] = []
+        
+        snapshot.forEach(doc => {
+          firebaseVenues.push({ ...doc.data(), id: doc.id } as Venue)
+        })
+        
+        console.log(`🔥 Loaded ${firebaseVenues.length} featured venues from Firebase`)
+        
+        // Merge Firebase venues (overwrite if same ID, add if new)
+        const dbIds = new Set(allVenues.map(v => v.id))
+        firebaseVenues.forEach(fbVenue => {
+          if (dbIds.has(fbVenue.id)) {
+            // Replace with Firebase version (has real stats)
+            const idx = allVenues.findIndex(v => v.id === fbVenue.id)
+            if (idx !== -1) allVenues[idx] = fbVenue
+          } else {
+            // Add new venue from Firebase
+            allVenues.push(fbVenue)
+          }
+        })
+        
+      } catch (fbErr) {
+        console.warn('⚠️ Could not load Firebase venues, using local database only:', fbErr)
+      }
       
-      console.log(`🏢 Loaded ${venuesList.length} active venues`)
+      console.log(`📍 Total venues: ${allVenues.length}`)
       
-      // Calculate distances and sort by distance
-      const venuesWithDistance = venuesList.map(venue => {
+      // ✅ STEP 3: Calculate distances and sort
+      const venuesWithDistance = allVenues.map(venue => {
         const distance = currentLocation 
           ? calculateDistance(
               currentLocation.lat,
@@ -150,21 +278,27 @@ export default function VenueSelectionScreen({
         return {
           ...venue,
           distance,
-          formattedDistance: currentLocation ? formatDistance(distance) : 'לא ידוע',
-          activeUsers: venue.stats?.activeNow || venue.checkedInUsers?.length || 0,
+          formattedDistance: currentLocation ? formatDistance(distance) : 'Unknown',
+          // ✅ v2.8.13 FIX: Prioritize checkedInUsers.length (actual count) over stats.activeNow (may be stale)
+          activeUsers: venue.checkedInUsers?.length || venue.stats?.activeNow || 0,
           isNearby: distance <= (venue.radius || 500) // Default 500m radius
         }
       })
       
-      // Sort by distance (nearest first)
-      venuesWithDistance.sort((a, b) => a.distance - b.distance)
+      // ✅ Filter: Only show venues within 10km (10000 meters)
+      const filteredByDistance = venuesWithDistance.filter(v => v.distance <= 10000)
       
-      setVenues(venuesWithDistance)
-      setFilteredVenues(venuesWithDistance)
+      // Sort by distance (nearest first)
+      filteredByDistance.sort((a, b) => a.distance - b.distance)
+      
+      setVenues(filteredByDistance)
+      setFilteredVenues(filteredByDistance)
+      
+      console.log(`✅ Showing ${filteredByDistance.length} venues within 10km`)
       
     } catch (err: any) {
       console.error('❌ Error loading venues:', err)
-      setError('שגיאה בטעינת המועדונים')
+      setError('Error loading places')
     } finally {
       setLoading(false)
     }
@@ -212,7 +346,7 @@ export default function VenueSelectionScreen({
       setLocationLoading(false)
       
       if (!loc) {
-        setError('נדרשת גישה למיקום כדי להיכנס למועדון')
+        setError('Location access required to check in')
         return
       }
       setCurrentLocation(loc)
@@ -226,14 +360,14 @@ export default function VenueSelectionScreen({
       )
       
       if (distance > (venue.radius || 500)) {
-        setError(`אתה רחוק מדי מ-${venue.displayName}. קרב למועדון כדי להיכנס.`)
+        setError(`You're too far from ${venue.displayName}. Get closer to check in.`)
         return
       }
     }
     
     // Check if within radius
     if (currentLocation && !venue.isNearby) {
-      setError(`אתה רחוק מדי מ-${venue.displayName} (${venue.formattedDistance}). קרב למועדון כדי להיכנס.`)
+      setError(`You're too far from ${venue.displayName} (${venue.formattedDistance}). Get closer to check in.`)
       return
     }
     
@@ -243,27 +377,35 @@ export default function VenueSelectionScreen({
     try {
       await onSelectVenue(venue)
     } catch (err: any) {
-      setError(err.message || 'שגיאה בכניסה למועדון')
+      setError(err.message || 'Error checking in')
     } finally {
       setLoadingVenue(null)
     }
   }
 
-  // Request location
+  // Request location - ✅ v2.8.7: Full refresh with new location
   const handleRequestLocation = async () => {
+    console.log('🔄 Manual refresh - getting fresh location...')
     setLocationLoading(true)
+    setLoading(true)
     setError(null)
+    setVenues([])  // Clear old venues immediately
+    setFilteredVenues([])
     
     try {
       const loc = await onRequestLocation()
       if (loc) {
+        console.log(`📍 New location: ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`)
         setCurrentLocation(loc)
-        loadVenues() // Reload with new location
+        setLocationTimestamp(Date.now())
+        // loadVenues will be called automatically by useEffect
       } else {
-        setError('לא הצלחנו לקבל את המיקום שלך')
+        setError('Could not get your location')
+        setLoading(false)
       }
     } catch (err: any) {
-      setError('שגיאה בקבלת המיקום')
+      setError('Error getting location')
+      setLoading(false)
     } finally {
       setLocationLoading(false)
     }
@@ -285,27 +427,68 @@ export default function VenueSelectionScreen({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           onClick={e => e.stopPropagation()}
-          className="bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden"
+          className="bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden relative"
         >
-          {/* Header */}
-          <div className="px-6 pt-6 pb-4 border-b border-[#4ade80]/20">
+          {/* ❤️ Floating Hearts Background - Hollywood! */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {hearts.map((heart) => (
+              <motion.div
+                key={`heart-${heart.id}`}
+                className="absolute select-none"
+                style={{
+                  left: `${heart.x}%`,
+                  bottom: -40,
+                  fontSize: heart.size,
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                }}
+                animate={{
+                  y: [0, -viewportHeight - 100],
+                  opacity: [0, heart.opacity, heart.opacity, 0],
+                }}
+                transition={{
+                  duration: heart.duration,
+                  repeat: Infinity,
+                  delay: heart.delay,
+                  ease: "linear"
+                }}
+              >
+                ❤️
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Header - with iOS safe area padding */}
+          <div className="px-6 pt-6 pb-4 border-b border-[#4ade80]/20 relative z-10" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top, 1.5rem))' }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#4ade80] to-[#22c55e] flex items-center justify-center">
                   <MapPin className="h-6 w-6 text-[#0d2920]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">בחר מועדון</h2>
-                  <p className="text-sm text-white/60">היכנס למועדון כדי להתחיל</p>
+                  <h2 className="text-xl font-bold text-white" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{t('venueSelection.title')}</h2>
+                  <p className="text-sm text-white/60" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{t('venueSelection.subtitle')}</p>
                 </div>
               </div>
-              <Button
-                onClick={onClose}
-                variant="ghost"
-                className="text-white/60 hover:text-white hover:bg-white/10 rounded-full p-2"
-              >
-                <X className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* ✅ v2.8.7: Refresh button to get fresh location */}
+                <Button
+                  onClick={handleRequestLocation}
+                  disabled={locationLoading || loading}
+                  variant="ghost"
+                  className="text-white/60 hover:text-[#4ade80] hover:bg-[#4ade80]/10 rounded-full p-2"
+                  title="Refresh location"
+                >
+                  <RefreshCw className={`h-5 w-5 ${(locationLoading || loading) ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button
+                  onClick={onClose}
+                  variant="ghost"
+                  className="text-white/60 hover:text-white hover:bg-white/10 rounded-full p-2"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
             
             {/* Search */}
@@ -314,9 +497,8 @@ export default function VenueSelectionScreen({
               <Input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="חפש מועדון..."
-                className="pr-10 bg-[#0d2920]/50 border-[#4ade80]/30 text-white placeholder:text-white/40"
-                dir="rtl"
+                placeholder={t('venueSelection.searchPlaceholder')}
+                className="pl-10 bg-[#0d2920]/50 border-[#4ade80]/30 text-white placeholder:text-white/40"
               />
             </div>
             
@@ -380,13 +562,13 @@ export default function VenueSelectionScreen({
                         <Navigation className="h-6 w-6" />
                       </motion.div>
                     )}
-                    <span>📍 הפעל מיקום לראות מרחקים</span>
+                    <span>📍 Enable location to see distances</span>
                   </div>
                 </motion.button>
                 
                 {/* Helper Text */}
                 <p className="text-center text-xs text-[#4ade80]/70 mt-2">
-                  👆 לחץ כאן כדי לראות איזה מועדונים קרובים אליך
+                  👆 Tap here to see which places are near you
                 </p>
               </motion.div>
             )}
@@ -396,7 +578,7 @@ export default function VenueSelectionScreen({
           {error && (
             <div className="mx-6 mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-2">
               <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-300" dir="rtl">{error}</p>
+              <p className="text-sm text-red-300">{error}</p>
             </div>
           )}
           
@@ -405,116 +587,204 @@ export default function VenueSelectionScreen({
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 text-[#4ade80] animate-spin mb-4" />
-                <p className="text-white/60">טוען מועדונים...</p>
+                <p className="text-white/60">
+                  {locationLoading ? '📍 Getting your location...' : '🔍 Loading nearby places...'}
+                </p>
+                {locationLoading && (
+                  <p className="text-xs text-white/40 mt-2">Finding venues near you</p>
+                )}
               </div>
             ) : filteredVenues.length === 0 ? (
               <div className="text-center py-12">
                 <MapPin className="h-12 w-12 text-white/20 mx-auto mb-4" />
-                <p className="text-white/60 mb-2">לא נמצאו מועדונים</p>
+                <p className="text-white/60 mb-2">No places found</p>
                 {searchQuery && (
                   <p className="text-sm text-white/40">
-                    נסה לחפש שם אחר
+                    Try a different search
                   </p>
                 )}
               </div>
             ) : (
               <>
-                {/* Nearby Section */}
+                {/* ═══════════════════════════════════════════════════════════ */}
+                {/* ✅ CAN CHECK-IN NOW - Venues within 500m (Green) */}
+                {/* ═══════════════════════════════════════════════════════════ */}
                 {filteredVenues.some(v => v.isNearby) && (
-                  <div className="mb-2">
-                    <p className="text-xs text-[#4ade80] font-medium mb-2 flex items-center gap-1">
-                      <Navigation className="h-3 w-3" />
-                      מועדונים בקרבתך
+                  <>
+                    <div className="mb-3 mt-2">
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-base">📍</span>
+                        <div className="h-2 w-2 rounded-full bg-[#4ade80] animate-pulse" />
+                        <p className="text-sm text-[#4ade80] font-bold uppercase tracking-wide" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('venueSelection.canCheckIn')}
+                        </p>
+                      </div>
+                      <div className="h-px bg-[#4ade80]/30 mt-2" />
+                    </div>
+                    
+                    {filteredVenues.filter(v => v.isNearby).map((venue, index) => (
+                      <motion.div
+                        key={venue.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="relative rounded-xl border p-4 transition-all cursor-pointer bg-[#4ade80]/10 border-[#4ade80]/40 hover:border-[#4ade80] mb-3"
+                        onClick={() => handleSelectVenue(venue)}
+                      >
+                        {/* In Range Badge */}
+                        <div className={`absolute -top-2 ${isRTL ? '-left-2' : '-right-2'} bg-[#4ade80] text-[#0d2920] text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1`}>
+                          <CheckCircle className="h-3 w-3" />
+                          {t('venueSelection.inRange')}
+                        </div>
+                        
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            {/* Venue Name */}
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full bg-[#4ade80]" />
+                              <h3 className="text-white font-semibold truncate">
+                                {venue.displayName}
+                              </h3>
+                            </div>
+                            
+                            {/* Distance & Users */}
+                            <div className="flex items-center gap-4 mt-2">
+                              {currentLocation && (
+                                <div className="flex items-center gap-1.5 text-[#4ade80] font-medium">
+                                  <MapPin className="h-4 w-4" />
+                                  <span className="text-base">{venue.formattedDistance}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1 text-white/60">
+                                <Users className="h-3.5 w-3.5" />
+                                <span className="text-sm">{venue.activeUsers} {t('venueSelection.active')}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Address */}
+                            {venue.location.address && (
+                              <p className="text-xs text-white/40 mt-1 truncate">
+                                {venue.location.address}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {/* Enter Button - Active */}
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSelectVenue(venue)
+                            }}
+                            disabled={loadingVenue === venue.id}
+                            className="shrink-0 bg-[#4ade80] text-[#0d2920] hover:bg-[#4ade80]/80 font-bold"
+                            size="sm"
+                          >
+                            {loadingVenue === venue.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <CheckCircle className={`h-4 w-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+                                {t('venueSelection.enter')}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </>
+                )}
+                
+                {/* ═══════════════════════════════════════════════════════════ */}
+                {/* 🔵 NEARBY - Venues beyond 500m but within 10km (Blue) */}
+                {/* ═══════════════════════════════════════════════════════════ */}
+                {filteredVenues.some(v => !v.isNearby) && (
+                  <>
+                    <div className="mb-3 mt-6">
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-base">📍</span>
+                        <div className="h-2 w-2 rounded-full bg-blue-400" />
+                        <p className="text-sm text-blue-400 font-bold uppercase tracking-wide" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('venueSelection.nearby')}
+                        </p>
+                      </div>
+                      <div className="h-px bg-blue-400/30 mt-2" />
+                    </div>
+                    
+                    {filteredVenues.filter(v => !v.isNearby).map((venue, index) => (
+                      <motion.div
+                        key={venue.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 + index * 0.05 }}
+                        className="relative rounded-xl border p-4 transition-all bg-[#0d2920]/50 border-white/10 opacity-70 mb-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            {/* Venue Name */}
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full bg-blue-400" />
+                              <h3 className="text-white font-semibold truncate">
+                                {venue.displayName}
+                              </h3>
+                            </div>
+                            
+                            {/* Distance & Users */}
+                            <div className="flex items-center gap-4 mt-2">
+                              {currentLocation && (
+                                <div className="flex items-center gap-1.5 text-blue-400 font-medium">
+                                  <MapPin className="h-4 w-4" />
+                                  <span className="text-base">{venue.formattedDistance}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1 text-white/50">
+                                <Users className="h-3.5 w-3.5" />
+                                <span className="text-sm">{venue.activeUsers} {t('venueSelection.active')}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Address */}
+                            {venue.location.address && (
+                              <p className="text-xs text-white/30 mt-1 truncate">
+                                {venue.location.address}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {/* Too Far Button - Disabled */}
+                          <Button
+                            disabled={true}
+                            className="shrink-0 bg-white/5 text-white/40 cursor-not-allowed"
+                            size="sm"
+                          >
+                            <Navigation className={`h-4 w-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+                            {t('venueSelection.tooFar')}
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </>
+                )}
+                
+                {/* No nearby venues message */}
+                {!filteredVenues.some(v => v.isNearby) && filteredVenues.length > 0 && (
+                  <div className="bg-[#4ade80]/10 border border-[#4ade80]/30 rounded-xl p-4 mb-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                    <div className="flex items-center gap-2 text-[#4ade80]">
+                      <Navigation className="h-5 w-5" />
+                      <p className="text-sm font-medium">{t('venueSelection.walkCloser')}</p>
+                    </div>
+                    <p className="text-xs text-white/50 mt-1">
+                      {t('venueSelection.getWithin')}
                     </p>
                   </div>
                 )}
-                
-                {filteredVenues.map((venue, index) => (
-                  <motion.div
-                    key={venue.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`relative rounded-xl border p-4 transition-all cursor-pointer ${
-                      venue.isNearby 
-                        ? 'bg-[#4ade80]/10 border-[#4ade80]/40 hover:border-[#4ade80]' 
-                        : 'bg-[#0d2920]/50 border-white/10 hover:border-white/30'
-                    }`}
-                    onClick={() => handleSelectVenue(venue)}
-                  >
-                    {/* Nearby Badge */}
-                    {venue.isNearby && (
-                      <div className="absolute -top-2 -right-2 bg-[#4ade80] text-[#0d2920] text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3" />
-                        בטווח
-                      </div>
-                    )}
-                    
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        {/* Venue Name */}
-                        <div className="flex items-center gap-2">
-                          <span className={`h-2 w-2 rounded-full ${
-                            venue.isNearby ? 'bg-[#4ade80]' : 'bg-blue-400'
-                          }`} />
-                          <h3 className="text-white font-semibold truncate">
-                            {venue.displayName}
-                          </h3>
-                        </div>
-                        
-                        {/* Distance & Users */}
-                        <div className="flex items-center gap-4 mt-2">
-                          {currentLocation && (
-                            <div className="flex items-center gap-1 text-white/60">
-                              <MapPin className="h-3.5 w-3.5" />
-                              <span className="text-sm">{venue.formattedDistance}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1 text-white/60">
-                            <Users className="h-3.5 w-3.5" />
-                            <span className="text-sm">{venue.activeUsers} פעילים</span>
-                          </div>
-                        </div>
-                        
-                        {/* Address */}
-                        {venue.location.address && (
-                          <p className="text-xs text-white/40 mt-1 truncate">
-                            {venue.location.address}
-                          </p>
-                        )}
-                      </div>
-                      
-                      {/* Enter Button */}
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSelectVenue(venue)
-                        }}
-                        disabled={loadingVenue === venue.id}
-                        className={`shrink-0 ${
-                          venue.isNearby
-                            ? 'bg-[#4ade80] text-[#0d2920] hover:bg-[#4ade80]/80'
-                            : 'bg-white/10 text-white hover:bg-white/20'
-                        }`}
-                        size="sm"
-                      >
-                        {loadingVenue === venue.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'היכנס'
-                        )}
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
               </>
             )}
           </div>
           
           {/* Footer */}
           <div className="px-6 py-4 border-t border-[#4ade80]/20 bg-[#0d2920]/50">
-            <p className="text-xs text-white/40 text-center">
-              🦎 I4IGUANA - היכנס למועדון כדי למצוא התאמות
+            <p className="text-xs text-white/40 text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('venueSelection.checkInToFind')}
             </p>
           </div>
         </motion.div>

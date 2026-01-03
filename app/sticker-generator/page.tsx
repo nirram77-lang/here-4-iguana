@@ -3,7 +3,9 @@
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
-import { Download, Phone, Mail, MapPin } from 'lucide-react'
+import { Download, Phone, Mail, MapPin, Printer, FileImage, Sparkles } from 'lucide-react'
+import RollUpGenerator from '@/components/rollup-generator'
+import MarketingStickerGenerator from '@/components/marketing-sticker-generator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // I4IGUANA - Premium Venue Sticker Generator with Business Card
@@ -11,6 +13,7 @@ import { Download, Phone, Mail, MapPin } from 'lucide-react'
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function StickerGenerator() {
+  const [activeTab, setActiveTab] = useState<'sticker' | 'rollup' | 'marketing'>('rollup')  // Default to Roll-Up
   const [venueName, setVenueName] = useState('Archie Bar - Ashkelon')
   const [venueId, setVenueId] = useState('archie-bar-ashkelon')
   const stickerRef = useRef<HTMLDivElement>(null)
@@ -43,8 +46,111 @@ END:VCARD`
     window.print()
   }
 
+  // Show Marketing Sticker Generator
+  if (activeTab === 'marketing') {
+    return (
+      <div className="min-h-screen bg-gray-900">
+        {/* Tab Navigation */}
+        <div className="sticky top-0 z-50 bg-gray-900 border-b border-gray-700 print:hidden">
+          <div className="max-w-2xl mx-auto px-4 py-3">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('sticker')}
+                className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-gray-700 text-gray-300 hover:bg-gray-600 text-sm"
+              >
+                <Printer className="w-4 h-4" />
+                Venue
+              </button>
+              <button
+                onClick={() => setActiveTab('rollup')}
+                className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-gray-700 text-gray-300 hover:bg-gray-600 text-sm"
+              >
+                <FileImage className="w-4 h-4" />
+                Roll-Up
+              </button>
+              <button
+                onClick={() => setActiveTab('marketing')}
+                className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-pink-600 text-white text-sm"
+              >
+                <Sparkles className="w-4 h-4" />
+                Marketing 15x15
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <MarketingStickerGenerator />
+      </div>
+    )
+  }
+
+  // Show Roll-Up Generator
+  if (activeTab === 'rollup') {
+    return (
+      <div className="min-h-screen bg-gray-900">
+        {/* Tab Navigation */}
+        <div className="sticky top-0 z-50 bg-gray-900 border-b border-gray-700 print:hidden">
+          <div className="max-w-2xl mx-auto px-4 py-3">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('sticker')}
+                className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-gray-700 text-gray-300 hover:bg-gray-600 text-sm"
+              >
+                <Printer className="w-4 h-4" />
+                Venue
+              </button>
+              <button
+                onClick={() => setActiveTab('rollup')}
+                className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-green-600 text-white text-sm"
+              >
+                <FileImage className="w-4 h-4" />
+                Roll-Up
+              </button>
+              <button
+                onClick={() => setActiveTab('marketing')}
+                className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-gray-700 text-gray-300 hover:bg-gray-600 text-sm"
+              >
+                <Sparkles className="w-4 h-4" />
+                Marketing 15x15
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <RollUpGenerator />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 p-8">
+      {/* Tab Navigation */}
+      <div className="max-w-2xl mx-auto mb-4 print:hidden">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('sticker')}
+            className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-green-600 text-white text-sm"
+          >
+            <Printer className="w-4 h-4" />
+            Venue
+          </button>
+          <button
+            onClick={() => setActiveTab('rollup')}
+            className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-gray-700 text-gray-300 hover:bg-gray-600 text-sm"
+          >
+            <FileImage className="w-4 h-4" />
+            Roll-Up
+          </button>
+          <button
+            onClick={() => setActiveTab('marketing')}
+            className="flex-1 py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1 transition-all bg-gray-700 text-gray-300 hover:bg-gray-600 text-sm"
+          >
+            <Sparkles className="w-4 h-4" />
+            Marketing 15x15
+          </button>
+        </div>
+      </div>
+
       {/* Controls */}
       <div className="max-w-md mx-auto mb-8 space-y-4 print:hidden">
         <h1 className="text-2xl font-bold text-white text-center">🦎 Sticker Generator</h1>

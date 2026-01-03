@@ -1,8 +1,9 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import PilotButton from '@/components/PilotButton'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
@@ -20,33 +21,58 @@ export default function LandingPage() {
       {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* NAVIGATION */}
       {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* HOLIDAY TICKER - Bottom Left */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <div className="hidden lg:block fixed left-4 bottom-8 z-40">
+        <div className="bg-gradient-to-r from-[#1a0a0a]/95 to-[#0a1a0a]/95 backdrop-blur-md border border-red-500/30 rounded-2xl p-4 shadow-2xl max-w-[280px]">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl">🎄</span>
+            <div>
+              <div className="text-sm font-bold text-red-400">Holiday Season</div>
+              <div className="text-xs text-gray-400">Limited time magic ✨</div>
+            </div>
+          </div>
+          <div className="text-sm text-gray-300 leading-relaxed">
+            This season, skip the small talk.<br/>
+            <span className="text-green-400 font-semibold">Meet someone real.</span>
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+            <span>🎁</span>
+            <span>New connections await</span>
+            <span>❄️</span>
+          </div>
+        </div>
+      </div>
+
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrollY > 50 ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
       }`}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-3 md:px-6 py-2 md:py-4">
           <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full animate-pulse opacity-50"></div>
-                <img 
-                  src="/notification-icon-192.png" 
-                  alt="I4IGUANA" 
-                  className="w-12 h-12 relative z-10"
-                />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
-                I4IGUANA
-              </span>
-            </div>
-
-              {/* Launch Pilot Button */}
-              <Link 
-                href="#"
-                className="ml-4 px-4 py-2 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-bold text-black text-sm shadow-lg shadow-orange-500/50 animate-pulse hover:scale-105 transition-all"
-              >
-                🚀 Launch Pilot - Soon!
+            {/* Left side: Logo + I4IGUANA + Pilot */}
+            <div className="flex items-center gap-2">
+              {/* Logo - Always visible */}
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-9 h-9 md:w-11 md:h-11 relative flex-shrink-0">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full animate-pulse opacity-50"></div>
+                  <img 
+                    src="/notification-icon-192.png" 
+                    alt="I4IGUANA" 
+                    className="w-9 h-9 md:w-11 md:h-11 relative z-10"
+                  />
+                </div>
+                <span className="hidden md:block text-xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
+                  I4IGUANA
+                </span>
               </Link>
+              
+              {/* Pilot Button - Always visible */}
+              <div className="relative z-[60]">
+                <PilotButton lang="en" />
+              </div>
+            </div>
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-6">
@@ -54,72 +80,82 @@ export default function LandingPage() {
               <a href="#features" className="text-gray-300 hover:text-green-400 transition-colors">Features</a>
               <a href="#for-venues" className="text-gray-300 hover:text-green-400 transition-colors">For Venues</a>
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
-              
-              {/* HE Language Button */}
               <Link 
                 href="/he"
-                className="group relative px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
+                className="px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 transition-all flex items-center gap-1.5"
               >
-                <span className="absolute inset-0 rounded-full bg-white/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                <span className="relative flex items-center gap-1.5">
-                  <span className="text-base">נ‡®נ‡±</span>
-                  <span>HE</span>
-                </span>
+                <span>🇮🇱</span>
+                <span>HE</span>
               </Link>
-              
-              {/* Join as Venue Button */}
+              <Link 
+                href="/br"
+                className="px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 transition-all flex items-center gap-1.5"
+              >
+                <span>🇧🇷</span>
+                <span>PT</span>
+              </Link>
               <Link 
                 href="/join"
-                className="px-5 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold hover:bg-green-500/10 transition-all flex items-center gap-2"
+                className="px-4 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold hover:bg-green-500/10 transition-all flex items-center gap-2"
               >
-                <span>נ“‹</span>
+                <span>🏪</span>
                 <span>Join as Venue</span>
               </Link>
-              
-              {/* Open App Button */}
               <Link 
-                href="/download"
-                className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
+                href="/app"
+                className="px-5 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
               >
                 Open App
               </Link>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button 
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="md:hidden p-2"
-            >
-              <div className="w-6 h-5 flex flex-col justify-between">
-                <span className={`w-full h-0.5 bg-white transition-all ${menuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-                <span className={`w-full h-0.5 bg-white transition-all ${menuOpen ? 'opacity-0' : ''}`}></span>
-                <span className={`w-full h-0.5 bg-white transition-all ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
-              </div>
-            </button>
+            {/* Right side: Language Buttons + Menu */}
+            <div className="md:hidden flex items-center gap-1.5">
+              <Link 
+                href="/he"
+                className="flex items-center gap-1 px-2 py-1 bg-white/10 border border-white/30 rounded-full text-xs font-bold text-white"
+              >
+                <span>🇮🇱</span>
+                <span>HE</span>
+              </Link>
+              <Link 
+                href="/br"
+                className="flex items-center gap-1 px-2 py-1 bg-white/10 border border-white/30 rounded-full text-xs font-bold text-white"
+              >
+                <span>🇧🇷</span>
+                <span>PT</span>
+              </Link>
+              
+              <button 
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-1.5"
+              >
+                <div className="w-5 h-4 flex flex-col justify-between">
+                  <span className={`w-full h-0.5 bg-white transition-all ${menuOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
+                  <span className={`w-full h-0.5 bg-white transition-all ${menuOpen ? 'opacity-0' : ''}`}></span>
+                  <span className={`w-full h-0.5 bg-white transition-all ${menuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Mobile Menu */}
           {menuOpen && (
             <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4">
-              <a href="#how-it-works" className="block text-gray-300 hover:text-green-400">How It Works</a>
-              <a href="#features" className="block text-gray-300 hover:text-green-400">Features</a>
-              <a href="#for-venues" className="block text-gray-300 hover:text-green-400">For Venues</a>
-              <a href="#download" className="block text-gray-300 hover:text-green-400">Download</a>
-              <Link 
-                href="/he" 
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
-              >
-                <span>נ‡®נ‡±</span>
-                <span>HE</span>
-              </Link>
+              <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">How It Works</a>
+              <a href="#features" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Features</a>
+              <a href="#for-venues" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">For Venues</a>
+              <a href="#download" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Download</a>
               <Link 
                 href="/join"
+                onClick={() => setMenuOpen(false)}
                 className="block w-full text-center px-6 py-2 border-2 border-green-500 text-green-400 rounded-full font-semibold"
               >
-                נ“‹ Join as Venue
+                🏪 Join as Venue
               </Link>
               <Link 
-                href="/download"
+                href="/app"
+                onClick={() => setMenuOpen(false)}
                 className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold"
               >
                 Open App
@@ -128,6 +164,7 @@ export default function LandingPage() {
           )}
         </div>
       </nav>
+
 
       {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
       {/* HERO SECTION */}
@@ -178,30 +215,38 @@ export default function LandingPage() {
 
           {/* Main Heading */}
           <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight animate-fadeInUp">
-            <span className="bg-gradient-to-r from-white via-green-100 to-white bg-clip-text text-transparent">
-              She Decides.
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
-              You Meet.
+            <span className="text-white">
+              No endless swipes.
             </span>
             <br />
             <span className="text-white">
-              Right Now.
+              No games.
+            </span>
+            <br />
+            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(74,222,128,0.5)]">
+              Real meeting.
+            </span>
+            {' '}
+            <span className="bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
+              Now.
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-            No endless swiping. No fake profiles. 
-            <br className="hidden md:block" />
-            Meet <span className="text-pink-400">real people</span> at real places within <span className="text-green-400 font-semibold">10-500 meters</span>.
+          <p className="text-xl md:text-2xl text-gray-400 mb-4 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+            <span className="text-pink-400">Real people.</span> <span className="text-white">Real places.</span> <span className="text-green-400 font-semibold">10-500 meters from you.</span>
+          </p>
+          
+          {/* She Decides - Subtitle */}
+          <p className="text-lg md:text-xl text-pink-400 font-semibold mb-10 animate-fadeInUp flex items-center justify-center gap-2" style={{animationDelay: '0.3s'}}>
+            <span className="text-pink-500">💜</span>
+            <span>She decides. You meet.</span>
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
             <Link 
-              href="/download"
+              href="/app"
               className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-2"
             >
               <span>Open App</span>
@@ -495,7 +540,7 @@ export default function LandingPage() {
           {/* App Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link 
-              href="/download"
+              href="/app"
               className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-3"
             >
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
@@ -508,7 +553,7 @@ export default function LandingPage() {
             </Link>
             
             <Link 
-              href="/download"
+              href="/app"
               className="group px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-2xl font-bold text-lg shadow-lg hover:shadow-gray-500/30 hover:scale-105 transition-all flex items-center gap-3 border border-white/20"
             >
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
@@ -524,7 +569,7 @@ export default function LandingPage() {
           {/* QR Code */}
           <div className="inline-block p-6 bg-white rounded-2xl">
             <img 
-              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.i4iguana.com/download&bgcolor=ffffff&color=0d2920"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.i4iguana.com/app&bgcolor=ffffff&color=0d2920"
               alt="Scan to download"
               className="w-36 h-36"
             />
@@ -571,7 +616,7 @@ export default function LandingPage() {
               </div>
               <p className="text-gray-400 max-w-sm">
                 Real-time dating revolution. Meet real people at real places. 
-                She decides, you meet - instantly.
+                No endless swipes. No games. Real meeting. Now.
               </p>
             </div>
 
@@ -591,6 +636,7 @@ export default function LandingPage() {
               <div className="space-y-2">
                 <Link href="/terms" className="block text-gray-400 hover:text-green-400 transition-colors">Terms of Service</Link>
                 <Link href="/privacy" className="block text-gray-400 hover:text-green-400 transition-colors">Privacy Policy</Link>
+                <Link href="/accessibility" className="block text-gray-400 hover:text-green-400 transition-colors">Accessibility</Link>
                 <a href="#contact" className="block text-gray-400 hover:text-green-400 transition-colors">Contact</a>
               </div>
             </div>

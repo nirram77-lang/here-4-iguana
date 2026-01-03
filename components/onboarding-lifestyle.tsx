@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, Wine, Cigarette, Ruler, Heart, GraduationCap, Search, X, MapPin, Briefcase, Languages } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 // ✅ רשימת מוסדות אקדמיים בישראל
 const ISRAELI_INSTITUTIONS = [
@@ -132,6 +133,8 @@ export default function OnboardingLifestyle({
   initialOccupation = '',
   initialLanguages = ['he']
 }: OnboardingLifestyleProps) {
+  const { t, isRTL } = useLanguage()
+  
   // ✅ FIX: Helper to parse height string to number
   const parseHeightToNumber = (h: string): number => {
     if (!h) return 170
@@ -161,6 +164,17 @@ export default function OnboardingLifestyle({
   
   // Languages state - ✅ FIX: Use initial value
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(initialLanguages)
+
+  // ✅ NEW: Real viewport height for old Android/iOS
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  
+  useEffect(() => {
+    const updateViewportHeight = () => setViewportHeight(window.innerHeight)
+    updateViewportHeight()
+    window.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('orientationchange', () => setTimeout(updateViewportHeight, 100))
+    return () => window.removeEventListener('resize', updateViewportHeight)
+  }, [])
   
   // Filtered institutions for autocomplete
   const filteredInstitutions = useMemo(() => {
@@ -241,7 +255,13 @@ export default function OnboardingLifestyle({
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] overflow-hidden">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] overflow-y-auto"
+      style={{ 
+        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        paddingBottom: '100px'
+      }}
+    >
       {/* Header */}
       <div className="flex items-center gap-4 p-4 flex-shrink-0">
         <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -261,8 +281,8 @@ export default function OnboardingLifestyle({
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }} className="text-6xl mb-3">
               🌟
             </motion.div>
-            <h2 className="text-2xl font-bold text-white mb-2">Your Lifestyle</h2>
-            <p className="text-white/60 text-sm">Help us find your perfect match</p>
+            <h2 className="text-2xl font-bold text-white mb-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{t('onboarding.lifestyle.title')}</h2>
+            <p className="text-white/60 text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{t('onboarding.lifestyle.subtitle')}</p>
           </div>
 
           {/* All Options */}
@@ -645,7 +665,7 @@ export default function OnboardingLifestyle({
       {/* Continue Button - Fixed at bottom */}
       <div className="p-4 bg-[#0d2920]/50 border-t border-[#4ade80]/20 flex-shrink-0">
         <Button onClick={handleNext} className="w-full h-12 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] text-base font-bold rounded-2xl shadow-lg shadow-[#4ade80]/20">
-          Continue
+          {t('common.continue')}
         </Button>
       </div>
     </div>

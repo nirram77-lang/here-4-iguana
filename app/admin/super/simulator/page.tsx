@@ -445,7 +445,7 @@ export default function SimulatorPage() {
       }, { merge: true })
 
       // Add message
-      await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      await addDoc(collection(db, 'matches', chatId, 'messages'), {
         senderId: fromUserId,
         text: message,
         timestamp: Timestamp.now(),

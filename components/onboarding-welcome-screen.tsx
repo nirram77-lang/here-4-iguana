@@ -3,20 +3,39 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Heart, Sparkles, Shield, Users } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface OnboardingWelcomeScreenProps {
   onContinue: () => void
 }
 
 export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcomeScreenProps) {
+  const { t, isRTL } = useLanguage()
   const [showGuidelines, setShowGuidelines] = useState(false)
   const [agreedToGuidelines, setAgreedToGuidelines] = useState(false)
+
+  // ✅ NEW: Real viewport height for old Android/iOS
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  
+  useEffect(() => {
+    const updateViewportHeight = () => setViewportHeight(window.innerHeight)
+    updateViewportHeight()
+    window.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('orientationchange', () => setTimeout(updateViewportHeight, 100))
+    return () => window.removeEventListener('resize', updateViewportHeight)
+  }, [])
 
   // First show welcome, then guidelines
   if (!showGuidelines) {
     return (
-      <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]">
+      <div 
+        className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]"
+        style={{ 
+          minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+          paddingBottom: '40px'
+        }}
+      >
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           
           {/* Animated Iguana */}
@@ -35,9 +54,10 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="text-center mb-8"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
-            <h1 className="text-4xl font-bold text-white mb-4">Welcome! 👋</h1>
-            <p className="text-xl text-white/80 mb-6">Good to see you!</p>
+            <h1 className="text-4xl font-bold text-white mb-4">{t('welcome.title')} 👋</h1>
+            <p className="text-xl text-white/80 mb-6">{t('welcome.subtitle')}</p>
             <div className="text-3xl font-bold bg-gradient-to-r from-[#4ade80] to-[#22c55e] bg-clip-text text-transparent">
               I4IGUANA
             </div>
@@ -49,8 +69,9 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
             className="text-center text-white/60 text-lg mb-12 max-w-md"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
-            Let's create your profile and start meeting amazing people nearby! 💚
+            {t('welcome.tagline')}
           </motion.p>
 
           {/* Continue Button */}
@@ -63,9 +84,10 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
             <Button
               onClick={() => setShowGuidelines(true)}
               className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg shadow-lg shadow-[#4ade80]/30"
+              style={{ direction: isRTL ? 'rtl' : 'ltr' }}
             >
-              Let's Go!
-              <ArrowRight className="ml-2 h-5 w-5" />
+              {t('welcome.letsGo')}
+              <ArrowRight className={`${isRTL ? 'mr-2 rotate-180' : 'ml-2'} h-5 w-5`} />
             </Button>
           </motion.div>
         </div>
@@ -75,7 +97,13 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
 
   // Simple, cute guidelines screen
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]"
+      style={{ 
+        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        paddingBottom: '40px'
+      }}
+    >
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         
         {/* Floating hearts animation */}
@@ -127,8 +155,9 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="text-3xl font-bold text-white text-center mb-2"
+          style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
-          Be Kind, Have Fun! 💚
+          {t('guidelines.title')}
         </motion.h1>
         
         <motion.p
@@ -136,8 +165,9 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
           className="text-white/60 text-center mb-10"
+          style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
-          A few quick things before we start
+          {t('guidelines.subtitle')}
         </motion.p>
 
         {/* Simple guidelines - cards with emojis */}
@@ -146,31 +176,32 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="w-full max-w-sm space-y-4 mb-10"
+          style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
           {/* Be Respectful */}
-          <div className="flex items-center gap-4 bg-white/5 rounded-2xl p-4 border border-[#4ade80]/20">
+          <div className={`flex items-center gap-4 bg-white/5 rounded-2xl p-4 border border-[#4ade80]/20 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <div className="text-3xl">🤝</div>
-            <div>
-              <p className="text-white font-medium">Be Respectful</p>
-              <p className="text-white/50 text-sm">Treat everyone with kindness</p>
+            <div className={isRTL ? 'text-right' : ''}>
+              <p className="text-white font-medium">{t('guidelines.beRespectful')}</p>
+              <p className="text-white/50 text-sm">{t('guidelines.beRespectfulDesc')}</p>
             </div>
           </div>
 
           {/* Stay Safe */}
-          <div className="flex items-center gap-4 bg-white/5 rounded-2xl p-4 border border-[#4ade80]/20">
+          <div className={`flex items-center gap-4 bg-white/5 rounded-2xl p-4 border border-[#4ade80]/20 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <div className="text-3xl">🛡️</div>
-            <div>
-              <p className="text-white font-medium">Stay Safe</p>
-              <p className="text-white/50 text-sm">Meet in public places</p>
+            <div className={isRTL ? 'text-right' : ''}>
+              <p className="text-white font-medium">{t('guidelines.staySafe')}</p>
+              <p className="text-white/50 text-sm">{t('guidelines.staySafeDesc')}</p>
             </div>
           </div>
 
           {/* Have Fun */}
-          <div className="flex items-center gap-4 bg-white/5 rounded-2xl p-4 border border-[#4ade80]/20">
+          <div className={`flex items-center gap-4 bg-white/5 rounded-2xl p-4 border border-[#4ade80]/20 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <div className="text-3xl">✨</div>
-            <div>
-              <p className="text-white font-medium">Have Fun!</p>
-              <p className="text-white/50 text-sm">Enjoy meeting new people</p>
+            <div className={isRTL ? 'text-right' : ''}>
+              <p className="text-white font-medium">{t('guidelines.haveFun')}</p>
+              <p className="text-white/50 text-sm">{t('guidelines.haveFunDesc')}</p>
             </div>
           </div>
         </motion.div>
@@ -196,8 +227,8 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
               </motion.div>
             )}
           </div>
-          <span className="text-white/70 text-sm">
-            I'll be kind and respectful 💚
+          <span className="text-white/70 text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            {t('guidelines.agreement')}
           </span>
         </motion.button>
 
@@ -218,14 +249,15 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
                 : 'bg-white/10 text-white/40 cursor-not-allowed'
               }
             `}
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             {agreedToGuidelines ? (
               <>
-                Let's Create My Profile!
-                <Sparkles className="ml-2 h-5 w-5" />
+                {t('guidelines.createProfile')}
+                <Sparkles className={`${isRTL ? 'mr-2' : 'ml-2'} h-5 w-5`} />
               </>
             ) : (
-              'Tap the heart above 💚'
+              t('guidelines.tapHeart')
             )}
           </Button>
         </motion.div>

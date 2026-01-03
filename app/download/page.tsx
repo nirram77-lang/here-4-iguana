@@ -121,7 +121,7 @@ export default function DownloadPage() {
   // Close the browser tab and go to icon
   const handleGoToIcon = () => {
     // Show message to close browser
-    alert('סגור את הדפדפן ופתח את האפליקציה מהאייקון על מסך הבית! 🦎')
+    alert('Close this browser and open I4IGUANA from the icon on your home screen! 🦎')
     // Try to close the tab (may not work on all browsers)
     window.close()
   }
@@ -132,7 +132,7 @@ export default function DownloadPage() {
   }
 
   // QR Code for desktop users
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://www.i4iguana.com/download')}&color=0d2920&bgcolor=ffffff`
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('https://www.i4iguana.com/landing')}&color=0d2920&bgcolor=ffffff`
 
   // Already installed - show redirect message
   if (alreadyInstalled) {
@@ -148,8 +148,8 @@ export default function DownloadPage() {
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
             className="w-16 h-16 mx-auto mb-4 border-4 border-[#4ade80]/30 border-t-[#4ade80] rounded-full"
           />
-          <p className="text-white text-xl font-medium mb-2">האפליקציה כבר מותקנת!</p>
-          <p className="text-white/60">מעביר אותך לאפליקציה...</p>
+          <p className="text-white text-xl font-medium mb-2">App already installed!</p>
+          <p className="text-white/60">Redirecting to app...</p>
           <p className="text-6xl mt-6">🦎</p>
         </motion.div>
       </div>
@@ -199,7 +199,7 @@ export default function DownloadPage() {
             I4IGUANA
           </h1>
           <p className="text-white/70 text-lg">
-            הקסם מתחיל כאן
+            The magic starts here
           </p>
         </motion.div>
 
@@ -211,16 +211,15 @@ export default function DownloadPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-gradient-to-br from-[#1a4d3e]/90 to-[#0d2920]/90 border-2 border-[#4ade80]/40 rounded-3xl p-8 mb-8 max-w-md text-center backdrop-blur-sm"
-            dir="rtl"
           >
             <div className="flex items-center justify-center gap-2 mb-4">
               <Monitor className="w-6 h-6 text-[#4ade80]" />
-              <span className="text-xl font-bold text-white">גולש ממחשב?</span>
+              <span className="text-xl font-bold text-white">On desktop?</span>
             </div>
             
             <p className="text-white/80 mb-6">
-              📱 I4IGUANA היא אפליקציית מובייל!<br/>
-              סרוק את הקוד מהטלפון שלך:
+              📱 I4IGUANA is a mobile app!<br/>
+              Scan the code with your phone:
             </p>
 
             {/* QR Code */}
@@ -240,7 +239,7 @@ export default function DownloadPage() {
 
             <div className="flex items-center justify-center gap-2 text-[#4ade80] text-sm">
               <Smartphone className="w-4 h-4" />
-              <span>או פתח את הדף הזה מהטלפון</span>
+              <span>or open this page on your phone</span>
             </div>
           </motion.div>
         )}
@@ -380,7 +379,7 @@ export default function DownloadPage() {
               }}
               transition={{ duration: 3, repeat: Infinity }}
             >
-              👆 לחצו להתחיל
+              👆 Tap to start
             </motion.p>
             <p className="text-white/60 text-sm">
               Dating App - Real-Time Meetings
@@ -397,15 +396,14 @@ export default function DownloadPage() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-wrap justify-center gap-3 mb-6"
-            dir="rtl"
           >
             <div className="flex items-center gap-2 bg-pink-500/10 border border-pink-500/30 rounded-full px-4 py-2">
               <Heart className="w-4 h-4 text-pink-400" />
-              <span className="text-white/80 text-sm">היא מחליטה</span>
+              <span className="text-white/80 text-sm">She Decides</span>
             </div>
             <div className="flex items-center gap-2 bg-[#4ade80]/10 border border-[#4ade80]/30 rounded-full px-4 py-2">
               <MapPin className="w-4 h-4 text-[#4ade80]" />
-              <span className="text-white/80 text-sm">מפגשים פה ועכשיו</span>
+              <span className="text-white/80 text-sm">Meet Here & Now</span>
             </div>
           </motion.div>
         )}
@@ -467,10 +465,10 @@ export default function DownloadPage() {
                 animate={{ opacity: [0.7, 1, 0.7] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
               >
-                ⏳ מתקין את האפליקציה...
+                ⏳ Installing the app...
               </motion.p>
-              <p className="text-white/50 text-sm" dir="rtl">
-                האייקון יופיע על מסך הבית שלך
+              <p className="text-white/50 text-sm">
+                The icon will appear on your home screen
               </p>
             </motion.div>
           </motion.div>
@@ -556,7 +554,7 @@ export default function DownloadPage() {
                 transition={{ delay: 0.5 }}
                 className="text-4xl font-black text-white mb-3"
               >
-                🎉 ההתקנה הושלמה!
+                🎉 Installation Complete!
               </motion.h2>
 
               {/* Subtitle */}
@@ -565,9 +563,8 @@ export default function DownloadPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
                 className="text-white/80 text-lg mb-2"
-                dir="rtl"
               >
-                האייקון נוסף למסך הבית שלך
+                The icon has been added to your home screen
               </motion.p>
               
               <motion.div
@@ -575,12 +572,11 @@ export default function DownloadPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 }}
                 className="bg-white/10 rounded-2xl p-4 mb-6 border border-[#4ade80]/30"
-                dir="rtl"
               >
                 <div className="flex items-center justify-center gap-3">
                   <Home className="w-6 h-6 text-[#4ade80]" />
                   <span className="text-white font-medium">
-                    עכשיו תוכל/י לפתוח את I4IGUANA בכל עת!
+                    You can now open I4IGUANA anytime!
                   </span>
                 </div>
               </motion.div>
@@ -607,14 +603,14 @@ export default function DownloadPage() {
                   className="w-full px-8 py-4 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-full text-[#0d2920] font-bold text-lg shadow-lg shadow-[#4ade80]/30 hover:shadow-[#4ade80]/50 transition-all flex items-center justify-center gap-2"
                 >
                   <Home className="w-5 h-5" />
-                  <span>עבור לאייקון על מסך הבית</span>
+                  <span>Go to Home Screen</span>
                 </button>
                 
                 <button
                   onClick={handleContinueInBrowser}
                   className="w-full px-6 py-3 text-white/60 hover:text-white text-sm font-medium transition-colors"
                 >
-                  או המשך כאן בדפדפן
+                  or continue here in browser
                 </button>
               </motion.div>
 
@@ -624,9 +620,8 @@ export default function DownloadPage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.1 }}
                 className="text-white/40 text-xs mt-6"
-                dir="rtl"
               >
-                💡 טיפ: לחוויה הטובה ביותר, פתח תמיד מהאייקון
+                💡 Tip: For the best experience, always open from the icon
               </motion.p>
             </motion.div>
           </motion.div>
@@ -648,7 +643,6 @@ export default function DownloadPage() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               className="bg-gradient-to-br from-[#1a4d3e] to-[#0d2920] rounded-3xl p-6 mx-6 max-w-sm border-2 border-[#4ade80]/40"
-              dir="rtl"
             >
               <button
                 onClick={() => setInstallState('idle')}
@@ -659,30 +653,30 @@ export default function DownloadPage() {
 
               <div className="text-center mb-6">
                 <div className="text-5xl mb-4">📱</div>
-                <h3 className="text-xl font-bold text-white mb-2">התקנה באייפון</h3>
-                <p className="text-white/60 text-sm">3 צעדים פשוטים:</p>
+                <h3 className="text-xl font-bold text-white mb-2">Install on iPhone</h3>
+                <p className="text-white/60 text-sm">3 simple steps:</p>
               </div>
 
               <div className="space-y-4 mb-6">
                 <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
                   <span className="text-2xl">1️⃣</span>
                   <div>
-                    <p className="text-white font-medium">לחץ על כפתור השיתוף</p>
-                    <p className="text-white/50 text-sm">הריבוע עם החץ למעלה ⬆️</p>
+                    <p className="text-white font-medium">Tap the Share button</p>
+                    <p className="text-white/50 text-sm">The square with arrow up ⬆️</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
                   <span className="text-2xl">2️⃣</span>
                   <div>
-                    <p className="text-white font-medium">גלול ולחץ "Add to Home Screen"</p>
-                    <p className="text-white/50 text-sm">הוסף למסך הבית ➕</p>
+                    <p className="text-white font-medium">Scroll and tap "Add to Home Screen"</p>
+                    <p className="text-white/50 text-sm">Add to Home Screen ➕</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
                   <span className="text-2xl">3️⃣</span>
                   <div>
-                    <p className="text-white font-medium">לחץ "Add" בפינה</p>
-                    <p className="text-white/50 text-sm">וזהו! האייקון יופיע 🦎</p>
+                    <p className="text-white font-medium">Tap "Add" in the corner</p>
+                    <p className="text-white/50 text-sm">Done! The icon will appear 🦎</p>
                   </div>
                 </div>
               </div>
@@ -691,7 +685,7 @@ export default function DownloadPage() {
                 onClick={() => setInstallState('idle')}
                 className="w-full py-3 bg-[#4ade80] rounded-xl text-[#0d2920] font-bold"
               >
-                הבנתי!
+                Got it!
               </button>
             </motion.div>
           </motion.div>
@@ -710,8 +704,8 @@ export default function DownloadPage() {
             className="fixed bottom-8 left-4 right-4 z-50"
           >
             <div className="bg-yellow-500/20 border border-yellow-500/40 rounded-2xl p-4 text-center backdrop-blur-sm">
-              <p className="text-yellow-300 font-medium" dir="rtl">
-                😅 לחצת ביטול? לחץ שוב על האיגואנה להתקנה
+              <p className="text-yellow-300 font-medium">
+                😅 Tapped cancel? Tap the iguana again to install
               </p>
             </div>
           </motion.div>

@@ -147,6 +147,54 @@ export const unsubscribe = async (): Promise<void> => {
   }
 };
 
+/**
+ * 🔍 DEBUG: Get complete OneSignal status
+ * Use this to debug push notification issues
+ */
+export const getOneSignalDebugInfo = async (): Promise<{
+  sdkLoaded: boolean;
+  subscribed: boolean;
+  permission: string;
+  playerId: string | null;
+  externalId: string | null;
+  pushToken: string | null;
+}> => {
+  if (typeof window === 'undefined') {
+    return { sdkLoaded: false, subscribed: false, permission: 'unknown', playerId: null, externalId: null, pushToken: null };
+  }
+  
+  const OneSignal = (window as any).OneSignal;
+  
+  if (!OneSignal) {
+    console.log('❌ OneSignal SDK not loaded!');
+    return { sdkLoaded: false, subscribed: false, permission: 'unknown', playerId: null, externalId: null, pushToken: null };
+  }
+  
+  try {
+    const subscribed = await OneSignal.User?.PushSubscription?.optedIn || false;
+    const playerId = await OneSignal.User?.PushSubscription?.id || null;
+    const pushToken = await OneSignal.User?.PushSubscription?.token || null;
+    const externalId = await OneSignal.User?.externalId || null;
+    const permission = Notification?.permission || 'unknown';
+    
+    console.log('═══════════════════════════════════════════════════');
+    console.log('🔍 ONESIGNAL DEBUG INFO');
+    console.log('═══════════════════════════════════════════════════');
+    console.log('SDK Loaded:', true);
+    console.log('Browser Permission:', permission);
+    console.log('Subscribed:', subscribed);
+    console.log('Player ID:', playerId);
+    console.log('External User ID:', externalId);
+    console.log('Push Token:', pushToken ? pushToken.substring(0, 30) + '...' : null);
+    console.log('═══════════════════════════════════════════════════');
+    
+    return { sdkLoaded: true, subscribed, permission, playerId, externalId, pushToken };
+  } catch (error) {
+    console.error('❌ Error getting OneSignal debug info:', error);
+    return { sdkLoaded: true, subscribed: false, permission: 'unknown', playerId: null, externalId: null, pushToken: null };
+  }
+};
+
 // TypeScript declarations
 declare global {
   interface Window {

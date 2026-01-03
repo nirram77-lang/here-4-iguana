@@ -1,9 +1,10 @@
 "use strict";
 /**
- * 🦎 I4IGUANA - Firebase Cloud Functions with OneSignal
+ * 🦎 I4IGUANA - Cloud Functions
  *
- * Push notifications using OneSignal API
- * Updated: 2025-12-06 - WORKING API KEY!
+ * Push Notifications via OneSignal API v2
+ *
+ * v2.8.17 - WORKING OneSignal Integration
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -39,157 +40,239 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onMeetingConfirmed = exports.onNewLike = exports.onNewMessage = exports.onNewMatch = void 0;
+exports.cleanupExpiredMatches = exports.onMeetingConfirmed = exports.onMessageLike = exports.onNewMessage = exports.onNewMatch = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
+// Initialize Firebase Admin
 admin.initializeApp();
 const db = admin.firestore();
-// OneSignal Configuration - WORKING KEY (Rotated 2025-12-06)
+// ═══════════════════════════════════════════════════════════════════════════
+// ONESIGNAL CONFIGURATION - API v2
+// ═══════════════════════════════════════════════════════════════════════════
 const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7';
 const ONESIGNAL_API_KEY = 'os_v2_app_4aajaji6vrbuzorhgu6gbmh465qf2jv7xa5ui5fxnpdovkzsbsbi2r4afyjrm63fy5orulj25ob4vqsjxtbgljku5ysads6upxxvjay';
-/**
- * Send push notification via OneSignal
- */
-async function sendOneSignalNotification(externalUserId, title, message, data, url) {
+// ═══════════════════════════════════════════════════════════════════════════
+// SEND ONESIGNAL NOTIFICATION - API v2 FORMAT
+// ═══════════════════════════════════════════════════════════════════════════
+async function sendOneSignalNotification(userId, title, message, data) {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🔔 SENDING ONESIGNAL NOTIFICATION');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log(`📍 Target User ID: ${userId}`);
+    console.log(`📝 Title: ${title}`);
+    console.log(`💬 Message: ${message}`);
+    console.log(`📦 Data: ${JSON.stringify(data || {})}`);
     try {
-        console.log('🔔 Sending notification to:', externalUserId);
-        console.log('📝 Title:', title);
-        console.log('📝 Message:', message);
-        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+        // ✅ OneSignal API v2 format
+        const payload = {
+            app_id: ONESIGNAL_APP_ID,
+            // ✅ NEW API v2 format: include_aliases instead of include_external_user_ids
+            include_aliases: {
+                external_id: [userId]
+            },
+            target_channel: 'push',
+            headings: { en: title },
+            contents: { en: message },
+            data: data || {},
+            // iOS specific
+            ios_badgeType: 'Increase',
+            ios_badgeCount: 1,
+            // Android specific  
+            android_channel_id: 'default',
+            priority: 10,
+            // TTL
+            ttl: 86400
+        };
+        console.log('📤 Sending to OneSignal API v2...');
+        console.log(`   Endpoint: https://api.onesignal.com/notifications`);
+        console.log(`   Payload: ${JSON.stringify(payload, null, 2)}`);
+        // ✅ NEW API v2 endpoint and auth format
+        const response = await fetch('https://api.onesignal.com/notifications', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-                'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+                'Content-Type': 'application/json',
+                'Authorization': `Key ${ONESIGNAL_API_KEY}` // ✅ "Key" not "Basic"!
             },
-            body: JSON.stringify({
-                app_id: ONESIGNAL_APP_ID,
-                include_external_user_ids: [externalUserId],
-                headings: { en: title },
-                contents: { en: message },
-                data: data || {},
-                url: url || 'https://i4iguana-app.vercel.app',
-                chrome_web_icon: 'https://i4iguana-app.vercel.app/notification-icon-192.png',
-                chrome_web_badge: 'https://i4iguana-app.vercel.app/notification-badge.png',
-                firefox_icon: 'https://i4iguana-app.vercel.app/notification-icon-192.png',
-            }),
+            body: JSON.stringify(payload)
         });
         const result = await response.json();
-        console.log('📤 OneSignal response:', JSON.stringify(result));
-        if (result.errors) {
-            console.error('❌ OneSignal error:', result.errors);
+        console.log('📥 OneSignal Response:');
+        console.log(`   Status: ${response.status}`);
+        console.log(`   Body: ${JSON.stringify(result)}`);
+        if (response.ok && result.id) {
+            console.log('✅ NOTIFICATION SENT SUCCESSFULLY!');
+            console.log(`   Notification ID: ${result.id}`);
+            return true;
+        }
+        else {
+            console.error('❌ OneSignal ERROR:');
+            console.error(`   Status: ${response.status}`);
+            console.error(`   Errors: ${JSON.stringify(result.errors || result)}`);
             return false;
         }
-        console.log('✅ Notification sent successfully! ID:', result.id);
-        return true;
     }
     catch (error) {
-        console.error('❌ Error sending OneSignal notification:', error);
+        console.error('❌ EXCEPTION sending notification:');
+        console.error(`   Error: ${error.message}`);
+        console.error(`   Stack: ${error.stack}`);
         return false;
     }
 }
-/**
- * 🔔 Trigger: New Match Created
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// TRIGGER: NEW MATCH CREATED
+// ═══════════════════════════════════════════════════════════════════════════
 exports.onNewMatch = functions.firestore
-    .document('activeMatches/{matchId}')
+    .document('matches/{matchId}')
     .onCreate(async (snapshot, context) => {
+    var _a, _b;
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('💕 NEW MATCH CREATED - TRIGGER FIRED');
+    console.log('═══════════════════════════════════════════════════════════');
     const matchData = snapshot.data();
-    if (!matchData) {
-        console.log('❌ No match data found');
-        return null;
+    const matchId = context.params.matchId;
+    console.log(`   Match ID: ${matchId}`);
+    console.log(`   User 1: ${matchData.user1Id}`);
+    console.log(`   User 2: ${matchData.user2Id}`);
+    if (!matchData.user1Id || !matchData.user2Id) {
+        console.log('⚠️ Missing user IDs - skipping');
+        return;
     }
-    const { odedUserId, sharonUserId, odedName, sharonName } = matchData;
-    console.log(`🎉 New match! ${odedName} ↔ ${sharonName}`);
-    const notifications = [];
-    if (odedUserId) {
-        notifications.push(sendOneSignalNotification(odedUserId, '💚 It\'s a Match!', `You and ${sharonName} liked each other! Start chatting now.`, { type: 'match', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app'));
-    }
-    if (sharonUserId) {
-        notifications.push(sendOneSignalNotification(sharonUserId, '💚 It\'s a Match!', `You and ${odedName} liked each other! Start chatting now.`, { type: 'match', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app'));
-    }
-    await Promise.all(notifications);
-    console.log('✅ Match notifications sent');
-    return null;
+    // Get user profiles for names
+    const [user1Doc, user2Doc] = await Promise.all([
+        db.collection('users').doc(matchData.user1Id).get(),
+        db.collection('users').doc(matchData.user2Id).get()
+    ]);
+    const user1Name = ((_a = user1Doc.data()) === null || _a === void 0 ? void 0 : _a.name) || 'Someone';
+    const user2Name = ((_b = user2Doc.data()) === null || _b === void 0 ? void 0 : _b.name) || 'Someone';
+    // Send notification to BOTH users
+    const results = await Promise.all([
+        sendOneSignalNotification(matchData.user1Id, "💚 It's a Match!", `You matched with ${user2Name}! Say hi 👋`, { type: 'match', matchId, fromUserId: matchData.user2Id }),
+        sendOneSignalNotification(matchData.user2Id, "💚 It's a Match!", `You matched with ${user1Name}! Say hi 👋`, { type: 'match', matchId, fromUserId: matchData.user1Id })
+    ]);
+    console.log(`✅ Match notifications sent: ${results.filter(r => r).length}/2 successful`);
 });
-/**
- * 💬 Trigger: New Message in Chat
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// TRIGGER: NEW MESSAGE IN MATCH
+// ═══════════════════════════════════════════════════════════════════════════
 exports.onNewMessage = functions.firestore
-    .document('chats/{chatId}/messages/{messageId}')
+    .document('matches/{matchId}/messages/{messageId}')
     .onCreate(async (snapshot, context) => {
+    var _a, _b;
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('💬 NEW MESSAGE - TRIGGER FIRED');
+    console.log('═══════════════════════════════════════════════════════════');
     const messageData = snapshot.data();
-    const { chatId } = context.params;
-    if (!messageData) {
-        console.log('❌ No message data found');
-        return null;
+    const matchId = context.params.matchId;
+    console.log(`   Match ID: ${matchId}`);
+    console.log(`   Sender: ${messageData.senderId}`);
+    console.log(`   Text: ${(_a = messageData.text) === null || _a === void 0 ? void 0 : _a.substring(0, 50)}...`);
+    if (!messageData.senderId) {
+        console.log('⚠️ Missing sender ID - skipping');
+        return;
     }
-    const { senderId, recipientId, senderName, text } = messageData;
-    console.log('📨 Message data:', { senderId, recipientId, senderName, text: text?.substring(0, 30) });
-    if (!recipientId) {
-        console.log('❌ No recipientId in message data');
-        const chatDoc = await db.collection('chats').doc(chatId).get();
-        const chatData = chatDoc.data();
-        if (chatData?.participants) {
-            const fallbackRecipientId = chatData.participants.find((id) => id !== senderId);
-            if (fallbackRecipientId) {
-                console.log('✅ Found recipient from chat participants:', fallbackRecipientId);
-                const truncatedText = text?.length > 50 ? text.substring(0, 50) + '...' : text || '';
-                await sendOneSignalNotification(fallbackRecipientId, `💬 ${senderName || 'Someone'}`, truncatedText, { type: 'message', chatId }, 'https://i4iguana-app.vercel.app');
-                return null;
-            }
-        }
-        console.log('❌ Could not find recipient');
-        return null;
+    // Get match to find recipient
+    const matchDoc = await db.collection('matches').doc(matchId).get();
+    const matchData = matchDoc.data();
+    if (!matchData) {
+        console.log('⚠️ Match not found - skipping');
+        return;
     }
-    console.log(`💬 New message from ${senderName} to ${recipientId}`);
-    const truncatedText = text?.length > 50 ? text.substring(0, 50) + '...' : text || '';
-    const success = await sendOneSignalNotification(recipientId, `💬 ${senderName || 'Someone'}`, truncatedText, { type: 'message', chatId }, 'https://i4iguana-app.vercel.app');
-    console.log('📤 OneSignal notification result:', success ? '✅ Success' : '❌ Failed');
-    return null;
+    // Find recipient (the other user)
+    const recipientId = matchData.user1Id === messageData.senderId
+        ? matchData.user2Id
+        : matchData.user1Id;
+    console.log(`   Recipient: ${recipientId}`);
+    // Get sender name
+    const senderDoc = await db.collection('users').doc(messageData.senderId).get();
+    const senderName = ((_b = senderDoc.data()) === null || _b === void 0 ? void 0 : _b.name) || 'Someone';
+    // Send notification
+    const result = await sendOneSignalNotification(recipientId, `💬 ${senderName}`, messageData.text || '📷 Photo', {
+        type: 'message',
+        matchId,
+        fromUserId: messageData.senderId,
+        fromUserName: senderName
+    });
+    console.log(`✅ Message notification sent: ${result ? 'success' : 'failed'}`);
 });
-/**
- * ❤️ Trigger: New Like Received
- */
-exports.onNewLike = functions.firestore
-    .document('swipes/{swipeId}')
-    .onCreate(async (snapshot, context) => {
-    const swipeData = snapshot.data();
-    if (!swipeData || swipeData.action !== 'like') {
-        return null;
+// ═══════════════════════════════════════════════════════════════════════════
+// TRIGGER: NEW LIKE (Heart on message)
+// ═══════════════════════════════════════════════════════════════════════════
+exports.onMessageLike = functions.firestore
+    .document('matches/{matchId}/messages/{messageId}')
+    .onUpdate(async (change, context) => {
+    var _a, _b;
+    const before = change.before.data();
+    const after = change.after.data();
+    // Check if likedBy array changed (new like added)
+    const beforeLikes = before.likedBy || [];
+    const afterLikes = after.likedBy || [];
+    if (afterLikes.length <= beforeLikes.length) {
+        return; // No new like
     }
-    const { odedId, sharonId, odedName } = swipeData;
-    const reverseSwipe = await db.collection('swipes')
-        .where('odedId', '==', sharonId)
-        .where('sharonId', '==', odedId)
-        .where('action', '==', 'like')
-        .get();
-    if (!reverseSwipe.empty) {
-        console.log('🎉 This will be a match - skipping like notification');
-        return null;
-    }
-    console.log(`❤️ ${odedName} liked user ${sharonId}`);
-    await sendOneSignalNotification(sharonId, '👀 Someone Likes You!', 'Open I4IGUANA to see who\'s interested in you.', { type: 'like' }, 'https://i4iguana-app.vercel.app');
-    console.log('✅ Like notification sent');
-    return null;
+    // Find who added the like
+    const newLikers = afterLikes.filter((id) => !beforeLikes.includes(id));
+    if (newLikers.length === 0)
+        return;
+    const likerId = newLikers[0];
+    const messageOwnerId = after.senderId;
+    // Don't notify if user liked their own message
+    if (likerId === messageOwnerId)
+        return;
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('❤️ MESSAGE LIKED - TRIGGER FIRED');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log(`   Liker: ${likerId}`);
+    console.log(`   Message owner: ${messageOwnerId}`);
+    // Get liker name
+    const likerDoc = await db.collection('users').doc(likerId).get();
+    const likerName = ((_a = likerDoc.data()) === null || _a === void 0 ? void 0 : _a.name) || 'Someone';
+    // Send notification to message owner
+    await sendOneSignalNotification(messageOwnerId, `❤️ ${likerName} liked your message`, ((_b = after.text) === null || _b === void 0 ? void 0 : _b.substring(0, 50)) || '❤️', {
+        type: 'like',
+        matchId: context.params.matchId,
+        fromUserId: likerId
+    });
 });
-/**
- * 🤝 Trigger: Meeting Confirmed
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// TRIGGER: MEETING CONFIRMED ("We're Meeting!" clicked)
+// ═══════════════════════════════════════════════════════════════════════════
 exports.onMeetingConfirmed = functions.firestore
-    .document('activeMatches/{matchId}')
+    .document('matches/{matchId}')
     .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
-    if (!before || !after)
-        return null;
-    if (!before.odedConfirmed && after.odedConfirmed) {
-        console.log(`🤝 ${after.odedName} confirmed meeting!`);
-        await sendOneSignalNotification(after.sharonUserId, '🎉 Meeting Confirmed!', `${after.odedName} confirmed you're meeting! Have fun! 🦎`, { type: 'meeting_confirmed', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app');
+    // Check if status changed to 'meeting'
+    if (before.status !== 'meeting' && after.status === 'meeting') {
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🎉 MEETING CONFIRMED - TRIGGER FIRED');
+        console.log('═══════════════════════════════════════════════════════════');
+        const matchId = context.params.matchId;
+        // Notify BOTH users
+        const results = await Promise.all([
+            sendOneSignalNotification(after.user1Id, "🎉 Meeting Confirmed!", "Get ready to meet! Have a great time! 💚", { type: 'meeting', matchId }),
+            sendOneSignalNotification(after.user2Id, "🎉 Meeting Confirmed!", "Get ready to meet! Have a great time! 💚", { type: 'meeting', matchId })
+        ]);
+        console.log(`✅ Meeting notifications sent: ${results.filter(r => r).length}/2 successful`);
     }
-    if (!before.sharonConfirmed && after.sharonConfirmed) {
-        console.log(`🤝 ${after.sharonName} confirmed meeting!`);
-        await sendOneSignalNotification(after.odedUserId, '🎉 Meeting Confirmed!', `${after.sharonName} confirmed you're meeting! Have fun! 🦎`, { type: 'meeting_confirmed', matchId: context.params.matchId }, 'https://i4iguana-app.vercel.app');
-    }
-    return null;
+});
+// ═══════════════════════════════════════════════════════════════════════════
+// CLEANUP: Delete expired matches (runs every hour)
+// ═══════════════════════════════════════════════════════════════════════════
+exports.cleanupExpiredMatches = functions.pubsub
+    .schedule('every 1 hours')
+    .onRun(async () => {
+    console.log('🧹 Running expired matches cleanup...');
+    const now = admin.firestore.Timestamp.now();
+    const expiredMatches = await db.collection('matches')
+        .where('expiresAt', '<', now)
+        .where('status', '==', 'active')
+        .get();
+    console.log(`Found ${expiredMatches.size} expired matches`);
+    const batch = db.batch();
+    expiredMatches.docs.forEach(doc => {
+        batch.update(doc.ref, { status: 'expired' });
+    });
+    await batch.commit();
+    console.log('✅ Cleanup complete');
 });
 //# sourceMappingURL=index.js.map

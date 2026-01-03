@@ -24,6 +24,7 @@ export interface CreateVenueData {
   latitude: number
   longitude: number
   adminEmail: string
+  adminPhone?: string  // Admin phone number
   adminPassword: string
 }
 
@@ -36,10 +37,51 @@ export interface CreateVenueResult {
   }
 }
 
+// ✅ NEW: Venue Types - Flexible place categories
+export type VenueType = 
+  | 'bar'
+  | 'club'
+  | 'lounge'
+  | 'restaurant'
+  | 'cafe'
+  | 'campus'
+  | 'workplace'
+  | 'beach'
+  | 'kibbutz'
+  | 'hospital'
+  | 'dating_place'
+  | 'custom'
+
+// ✅ NEW: Venue Types with labels and icons
+export const VENUE_TYPES: { id: VenueType; label: string; icon: string }[] = [
+  // Nightlife
+  { id: 'bar', label: 'Bar', icon: '🍺' },
+  { id: 'club', label: 'Club', icon: '🎵' },
+  { id: 'lounge', label: 'Lounge', icon: '🍸' },
+  
+  // Food & Drink
+  { id: 'restaurant', label: 'Restaurant', icon: '🍽️' },
+  { id: 'cafe', label: 'Cafe', icon: '☕' },
+  
+  // Campuses
+  { id: 'campus', label: 'Campus', icon: '🎓' },
+  { id: 'workplace', label: 'Workplace', icon: '🏢' },
+  
+  // Special Places
+  { id: 'beach', label: 'Beach', icon: '🏖️' },
+  { id: 'kibbutz', label: 'Kibbutz', icon: '🌾' },
+  { id: 'hospital', label: 'Hospital', icon: '🏥' },
+  
+  // General
+  { id: 'dating_place', label: 'Dating Place', icon: '💕' },
+  { id: 'custom', label: 'Custom', icon: '📍' },
+]
+
 export interface Venue {
   id: string
   name: string
   displayName: string  // "IGUANA BAR (Beach Club)"
+  venueType?: VenueType  // ✅ NEW: Type of venue (optional for backwards compatibility)
   location: {
     latitude: number
     longitude: number
@@ -54,6 +96,7 @@ export interface Venue {
   }
   adminUid: string
   adminEmail: string
+  adminPhone?: string  // Admin phone number
   checkedInUsers: string[]  // Array of user IDs currently checked in
   stats: {
     totalCheckIns: number
@@ -99,6 +142,7 @@ export async function createVenue(data: CreateVenueData): Promise<CreateVenueRes
       id: venueId,
       name: data.name,
       displayName: data.displayName,
+      venueType: 'bar',  // ✅ Default venue type
       location: {
         latitude: data.latitude,
         longitude: data.longitude,

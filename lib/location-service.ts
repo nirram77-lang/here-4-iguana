@@ -67,7 +67,7 @@ export const getCurrentLocation = (): Promise<Location> => {
       {
         enableHighAccuracy: true,
         timeout: LOCATION_CONFIG.LOCATION_TIMEOUT,
-        maximumAge: LOCATION_CONFIG.LOCATION_MAX_AGE,
+        maximumAge: 30000  // ✅ v2.8.6: Allow 30 sec cached location for smoother UX,
       }
     )
   })
@@ -130,7 +130,7 @@ export const watchLocation = (
     {
       enableHighAccuracy: true,
       timeout: LOCATION_CONFIG.LOCATION_TIMEOUT,
-      maximumAge: LOCATION_CONFIG.LOCATION_MAX_AGE,
+      maximumAge: 30000  // ✅ v2.8.6: Allow 30 sec cached location for smoother UX,
     }
   )
 }

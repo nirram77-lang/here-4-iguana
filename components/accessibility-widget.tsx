@@ -516,7 +516,7 @@ export default function AccessibilityWidget() {
                 </p>
 
                 <h3 className="text-lg font-bold text-white">עדכון אחרון</h3>
-                <p>הצהרת נגישות זו עודכנה לאחרונה בתאריך: דצמבר 2024</p>
+                <p>הצהרת נגישות זו עודכנה לאחרונה בתאריך: דצמבר 2025</p>
               </div>
             </motion.div>
           </>

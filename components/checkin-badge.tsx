@@ -5,6 +5,7 @@ import { MapPin, Clock, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CheckInData, getTimeRemainingUntilCheckout, formatTimeRemaining } from '@/lib/checkin-service'
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface CheckInBadgeProps {
   checkInData: CheckInData
@@ -21,6 +22,8 @@ export default function CheckInBadge({
   autoHide = true,  // ✅ Auto-hide by default
   autoHideDelay = 5000  // ✅ 5 seconds default
 }: CheckInBadgeProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemainingUntilCheckout(checkInData))
   const [isVisible, setIsVisible] = useState(true)
   
@@ -135,21 +138,21 @@ export default function CheckInBadge({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className={`flex items-center gap-2 mb-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <MapPin className="h-4 w-4 text-[#0d2920]" />
               <p className="text-sm font-bold text-[#0d2920]">
-                Checked in at
+                {t('checkin.checkedInAt')}
               </p>
             </div>
-            <h3 className="font-black text-lg text-[#0d2920] truncate">
+            <h3 className={`font-black text-lg text-[#0d2920] truncate ${isRTL ? 'text-right' : ''}`}>
               {checkInData.venueDisplayName}
             </h3>
             
             {/* Timer */}
-            <div className="flex items-center gap-1.5 mt-2">
+            <div className={`flex items-center gap-1.5 mt-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Clock className="h-3.5 w-3.5 text-[#0d2920]/70" />
               <span className="text-xs font-semibold text-[#0d2920]/70">
-                Check-in expires in: {formatTimeRemaining(timeRemaining).replace(' remaining', '')}
+                {t('checkin.expiresIn')} {formatTimeRemaining(timeRemaining).replace(' remaining', '')}
               </span>
             </div>
           </div>

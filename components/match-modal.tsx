@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, MessageCircle, User as UserIcon } from 'lucide-react'
+import { X, MessageCircle, User as UserIcon, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState, useEffect } from 'react'
 import { auth, db } from '../lib/firebase'
@@ -12,6 +12,10 @@ interface User {
   photoURL: string
   bio?: string
   location?: string
+  age?: number
+  city?: string
+  hobbies?: string[]
+  photos?: string[]
 }
 
 interface MatchModalProps {
@@ -19,12 +23,19 @@ interface MatchModalProps {
     id: string
     displayName: string
     photoURL: string
+    photos?: string[]
+    bio?: string
+    age?: number
+    city?: string
+    hobbies?: string[]
   }
   onClose: () => void
   onMessage: () => void
+  isLocked?: boolean  // ✅ NEW: Whether this match requires payment
+  onUnlock?: () => void  // ✅ NEW: Callback to show premium modal
 }
 
-export default function MatchModal({ matchedUser, onClose, onMessage }: MatchModalProps) {
+export default function MatchModal({ matchedUser, onClose, onMessage, isLocked = false, onUnlock }: MatchModalProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [matchedUserDetails, setMatchedUserDetails] = useState<User | null>(null)
   const [showProfile, setShowProfile] = useState(false)
@@ -142,7 +153,7 @@ export default function MatchModal({ matchedUser, onClose, onMessage }: MatchMod
             transition={{ delay: 0.2 }}
             className="text-6xl font-bold mb-8 bg-gradient-to-r from-[#4ade80] to-[#3bc970] bg-clip-text text-transparent"
           >
-            It's a Match! 🎉
+            {isLocked ? "New Match! 🔒" : "It's a Match! 🎉"}
           </motion.h1>
 
           {/* Profile Pictures */}
@@ -188,25 +199,40 @@ export default function MatchModal({ matchedUser, onClose, onMessage }: MatchMod
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.3, type: "spring" }}
               whileHover={{ scale: 1.05 }}
-              onClick={() => setShowProfile(true)}
+              onClick={() => isLocked && onUnlock ? onUnlock() : setShowProfile(true)}
               className="relative cursor-pointer"
             >
+              {/* Lock Icon Overlay - only when locked */}
+              {isLocked && (
+                <div className="absolute inset-0 flex items-center justify-center z-10">
+                  <div className="bg-[#0d2920]/80 rounded-full p-3 border-2 border-[#4ade80]">
+                    <Lock className="h-8 w-8 text-[#4ade80]" />
+                  </div>
+                </div>
+              )}
+              
               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[#4ade80] shadow-2xl shadow-[#4ade80]/50">
                 {matchedUser.photoURL ? (
                   <img
                     src={matchedUser.photoURL}
                     alt={matchedUser.displayName}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover ${isLocked ? 'blur-xl scale-110' : ''}`}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#4ade80] to-[#3bc970] flex items-center justify-center">
+                  <div className={`w-full h-full bg-gradient-to-br from-[#4ade80] to-[#3bc970] flex items-center justify-center ${isLocked ? 'blur-md' : ''}`}>
                     <UserIcon className="h-16 w-16 text-white" />
                   </div>
                 )}
               </div>
+              
+              {/* Pulsing Ring when locked */}
+              {isLocked && (
+                <div className="absolute inset-0 rounded-full border-2 border-[#4ade80]/50 animate-ping" />
+              )}
+              
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#0d2920] px-3 py-1 rounded-full border-2 border-[#4ade80]">
                 <span className="text-white text-sm font-semibold">
-                  {matchedUser.displayName}
+                  {isLocked ? '???' : matchedUser.displayName}
                 </span>
               </div>
             </motion.button>
@@ -219,11 +245,23 @@ export default function MatchModal({ matchedUser, onClose, onMessage }: MatchMod
             transition={{ delay: 0.6 }}
             className="text-white/80 text-lg mb-8 max-w-md mx-auto"
           >
-            You and {matchedUser.displayName} liked each other!
-            <br />
-            <span className="text-sm text-[#4ade80]">
-              Click on {matchedUser.displayName}'s photo to view profile
-            </span>
+            {isLocked ? (
+              <>
+                Someone wants to meet you! 🔥
+                <br />
+                <span className="text-sm text-[#4ade80]">
+                  Unlock to see who it is
+                </span>
+              </>
+            ) : (
+              <>
+                You and {matchedUser.displayName} liked each other!
+                <br />
+                <span className="text-sm text-[#4ade80]">
+                  Click on {matchedUser.displayName}'s photo to view profile
+                </span>
+              </>
+            )}
           </motion.p>
 
           {/* Action Buttons */}
@@ -233,21 +271,44 @@ export default function MatchModal({ matchedUser, onClose, onMessage }: MatchMod
             transition={{ delay: 0.7 }}
             className="flex gap-4 justify-center"
           >
-            <Button
-              onClick={onMessage}
-              className="h-14 px-8 bg-gradient-to-r from-[#4ade80] to-[#3bc970] text-[#0d2920] font-bold text-lg hover:opacity-90"
-            >
-              <MessageCircle className="h-6 w-6 mr-2" />
-              Send Message
-            </Button>
+            {isLocked ? (
+              <>
+                {/* Locked Chat Button */}
+                <Button
+                  onClick={() => onUnlock && onUnlock()}
+                  className="h-14 px-8 bg-gradient-to-r from-[#4ade80] to-[#3bc970] text-[#0d2920] font-bold text-lg hover:opacity-90"
+                >
+                  <Lock className="h-5 w-5 mr-2" />
+                  Unlock to Chat
+                </Button>
 
-            <Button
-              onClick={onClose}
-              variant="outline"
-              className="h-14 px-8 bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg"
-            >
-              Keep Swiping
-            </Button>
+                <Button
+                  onClick={onClose}
+                  variant="outline"
+                  className="h-14 px-8 bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg"
+                >
+                  Maybe Later
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={onMessage}
+                  className="h-14 px-8 bg-gradient-to-r from-[#4ade80] to-[#3bc970] text-[#0d2920] font-bold text-lg hover:opacity-90"
+                >
+                  <MessageCircle className="h-6 w-6 mr-2" />
+                  Send Message
+                </Button>
+
+                <Button
+                  onClick={onClose}
+                  variant="outline"
+                  className="h-14 px-8 bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg"
+                >
+                  Keep Swiping
+                </Button>
+              </>
+            )}
           </motion.div>
         </motion.div>
       </motion.div>

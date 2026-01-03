@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { deleteUserAccount } from '@/lib/delete-account-service';
+import { useLanguage } from '@/lib/LanguageContext';
 
 export default function DeleteAccountButton() {
+  const { t, isRTL } = useLanguage();
+  
   const [showWarning, setShowWarning] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -28,12 +31,12 @@ export default function DeleteAccountButton() {
 
   const handleFinalDelete = async () => {
     if (confirmText.trim().toUpperCase() !== 'DELETE') {
-      setError('נא להקליד בדיוק "DELETE" לאישור המחיקה');
+      setError(t('deleteAccount.typeDeleteError'));
       return;
     }
 
     if (!user) {
-      setError('לא נמצא משתמש מחובר');
+      setError(t('deleteAccount.noUserFound'));
       return;
     }
 
@@ -116,7 +119,7 @@ export default function DeleteAccountButton() {
       
     } catch (error: any) {
       console.error('❌ Error:', error);
-      setError(error.message || 'אירעה שגיאה במחיקת החשבון');
+      setError(error.message || t('deleteAccount.errorDeleting'));
       setIsDeleting(false);
     }
   };
@@ -135,8 +138,7 @@ export default function DeleteAccountButton() {
         onClick={handleInitialClick}
         className="w-full py-4 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
       >
-        <span className="text-2xl">🗑️</span>
-        <span>מחק חשבון לצמיתות</span>
+        <span>{t('deleteAccount.button')}</span>
       </button>
 
       {/* Success Toast */}
@@ -145,11 +147,11 @@ export default function DeleteAccountButton() {
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-300">
             <div className="text-center">
               <div className="text-7xl mb-4 animate-bounce">✅</div>
-              <h3 className="text-3xl font-bold text-green-600 mb-3">
-                חשבונך נמחק!
+              <h3 className="text-3xl font-bold text-green-600 mb-3" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('deleteAccount.successTitle')}
               </h3>
-              <p className="text-gray-700 text-lg">
-                מעביר אותך למסך הבית...
+              <p className="text-gray-700 text-lg" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('deleteAccount.redirecting')}
               </p>
               <div className="mt-6">
                 <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -165,51 +167,50 @@ export default function DeleteAccountButton() {
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
             <div className="text-center mb-6">
               <div className="text-6xl mb-4">⚠️</div>
-              <h3 className="text-2xl font-bold text-red-600">
-                אתה בטוח?
+              <h3 className="text-2xl font-bold text-red-600" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('deleteAccount.warningTitle')}
               </h3>
             </div>
             
             <div className="space-y-4 mb-6">
-              <p className="text-gray-800 font-semibold text-center">
-                פעולה זו תמחק את החשבון שלך לצמיתות!
+              <p className="text-gray-800 font-semibold text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('deleteAccount.warningText')}
               </p>
               
               <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
-                <p className="text-red-800 font-bold mb-3">
-                  מה יימחק?
+                <p className="text-red-800 font-bold mb-3" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  {t('deleteAccount.whatDeleted')}
                 </p>
-                <ul className="space-y-2 text-red-700">
-                  <li className="flex items-start gap-2">
+                <ul className={`space-y-2 text-red-700 ${isRTL ? 'text-right' : 'text-left'}`}>
+                  <li className={`flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="text-red-500">✗</span>
-                    <span>כל ההתאמות והשיחות שלך</span>
+                    <span>{t('deleteAccount.allMatches')}</span>
                   </li>
-                  <li className="flex items-start gap-2">
+                  <li className={`flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="text-red-500">✗</span>
-                    <span>כל ה-PASS-ים שלך</span>
+                    <span>{t('deleteAccount.allPasses')}</span>
                   </li>
-                  <li className="flex items-start gap-2">
+                  <li className={`flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="text-red-500">✗</span>
-                    <span>היסטוריית הפעילות המלאה</span>
+                    <span>{t('deleteAccount.allHistory')}</span>
                   </li>
-                  <li className="flex items-start gap-2">
+                  <li className={`flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="text-red-500">✗</span>
-                    <span>כל ההגדרות והעדפות</span>
+                    <span>{t('deleteAccount.allSettings')}</span>
                   </li>
-                  <li className="flex items-start gap-2">
+                  <li className={`flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="text-red-500">✗</span>
-                    <span>חשבון ההזדהות שלך</span>
+                    <span>{t('deleteAccount.authAccount')}</span>
                   </li>
                 </ul>
               </div>
               
               <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4">
-                <p className="text-blue-800 font-bold mb-2 flex items-center gap-2">
-                  <span>💡</span>
-                  <span>טוב לדעת</span>
+                <p className={`text-blue-800 font-bold mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`} style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  <span>{t('deleteAccount.goodToKnow')}</span>
                 </p>
-                <p className="text-blue-700 text-sm">
-                  תוכל להירשם מחדש בכל עת. אם יש לך טיימר פעיל, הוא יישמר.
+                <p className="text-blue-700 text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  {t('deleteAccount.canReregister')}
                 </p>
               </div>
             </div>
@@ -219,14 +220,14 @@ export default function DeleteAccountButton() {
                 onClick={handleProceedToConfirm}
                 className="w-full py-4 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors"
               >
-                אני מבין, המשך למחיקה
+                {t('deleteAccount.proceedDelete')}
               </button>
               
               <button
                 onClick={handleCancel}
                 className="w-full py-4 bg-gray-200 text-gray-800 font-semibold rounded-xl hover:bg-gray-300 transition-colors"
               >
-                ביטול - אני רוצה לשמור על החשבון
+                {t('deleteAccount.cancelKeep')}
               </button>
             </div>
           </div>
@@ -239,18 +240,18 @@ export default function DeleteAccountButton() {
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
             <div className="text-center mb-6">
               <div className="text-6xl mb-4">🔒</div>
-              <h3 className="text-2xl font-bold text-red-600">
-                אישור סופי
+              <h3 className="text-2xl font-bold text-red-600" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('deleteAccount.finalConfirm')}
               </h3>
             </div>
             
-            <p className="text-gray-800 text-center mb-6 font-semibold">
-              זוהי ההזדמנות האחרונה לבטל!
+            <p className="text-gray-800 text-center mb-6 font-semibold" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('deleteAccount.lastChance')}
             </p>
             
             <div className="bg-red-50 border-2 border-red-300 rounded-xl p-6 mb-6">
-              <p className="text-red-800 font-bold mb-4 text-center">
-                הקלד "DELETE" באותיות גדולות:
+              <p className="text-red-800 font-bold mb-4 text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('deleteAccount.typeDelete')}
               </p>
               
               <input
@@ -264,7 +265,7 @@ export default function DeleteAccountButton() {
               />
               
               {error && (
-                <p className="text-red-600 text-sm mt-3 text-center">
+                <p className="text-red-600 text-sm mt-3 text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                   {error}
                 </p>
               )}
@@ -279,13 +280,10 @@ export default function DeleteAccountButton() {
                 {isDeleting ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>מוחק חשבון...</span>
+                    <span>{t('deleteAccount.deleting')}</span>
                   </>
                 ) : (
-                  <>
-                    <span>🗑️</span>
-                    <span>מחק לצמיתות</span>
-                  </>
+                  <span>{t('deleteAccount.deletePermanent')}</span>
                 )}
               </button>
               
@@ -294,12 +292,12 @@ export default function DeleteAccountButton() {
                 disabled={isDeleting}
                 className="w-full py-4 bg-gray-200 text-gray-800 font-semibold rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
               >
-                ביטול
+                {t('deleteAccount.cancel')}
               </button>
             </div>
             
-            <p className="text-xs text-gray-500 text-center mt-4">
-              פעולה זו אינה ניתנת לביטול
+            <p className="text-xs text-gray-500 text-center mt-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('deleteAccount.irreversible')}
             </p>
           </div>
         </div>

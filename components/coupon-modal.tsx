@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Gift, Crown, Sparkles, Check, AlertCircle } from 'lucide-react'
 import { redeemCoupon, CouponResult } from '@/lib/coupon-service'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface CouponModalProps {
   isOpen: boolean
@@ -20,6 +21,8 @@ export default function CouponModal({
   type,
   onSuccess
 }: CouponModalProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [couponCode, setCouponCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<CouponResult | null>(null)
@@ -60,7 +63,7 @@ export default function CouponModal({
     } catch (error) {
       setResult({
         success: false,
-        message: 'Something went wrong. Please try again.'
+        message: t('coupon.error')
       })
     } finally {
       setIsLoading(false)
@@ -292,20 +295,20 @@ export default function CouponModal({
                 {isPremium ? (
                   <span className="flex items-center justify-center gap-2">
                     <Crown className="h-6 w-6 text-yellow-400" />
-                    Unlock Premium
+                    {t('coupon.unlockPremium')}
                     <Crown className="h-6 w-6 text-yellow-400" />
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Gift className="h-6 w-6 text-[#4ade80]" />
-                    Get Bonus Pass
+                    {t('coupon.getBonusPass')}
                     <Gift className="h-6 w-6 text-[#4ade80]" />
                   </span>
                 )}
               </motion.h2>
 
-              <p className="text-white/60 text-sm">
-                Enter your promotional code below
+              <p className="text-white/60 text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('coupon.enterCode')}
               </p>
             </div>
 
@@ -399,17 +402,17 @@ export default function CouponModal({
                 ) : (
                   <>
                     {isPremium ? <Crown className="h-5 w-5" /> : <Gift className="h-5 w-5" />}
-                    Redeem Code
+                    {t('coupon.redeemCode')}
                     <Sparkles className="h-5 w-5" />
                   </>
                 )}
               </motion.button>
 
               {/* Hint text */}
-              <p className="text-center text-white/40 text-xs mt-4">
+              <p className="text-center text-white/40 text-xs mt-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                 {isPremium 
-                  ? '💡 Premium gives you 3 daily passes + unlimited matches!'
-                  : '💡 Each pass lets you swipe on one more person today!'
+                  ? t('coupon.premiumHint')
+                  : t('coupon.passHint')
                 }
               </p>
             </div>

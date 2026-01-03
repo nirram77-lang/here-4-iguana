@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useState } from "react"
 import { Sparkles } from "lucide-react"
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface IguanaSearchingModalProps {
   isOpen: boolean
@@ -13,9 +14,10 @@ interface IguanaSearchingModalProps {
 export default function IguanaSearchingModal({
   isOpen,
   onClose,
-  message = "Iguana is searching for a new match for you..."
+  message
 }: IguanaSearchingModalProps) {
   const [dots, setDots] = useState("")
+  const { t, isRTL } = useLanguage()
 
   // Animated dots effect
   useEffect(() => {
@@ -165,8 +167,9 @@ export default function IguanaSearchingModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                   className="text-2xl font-bold text-white mb-4"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                 >
-                  Match Ended
+                  {t('iguanaSearching.matchEnded')}
                 </motion.h2>
 
                 <motion.p
@@ -174,8 +177,9 @@ export default function IguanaSearchingModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
                   className="text-[#4ade80] text-lg font-medium mb-2"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                 >
-                  {message}
+                  {message || t('iguanaSearching.searching')}
                   <span className="inline-block w-8 text-left">{dots}</span>
                 </motion.p>
 
@@ -184,8 +188,9 @@ export default function IguanaSearchingModal({
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.7 }}
                   className="text-white/60 text-sm"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
                 >
-                  Your match partner has left
+                  {t('iguanaSearching.partnerLeft')}
                 </motion.p>
 
                 {/* Progress bar */}

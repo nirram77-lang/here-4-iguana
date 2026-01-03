@@ -11,6 +11,7 @@ import {
   Key,
   MapPin,
   Mail,
+  Phone,
   Building2,
   Copy,
   Check,
@@ -23,9 +24,12 @@ import { useRouter, useParams } from 'next/navigation'
 import { 
   getVenue, 
   updateVenue, 
-  Venue 
+  Venue,
+  VENUE_TYPES,
+  VenueType 
 } from '@/lib/venue-service'
 import { auth } from '@/lib/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
 import { getAdminData } from '@/lib/admin-auth'
 import { doc, updateDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -48,7 +52,9 @@ export default function VenueEditPage() {
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
+  const [adminPhone, setAdminPhone] = useState('')
   const [radius, setRadius] = useState('100')
+  const [venueType, setVenueType] = useState<VenueType>('bar')  // ✅ NEW: Venue type
   
   // Password generation
   const [newPassword, setNewPassword] = useState('')
@@ -61,14 +67,14 @@ export default function VenueEditPage() {
 
   // Load venue data
   useEffect(() => {
-    const loadVenue = async () => {
-      try {
-        const user = auth.currentUser
-        if (!user) {
-          router.push('/admin/login')
-          return
-        }
+    // Wait for auth state to be determined
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.push('/admin/login')
+        return
+      }
 
+      try {
         // Verify super admin
         const adminData = await getAdminData(user.uid)
         if (!adminData || adminData.role !== 'super') {
@@ -81,6 +87,7 @@ export default function VenueEditPage() {
         const venueData = await getVenue(venueId)
         if (!venueData) {
           setError('Venue not found')
+          setLoading(false)
           return
         }
 
@@ -92,7 +99,9 @@ export default function VenueEditPage() {
         setLatitude(venueData.location.latitude.toString())
         setLongitude(venueData.location.longitude.toString())
         setAdminEmail(venueData.adminEmail)
+        setAdminPhone((venueData as any).adminPhone || '')
         setRadius(venueData.radius.toString())
+        setVenueType((venueData as any).venueType || 'bar')  // ✅ NEW: Load venue type
 
         console.log('✅ Venue loaded:', venueData.displayName)
         
@@ -102,9 +111,10 @@ export default function VenueEditPage() {
       } finally {
         setLoading(false)
       }
-    }
+    })
 
-    loadVenue()
+    // Cleanup subscription
+    return () => unsubscribe()
   }, [venueId, router])
 
   const handleSave = async () => {
@@ -141,7 +151,9 @@ export default function VenueEditPage() {
           address
         },
         adminEmail,
-        radius: parseInt(radius)
+        adminPhone,
+        radius: parseInt(radius),
+        venueType  // ✅ NEW: Save venue type
       })
 
       setSuccess('Venue updated successfully!')
@@ -241,20 +253,25 @@ export default function VenueEditPage() {
 
   const handleCopyCredentials = async () => {
     const credentials = `
-🦎 IGUANA BAR - Venue Admin Credentials
+🦎 I4IGUANA - פרטי התחברות למנהל
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Venue: ${venue?.displayName}
-Location: ${venue?.location.address}
+📍 מועדון: ${venue?.displayName}
+📌 כתובת: ${venue?.location.address}
 
-Admin Login:
-📧 Email: ${adminEmail}
-🔑 Password: ${newPassword}
+🔐 פרטי התחברות:
 
-Login URL: https://yourdomain.com/admin/login
+Email:
+${adminEmail}
+
+Password:
+${newPassword}
+
+🔗 לינק להתחברות:
+https://i4iguana.com/admin/login
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Keep these credentials secure!
+שמור את הפרטים במקום בטוח! 🔒
     `.trim()
 
     try {
@@ -421,6 +438,30 @@ Keep these credentials secure!
                     className="h-12 bg-[#0d2920]/50 border-[#4ade80]/20 text-white"
                   />
                 </div>
+                
+                {/* ✅ NEW: Venue Type Selector */}
+                <div>
+                  <label className="text-white/60 text-sm font-medium mb-2 block">
+                    Venue Type
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {VENUE_TYPES.map((type) => (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setVenueType(type.id)}
+                        className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                          venueType === type.id
+                            ? 'bg-[#4ade80]/20 border-[#4ade80] text-white'
+                            : 'bg-[#0d2920]/50 border-white/10 text-white/60 hover:border-white/30'
+                        }`}
+                      >
+                        <span className="text-xl">{type.icon}</span>
+                        <span className="text-xs font-medium">{type.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </motion.div>
 
@@ -524,6 +565,20 @@ Keep these credentials secure!
                   />
                 </div>
 
+                <div>
+                  <label className="text-white/60 text-sm font-medium mb-2 block">
+                    Admin Phone
+                  </label>
+                  <Input
+                    type="tel"
+                    value={adminPhone}
+                    onChange={(e) => setAdminPhone(e.target.value)}
+                    placeholder="050-1234567"
+                    className="h-12 bg-[#0d2920]/50 border-[#4ade80]/20 text-white"
+                    dir="ltr"
+                  />
+                </div>
+
                 <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
                   <p className="text-white/60 text-xs mb-1">Admin UID:</p>
                   <p className="text-white/80 font-mono text-xs break-all">
@@ -533,7 +588,7 @@ Keep these credentials secure!
               </div>
             </motion.div>
 
-            {/* Generate Login */}
+            {/* Admin Login Info */}
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -543,83 +598,92 @@ Keep these credentials secure!
               <div className="flex items-center gap-3 mb-6">
                 <Key className="h-6 w-6 text-[#4ade80]" />
                 <h2 className="text-2xl font-black text-white">
-                  Generate Login
+                  פרטי התחברות
                 </h2>
               </div>
 
-              <p className="text-white/60 text-sm mb-4">
-                Generate new login credentials for venue owner
-              </p>
+              <div className="space-y-4">
+                {/* Email Display */}
+                <div className="p-4 bg-white/5 border border-white/20 rounded-xl">
+                  <p className="text-white/60 text-xs mb-2">📧 Email:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-white font-mono text-sm break-all select-all">
+                      {adminEmail}
+                    </code>
+                    <Button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(adminEmail)
+                        setSuccess('Email copied!')
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-              <Button
-                onClick={handleGeneratePassword}
-                className="w-full h-12 bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] font-bold mb-4"
-              >
-                <Key className="mr-2 h-5 w-5" />
-                Generate New Password
-              </Button>
+                {/* Login URL */}
+                <div className="p-4 bg-[#4ade80]/10 border border-[#4ade80]/30 rounded-xl">
+                  <p className="text-white/60 text-xs mb-2">🔗 Login URL:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-[#4ade80] font-mono text-sm break-all select-all">
+                      https://i4iguana.com/admin/login
+                    </code>
+                    <Button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText('https://i4iguana.com/admin/login')
+                        setSuccess('Link copied!')
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-              {showPassword && newPassword && (
-                <motion.div
-                  initial={{ scale: 0.95, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="space-y-3"
+                {/* WhatsApp Share */}
+                <Button
+                  onClick={() => {
+                    const message = `
+🦎 I4IGUANA - פרטי התחברות למנהל
+
+📍 מועדון: ${venue?.displayName}
+📌 כתובת: ${venue?.location.address}
+
+🔐 פרטי התחברות:
+
+Email:
+${adminEmail}
+
+🔗 לינק להתחברות:
+https://i4iguana.com/admin/login
+
+💡 הסיסמא נשלחה בנפרד בעת יצירת המועדון.
+צור קשר אם צריך סיסמא חדשה: nir@i4iguana.com
+                    `.trim()
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
+                    window.open(whatsappUrl, '_blank')
+                  }}
+                  className="w-full h-12 bg-[#25D366] hover:bg-[#1da851] text-white font-bold"
                 >
-                  <div className="p-4 bg-[#4ade80]/10 border-2 border-[#4ade80] rounded-xl">
-                    <p className="text-white/60 text-xs mb-2">New Password:</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-[#4ade80] font-mono text-sm break-all">
-                        {newPassword}
-                      </code>
-                      <Button
-                        onClick={handleCopyPassword}
-                        size="sm"
-                        variant="ghost"
-                        className="shrink-0"
-                      >
-                        {copied ? (
-                          <Check className="h-4 w-4 text-[#4ade80]" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                  <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                  📱 שלח פרטי התחברות בוואטסאפ
+                </Button>
 
-                  <Button
-                    onClick={handleCopyCredentials}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Full Credentials
-                  </Button>
-
-                  <Button
-                    onClick={handleUpdatePasswordInFirebase}
-                    disabled={updatingPassword}
-                    className="w-full h-12 bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] font-bold"
-                  >
-                    {updatingPassword ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Updating Firebase...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="mr-2 h-5 w-5" />
-                        Update Password in Firebase
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="p-3 bg-[#4ade80]/10 border border-[#4ade80]/30 rounded-lg">
-                    <p className="text-[#4ade80] text-xs">
-                      ✅ Click "Update Password in Firebase" to activate this password automatically!
-                    </p>
-                  </div>
-                </motion.div>
-              )}
+                {/* Info Note */}
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-400 text-xs">
+                    💡 הסיסמא נשלחת רק פעם אחת בעת יצירת המועדון.<br/>
+                    לאיפוס סיסמא: מחק את המועדון והקם מחדש.
+                  </p>
+                </div>
+              </div>
             </motion.div>
 
             {/* 🦎 QR Template Generator */}

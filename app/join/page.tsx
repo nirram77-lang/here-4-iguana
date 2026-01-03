@@ -109,6 +109,7 @@ const israeliCities = [
 // Common countries with phone codes
 const countries = [
   { value: 'Israel', label: '🇮🇱 Israel / ישראל', phoneCode: '+972', phoneLength: 9 },
+  { value: 'Brazil', label: '🇧🇷 Brasil', phoneCode: '+55', phoneLength: 11 },
   { value: 'USA', label: '🇺🇸 United States', phoneCode: '+1', phoneLength: 10 },
   { value: 'UK', label: '🇬🇧 United Kingdom', phoneCode: '+44', phoneLength: 10 },
   { value: 'Germany', label: '🇩🇪 Germany', phoneCode: '+49', phoneLength: 11 },
@@ -335,10 +336,111 @@ const translations = {
     openMaps: 'פתח את Google Maps',
     exampleUrl: 'דוגמה מ-URL:',
     firstIsLat: '↑ הראשון = Latitude, השני = Longitude',
+  },
+  pt: {
+    dir: 'ltr' as const,
+    langToggle: 'English',
+    heroTitle: 'Junte-se ao ',
+    heroTitleHighlight: 'I4IGUANA',
+    heroSubtitle: 'Transforme seu estabelecimento em um ponto de encontro para solteiros!',
+    benefits: [
+      { title: 'Novo Público', desc: 'Usuários procurando lugares para sair' },
+      { title: 'Marketing Grátis', desc: 'Exposição no nosso app' },
+      { title: 'Fácil de Começar', desc: 'Processo de cadastro simples' },
+    ],
+    formTitle: '📝 Formulário de Cadastro',
+    venueSection: 'Dados do Estabelecimento',
+    venueName: 'Nome do Estabelecimento',
+    venueNamePlaceholder: 'Ex: Bar do Iguana',
+    venueType: 'Tipo de Estabelecimento',
+    venueTypes: [
+      { value: 'bar', label: '🍺 Bar' },
+      { value: 'club', label: '🎉 Balada' },
+      { value: 'lounge', label: '🛋️ Lounge' },
+      { value: 'pub', label: '🍻 Pub' },
+      { value: 'restaurant_bar', label: '🍽️ Restaurante-Bar' },
+      { value: 'rooftop', label: '🌃 Rooftop' },
+      { value: 'beach_bar', label: '🏖️ Beach Bar' },
+      { value: 'other', label: '✨ Outro' },
+    ],
+    address: 'Endereço',
+    addressPlaceholder: 'Rua, Número',
+    country: 'País',
+    city: 'Cidade',
+    cityPlaceholder: 'Ex: São Paulo',
+    selectCity: 'Selecione a cidade...',
+    postalCode: 'CEP',
+    postalCodePlaceholder: 'Opcional',
+    openingTime: 'Abre às',
+    closingTime: 'Fecha às',
+    invalidPhone: 'Digite 9 dígitos (ex: 11-99999-9999)',
+    invalidEmail: 'Digite um email válido',
+    coordinatesTitle: 'Coordenadas GPS',
+    coordinatesHelp: 'Como encontrar?',
+    coordinatesDesc: 'As coordenadas são essenciais para o app identificar usuários dentro do seu estabelecimento!',
+    latitude: 'Latitude',
+    longitude: 'Longitude',
+    capacity: 'Capacidade (pessoas)',
+    openingHours: 'Horário de Funcionamento',
+    openingHoursPlaceholder: '20:00-03:00',
+    description: 'Descrição do Estabelecimento',
+    descriptionPlaceholder: 'Conte-nos sobre seu estabelecimento...',
+    ownerSection: 'Dados do Proprietário',
+    ownerName: 'Nome Completo',
+    ownerNamePlaceholder: 'João Silva',
+    email: 'Email',
+    phone: 'Telefone',
+    phonePlaceholder: '+55-11-99999-9999',
+    socialSection: 'Presença Digital (Opcional)',
+    website: 'Website',
+    submitButton: 'Enviar Cadastro',
+    submitting: 'Enviando...',
+    termsText: 'Concordo com os',
+    termsLink: 'Termos de Uso',
+    privacyLink: 'Política de Privacidade',
+    and: 'e',
+    questions: 'Dúvidas?',
+    required: 'Obrigatório',
+    invalidLat: 'Inválido (deve ser -90 a 90)',
+    invalidLng: 'Inválido (deve ser -180 a 180)',
+    mustAgree: 'Você deve aceitar os termos',
+    successTitle: 'Cadastro Enviado! 🎉',
+    successSubtitle: 'Obrigado por se juntar à família I4IGUANA!',
+    successDesc: 'Nossa equipe entrará em contato em 24-48 horas.',
+    whatsNext: 'O que acontece agora?',
+    nextSteps: [
+      '✅ Seu cadastro foi recebido',
+      '📞 Entraremos em contato para coordenar',
+      '🎨 Prepararemos um adesivo QR exclusivo para você',
+      '🚀 Seu estabelecimento entrará no ar!',
+    ],
+    backHome: 'Voltar para Home',
+    coordHelpTitle: 'Como encontrar as coordenadas?',
+    method1Title: 'Método 1: WhatsApp (Mais Fácil!)',
+    method1Steps: [
+      'Esteja fisicamente no seu estabelecimento',
+      'Abra o WhatsApp e envie sua localização para si mesmo',
+      'Clique na localização enviada',
+      'O Google Maps abrirá',
+      'Você verá as coordenadas na barra de endereço',
+      '⚡ Dica: As coordenadas aparecem por um segundo! Copie rápido!',
+    ],
+    method2Title: 'Método 2: Google Maps no Computador',
+    method2Steps: [
+      'Abra o Google Maps no computador',
+      'Busque o endereço do seu estabelecimento',
+      'Clique com o botão direito no local exato',
+      'As coordenadas aparecerão - clique para copiar',
+    ],
+    importantNote: '⚠️ Importante!',
+    importantText: 'As coordenadas devem ser precisas para o app identificar corretamente os usuários dentro do seu estabelecimento. Fique no centro do local ao obter as coordenadas.',
+    openMaps: 'Abrir Google Maps',
+    exampleUrl: 'Exemplo da URL:',
+    firstIsLat: '↑ Primeiro número = Latitude, Segundo = Longitude',
   }
 }
 
-type Language = 'en' | 'he'
+type Language = 'en' | 'he' | 'pt'
 
 export default function VenueJoinPage() {
   return (
@@ -366,6 +468,8 @@ function VenueJoinPageContent() {
     const langParam = searchParams.get('lang')
     if (langParam === 'he') {
       setLang('he')
+    } else if (langParam === 'pt') {
+      setLang('pt')
     }
   }, [searchParams])
 

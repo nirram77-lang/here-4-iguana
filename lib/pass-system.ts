@@ -83,7 +83,7 @@ export const getUserPassData = async (userId: string): Promise<PassData> => {
     
     // Fallback: Return default data
     return {
-      passesLeft: 1,
+      passesLeft: 4,  // ✅ v2.8.15: Was 1, now 4
       isPremium: false,
       passesUsedToday: 0,
       matchesCountToday: 0,  // ✅ Include matches count

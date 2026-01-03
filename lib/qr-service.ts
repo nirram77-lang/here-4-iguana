@@ -8,9 +8,9 @@ export interface QRData {
   timestamp: number
 }
 
-// ✅ Configuration for deployment
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
-const APP_PROTOCOL = process.env.NEXT_PUBLIC_APP_PROTOCOL || 'http'
+// ✅ Configuration for deployment - PRODUCTION DOMAIN
+const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'i4iguana.com'
+const APP_PROTOCOL = process.env.NEXT_PUBLIC_APP_PROTOCOL || 'https'
 
 /**
  * Generate check-in URL for QR code

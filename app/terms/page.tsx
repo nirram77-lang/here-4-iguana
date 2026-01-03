@@ -1,29 +1,32 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function TermsOfService() {
+function TermsContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromApp = searchParams.get('from') === 'app'
 
-  // Smart back function - goes back in history or to app
   const handleBack = () => {
-    // Check if there's history to go back to
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      window.history.back()
-    } else {
-      // Fallback to app
+    if (fromApp) {
       router.push('/app')
+    } else {
+      router.push('/')
     }
   }
 
   return (
     <div className="min-h-screen bg-[#0a1f1a] text-white">
-      {/* Header */}
-      <nav className="bg-[#0a1f1a]/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+      {/* Header - with iOS safe area */}
+      <nav 
+        className="bg-[#0a1f1a]/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-50"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
+            <Link href={fromApp ? "/app" : "/"} className="flex items-center gap-3">
               <img src="/notification-icon-192.png" alt="I4IGUANA" className="w-10 h-10" />
               <span className="text-xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
                 I4IGUANA
@@ -31,12 +34,12 @@ export default function TermsOfService() {
             </Link>
             <button 
               onClick={handleBack}
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 min-h-[44px] px-3"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Back
+              {fromApp ? 'Back to App' : 'Back'}
             </button>
           </div>
         </div>
@@ -187,7 +190,36 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">10. Subscriptions and Payments</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">10. Venue Partner Notifications</h2>
+            <div className="bg-[#1a4d3e]/30 border border-green-500/30 rounded-xl p-4 mb-4">
+              <p className="text-gray-300 leading-relaxed mb-4">
+                By checking in to a venue (bar, club, or partner location), you consent to receive push 
+                notifications from that venue's management. Specifically:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
+                <li>Venue owners may send collective announcements to all checked-in users</li>
+                <li>Venue owners cannot access your personal information - they see only aggregate user counts</li>
+                <li>Notifications cease when you check out or your check-in expires (8 hours)</li>
+                <li>You may disable venue notifications through your device settings</li>
+              </ul>
+            </div>
+            
+            {/* Hebrew Version */}
+            <div className="bg-[#1a4d3e]/30 border border-green-500/30 rounded-xl p-4" dir="rtl">
+              <p className="text-gray-300 leading-relaxed mb-4">
+                בהתחברות למועדון (בר, מועדון או מקום שותף), אתה מסכים לקבל התראות מהנהלת המקום:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-2 mr-4">
+                <li>בעלי מועדונים יכולים לשלוח הודעות קולקטיביות לכל המשתמשים המחוברים</li>
+                <li>בעלי מועדונים לא יכולים לגשת למידע האישי שלך - הם רואים רק מספרים מצטברים</li>
+                <li>ההתראות נפסקות כשאתה יוצא או שההתחברות פגה (8 שעות)</li>
+                <li>אתה יכול לכבות התראות מועדון בהגדרות המכשיר שלך</li>
+              </ul>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">11. Subscriptions and Payments</h2>
             <p className="text-gray-300 leading-relaxed mb-4">
               Some features require a paid subscription. By subscribing, you agree to:
             </p>
@@ -200,7 +232,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">11. Intellectual Property</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">12. Intellectual Property</h2>
             <p className="text-gray-300 leading-relaxed">
               All content, features, and functionality of the App are owned by I4IGUANA and are protected 
               by international copyright, trademark, and other intellectual property laws. You may not 
@@ -209,7 +241,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">12. User Content</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">13. User Content</h2>
             <p className="text-gray-300 leading-relaxed">
               You retain ownership of content you upload to the App. However, by uploading content, you 
               grant I4IGUANA a non-exclusive, worldwide, royalty-free license to use, display, and 
@@ -219,7 +251,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">13. Termination</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">14. Termination</h2>
             <p className="text-gray-300 leading-relaxed">
               We reserve the right to suspend or terminate your account at any time, for any reason, 
               including violation of these Terms. You may also delete your account at any time through 
@@ -228,7 +260,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">14. Disclaimer of Warranties</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">15. Disclaimer of Warranties</h2>
             <p className="text-gray-300 leading-relaxed">
               THE APP IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. WE DO NOT 
               WARRANT THAT THE APP WILL BE UNINTERRUPTED, ERROR-FREE, OR COMPLETELY SECURE. WE ARE NOT 
@@ -237,7 +269,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">15. Limitation of Liability</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">16. Limitation of Liability</h2>
             <p className="text-gray-300 leading-relaxed">
               TO THE MAXIMUM EXTENT PERMITTED BY LAW, I4IGUANA SHALL NOT BE LIABLE FOR ANY INDIRECT, 
               INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE APP, 
@@ -246,7 +278,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">16. Governing Law</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">17. Governing Law</h2>
             <p className="text-gray-300 leading-relaxed">
               These Terms shall be governed by and construed in accordance with the laws of the State of 
               Israel, without regard to its conflict of law provisions. Any disputes arising from these 
@@ -255,7 +287,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">17. Contact Us</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">18. Contact Us</h2>
             <p className="text-gray-300 leading-relaxed">
               If you have any questions about these Terms of Service, please contact us at:
             </p>
@@ -270,12 +302,12 @@ export default function TermsOfService() {
         <div className="mt-16 pt-8 border-t border-white/10">
           <button 
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors"
+            className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors min-h-[44px]"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back
+            {fromApp ? 'Back to App' : 'Back'}
           </button>
         </div>
       </div>
@@ -307,5 +339,13 @@ export default function TermsOfService() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function TermsOfService() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a1f1a]" />}>
+      <TermsContent />
+    </Suspense>
   )
 }

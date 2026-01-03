@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Target, Users, Calendar, Sparkles, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface SearchSettingsModalProps {
   isOpen: boolean
@@ -12,11 +13,13 @@ interface SearchSettingsModalProps {
   currentAgeRange: [number, number]
   currentGender: 'male' | 'female' | 'both'
   currentExpandSearch: boolean
+  currentSmokingFilter?: 'any' | 'no' | 'no_or_social'  // ✅ NEW: Smoking filter
   onSave: (settings: {
     radius: number
     ageRange: [number, number]
     lookingFor: 'male' | 'female' | 'both'
     expandSearch: boolean
+    smokingFilter: 'any' | 'no' | 'no_or_social'  // ✅ NEW
   }) => void
 }
 
@@ -27,12 +30,15 @@ export default function SearchSettingsModal({
   currentAgeRange,
   currentGender,
   currentExpandSearch,
+  currentSmokingFilter = 'any',  // ✅ NEW: Default to 'any'
   onSave
 }: SearchSettingsModalProps) {
+  const { t, isRTL } = useLanguage()
   const [radius, setRadius] = useState(currentRadius)
   const [ageRange, setAgeRange] = useState<[number, number]>(currentAgeRange)
   const [lookingFor, setLookingFor] = useState<'male' | 'female' | 'both'>(currentGender)
   const [expandSearch, setExpandSearch] = useState(currentExpandSearch)
+  const [smokingFilter, setSmokingFilter] = useState<'any' | 'no' | 'no_or_social'>(currentSmokingFilter)  // ✅ NEW
   
   // ✅ NEW: Keep Screen On (Wake Lock API)
   const [keepScreenOn, setKeepScreenOn] = useState(() => {
@@ -43,10 +49,12 @@ export default function SearchSettingsModal({
   })
   const wakeLockRef = useRef<any>(null)
   
-  // ✅ Save keepScreenOn to localStorage
+  // ✅ Save keepScreenOn to localStorage and notify app
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('i4iguana_keep_screen_on', keepScreenOn.toString())
+      // ✅ v2.8.22: Dispatch custom event so page.tsx can respond
+      window.dispatchEvent(new Event('wakeLockSettingChanged'))
     }
   }, [keepScreenOn])
   
@@ -101,14 +109,16 @@ export default function SearchSettingsModal({
     setAgeRange(currentAgeRange)
     setLookingFor(currentGender)
     setExpandSearch(currentExpandSearch)
-  }, [currentRadius, currentAgeRange, currentGender, currentExpandSearch, isOpen])
+    setSmokingFilter(currentSmokingFilter)  // ✅ NEW
+  }, [currentRadius, currentAgeRange, currentGender, currentExpandSearch, currentSmokingFilter, isOpen])
 
   const handleSave = () => {
     onSave({
       radius,
       ageRange,
       lookingFor,
-      expandSearch
+      expandSearch,
+      smokingFilter  // ✅ NEW
     })
     onClose()
   }
@@ -170,9 +180,9 @@ export default function SearchSettingsModal({
                 >
                   <Target className="h-6 w-6 text-[#0d2920]" />
                 </motion.div>
-                <div>
-                  <h2 className="text-2xl font-black text-white">Search Settings</h2>
-                  <p className="text-sm text-[#4ade80]">Customize your search</p>
+                <div style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  <h2 className="text-2xl font-black text-white">{t('searchSettings.title')}</h2>
+                  <p className="text-sm text-[#4ade80]">{t('searchSettings.subtitle')}</p>
                 </div>
               </div>
               <Button
@@ -191,13 +201,13 @@ export default function SearchSettingsModal({
             
             {/* 1. Search Radius */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className="w-10 h-10 rounded-full bg-[#4ade80]/20 flex items-center justify-center">
                   <Target className="h-5 w-5 text-[#4ade80]" />
                 </div>
-                <div className="flex-1">
-                  <label className="text-white font-bold text-lg">Search Radius</label>
-                  <p className="text-sm text-white/60">How far to search for matches</p>
+                <div className="flex-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  <label className="text-white font-bold text-lg">{t('searchSettings.searchRadius')}</label>
+                  <p className="text-sm text-white/60">{t('searchSettings.searchRadiusDesc')}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-black text-[#4ade80]">{getRadiusLabel(radius)}</div>
@@ -212,6 +222,17 @@ export default function SearchSettingsModal({
                   step="10"
                   value={radius}
                   onChange={(e) => setRadius(parseInt(e.target.value))}
+                  onWheel={(e) => {
+                    e.preventDefault()
+                    // Fix RTL scroll direction - in RTL, wheel is reversed
+                    const delta = isRTL ? e.deltaY : -e.deltaY
+                    const step = 10
+                    if (delta > 0) {
+                      setRadius(Math.min(500, radius + step))
+                    } else {
+                      setRadius(Math.max(10, radius - step))
+                    }
+                  }}
                   className="w-full h-2 rounded-full appearance-none cursor-pointer"
                   style={{
                     background: `linear-gradient(to right, #4ade80 0%, #4ade80 ${((radius - 10) / 490) * 100}%, #1a4d3e ${((radius - 10) / 490) * 100}%, #1a4d3e 100%)`
@@ -229,25 +250,25 @@ export default function SearchSettingsModal({
 
             {/* 2. Age Range - Dual Range Slider (like onboarding) */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className="w-10 h-10 rounded-full bg-[#4ade80]/20 flex items-center justify-center">
                   <Calendar className="h-5 w-5 text-[#4ade80]" />
                 </div>
-                <div className="flex-1">
-                  <label className="text-white font-bold text-lg">Age Range</label>
-                  <p className="text-sm text-white/60">Who you want to meet</p>
+                <div className="flex-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  <label className="text-white font-bold text-lg">{t('searchSettings.ageRange')}</label>
+                  <p className="text-sm text-white/60">{t('searchSettings.ageRangeDesc')}</p>
                 </div>
               </div>
 
-              {/* Age Range Display */}
+              {/* Age Range Display - Always LTR (sliders work left-to-right) */}
               <div className="flex justify-between items-center mb-4">
                 <div className="text-center">
-                  <span className="text-white/70 text-xs block mb-1">Min Age</span>
+                  <span className="text-white/70 text-xs block mb-1">{t('searchSettings.minAge')}</span>
                   <span className="text-3xl font-bold text-[#4ade80]">{ageRange[0]}</span>
                 </div>
                 <div className="text-white/50 text-2xl">—</div>
                 <div className="text-center">
-                  <span className="text-white/70 text-xs block mb-1">Max Age</span>
+                  <span className="text-white/70 text-xs block mb-1">{t('searchSettings.maxAge')}</span>
                   <span className="text-3xl font-bold text-[#4ade80]">{ageRange[1]}</span>
                 </div>
               </div>
@@ -273,6 +294,12 @@ export default function SearchSettingsModal({
                   max="80"
                   value={ageRange[0]}
                   onChange={handleMinAgeChange}
+                  onWheel={(e) => {
+                    e.preventDefault()
+                    const delta = isRTL ? e.deltaY : -e.deltaY
+                    const newVal = delta > 0 ? Math.min(ageRange[1] - 1, ageRange[0] + 1) : Math.max(18, ageRange[0] - 1)
+                    setAgeRange([newVal, ageRange[1]])
+                  }}
                   className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer z-10
                     [&::-webkit-slider-thumb]:appearance-none
                     [&::-webkit-slider-thumb]:w-6
@@ -303,6 +330,12 @@ export default function SearchSettingsModal({
                   max="80"
                   value={ageRange[1]}
                   onChange={handleMaxAgeChange}
+                  onWheel={(e) => {
+                    e.preventDefault()
+                    const delta = isRTL ? e.deltaY : -e.deltaY
+                    const newVal = delta > 0 ? Math.min(80, ageRange[1] + 1) : Math.max(ageRange[0] + 1, ageRange[1] - 1)
+                    setAgeRange([ageRange[0], newVal])
+                  }}
                   className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer z-20
                     [&::-webkit-slider-thumb]:appearance-none
                     [&::-webkit-slider-thumb]:w-6
@@ -339,13 +372,13 @@ export default function SearchSettingsModal({
 
             {/* 3. Show Me (Gender) */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className="w-10 h-10 rounded-full bg-[#4ade80]/20 flex items-center justify-center">
                   <Users className="h-5 w-5 text-[#4ade80]" />
                 </div>
-                <div className="flex-1">
-                  <label className="text-white font-bold text-lg">Show Me</label>
-                  <p className="text-sm text-white/60">Who you want to see</p>
+                <div className="flex-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  <label className="text-white font-bold text-lg">{t('searchSettings.showMe')}</label>
+                  <p className="text-sm text-white/60">{t('searchSettings.ageRangeDesc')}</p>
                 </div>
               </div>
 
@@ -400,7 +433,70 @@ export default function SearchSettingsModal({
             {/* Divider */}
             <div className="h-px bg-gradient-to-r from-transparent via-[#4ade80]/30 to-transparent" />
 
-            {/* 4. Expand Search Toggle */}
+            {/* 4. Smoking Filter - NEW! */}
+            <div className="space-y-4">
+              <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className="w-10 h-10 rounded-full bg-[#4ade80]/20 flex items-center justify-center">
+                  <span className="text-xl">🚬</span>
+                </div>
+                <div className="flex-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  <label className="text-white font-bold text-lg">{t('searchSettings.smokingPreference')}</label>
+                  <p className="text-sm text-white/60">{t('searchSettings.smokingPreferenceDesc')}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSmokingFilter('any')}
+                  className={`p-4 rounded-2xl border-2 transition-all ${
+                    smokingFilter === 'any'
+                      ? 'bg-[#4ade80]/20 border-[#4ade80] shadow-lg shadow-[#4ade80]/20'
+                      : 'bg-[#0d2920]/50 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">🤷</div>
+                  <div className={`text-xs font-bold ${smokingFilter === 'any' ? 'text-[#4ade80]' : 'text-white/60'}`}>
+                    {t('searchSettings.dontCare')}
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSmokingFilter('no_or_social')}
+                  className={`p-4 rounded-2xl border-2 transition-all ${
+                    smokingFilter === 'no_or_social'
+                      ? 'bg-[#4ade80]/20 border-[#4ade80] shadow-lg shadow-[#4ade80]/20'
+                      : 'bg-[#0d2920]/50 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">🍷</div>
+                  <div className={`text-xs font-bold ${smokingFilter === 'no_or_social' ? 'text-[#4ade80]' : 'text-white/60'}`}>
+                    {t('searchSettings.noOrSocial')}
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSmokingFilter('no')}
+                  className={`p-4 rounded-2xl border-2 transition-all ${
+                    smokingFilter === 'no'
+                      ? 'bg-[#4ade80]/20 border-[#4ade80] shadow-lg shadow-[#4ade80]/20'
+                      : 'bg-[#0d2920]/50 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">🚭</div>
+                  <div className={`text-xs font-bold ${smokingFilter === 'no' ? 'text-[#4ade80]' : 'text-white/60'}`}>
+                    {t('searchSettings.nonSmokers')}
+                  </div>
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-gradient-to-r from-transparent via-[#4ade80]/30 to-transparent" />
+
+            {/* 5. Expand Search Toggle */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#4ade80]/20 flex items-center justify-center">
@@ -517,8 +613,9 @@ export default function SearchSettingsModal({
               whileTap={{ scale: 0.98 }}
               onClick={handleSave}
               className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] text-[#0d2920] font-black text-lg shadow-lg shadow-[#4ade80]/30 hover:shadow-[#4ade80]/50 transition-all"
+              style={{ direction: isRTL ? 'rtl' : 'ltr' }}
             >
-              Save Settings
+              {t('searchSettings.saveSettings')}
             </motion.button>
           </div>
         </motion.div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { MapPin, X } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface LocationPermissionModalProps {
   onPermissionGranted: () => void
@@ -12,6 +13,8 @@ export default function LocationPermissionModal({
   onPermissionGranted, 
   onPermissionDenied 
 }: LocationPermissionModalProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [isVisible] = useState(true) // Always show when component mounts
 
   const handleAllow = async () => {
@@ -66,20 +69,20 @@ export default function LocationPermissionModal({
         </div>
 
         {/* Title */}
-        <h2 className="text-3xl font-bold text-center mb-4 bg-gradient-to-r from-green-400 to-green-600 text-transparent bg-clip-text">
-          📍 Location Access Required
+        <h2 className="text-3xl font-bold text-center mb-4 bg-gradient-to-r from-green-400 to-green-600 text-transparent bg-clip-text" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          {t('location.title')}
         </h2>
 
         {/* Description */}
-        <p className="text-zinc-300 text-center mb-6 leading-relaxed">
-          I4IGUANA needs your location to find nearby matches and show you people around you.
+        <p className="text-zinc-300 text-center mb-6 leading-relaxed" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          {t('location.description')}
         </p>
 
         <div className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 mb-6">
-          <p className="text-sm text-zinc-400 text-center">
-            ✨ We respect your privacy<br/>
-            🔒 Your exact location is never shared<br/>
-            📍 Only used to find nearby matches
+          <p className="text-sm text-zinc-400 text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            {t('location.privacyRespect')}<br/>
+            {t('location.locationNotShared')}<br/>
+            {t('location.onlyForMatches')}
           </p>
         </div>
 
@@ -89,20 +92,20 @@ export default function LocationPermissionModal({
             onClick={handleAllow}
             className="w-full bg-gradient-to-r from-green-400 to-green-600 text-black font-bold py-4 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg shadow-green-500/50"
           >
-            ✅ Allow Location Access
+            {t('location.allowAccess')}
           </button>
           
           <button
             onClick={handleDeny}
             className="w-full bg-zinc-800 text-zinc-300 font-semibold py-4 rounded-full hover:bg-zinc-700 active:scale-95 transition-all"
           >
-            ❌ Not Now
+            {t('location.notNow')}
           </button>
         </div>
 
         {/* Help text */}
-        <p className="text-xs text-zinc-500 text-center mt-6">
-          You can change this setting anytime in your browser settings
+        <p className="text-xs text-zinc-500 text-center mt-6" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          {t('location.changeInSettings')}
         </p>
       </div>
     </div>

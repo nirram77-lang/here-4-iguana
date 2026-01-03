@@ -1,6 +1,53 @@
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, deleteDoc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
 import { db } from './firebase'
 import { MATCH_CONFIG, ERROR_MESSAGES } from './constants'
+
+/**
+ * 🧹 Clear previous chat history between two users
+ * HOLLYWOOD: Every match = Fresh start!
+ * This ensures:
+ * - Pink button lights up properly
+ * - Suggested messages appear
+ * - No old baggage
+ */
+async function clearPreviousChatHistory(user1Id: string, user2Id: string): Promise<void> {
+  try {
+    // Generate possible chat IDs (could be either direction)
+    const possibleChatIds = [
+      `${user1Id}_${user2Id}`,
+      `${user2Id}_${user1Id}`
+    ]
+    
+    for (const chatId of possibleChatIds) {
+      // Delete all messages in this chat
+      const messagesRef = collection(db, 'matches', chatId, 'messages')
+      const messagesSnap = await getDocs(messagesRef)
+      
+      if (!messagesSnap.empty) {
+        console.log(`🧹 Clearing ${messagesSnap.size} old messages from chat: ${chatId}`)
+        
+        const batch = writeBatch(db)
+        messagesSnap.forEach((docSnap) => {
+          batch.delete(docSnap.ref)
+        })
+        await batch.commit()
+      }
+      
+      // Also delete the chat metadata
+      try {
+        await deleteDoc(doc(db, 'chats', chatId))
+      } catch (e) {
+        // Chat doc might not exist, that's fine
+      }
+    }
+    
+    console.log('✅ Previous chat history cleared - fresh start!')
+    
+  } catch (error) {
+    console.error('⚠️ Error clearing chat history (non-critical):', error)
+    // Don't throw - this is not critical for match creation
+  }
+}
 
 export interface Match {
   id: string
@@ -28,9 +75,14 @@ export interface ActiveMatch {
 /**
  * Create a new match between two users
  * FIXED: Consistent use of serverTimestamp
+ * 🆕 HOLLYWOOD: Always clears previous chat for fresh start!
  */
 export async function createMatch(user1Id: string, user2Id: string, user1Data: any, user2Data: any): Promise<string> {
   try {
+    // 🆕 CRITICAL: Clear any previous chat history between these users
+    // This ensures: pink button works, suggested messages appear, fresh start!
+    await clearPreviousChatHistory(user1Id, user2Id)
+    
     const matchRef = doc(collection(db, 'matches'))
     const expiresAt = new Date(Date.now() + MATCH_CONFIG.EXPIRATION_TIME)
     

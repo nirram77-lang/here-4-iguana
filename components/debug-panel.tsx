@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Copy, Trash2, Download, CheckCircle } from 'lucide-react'
+import { X, Copy, Trash2, Download, CheckCircle, Bell } from 'lucide-react'
+import { getOneSignalDebugInfo } from '@/lib/onesignal'
 
 interface DebugPanelProps {
   isOpen: boolean
@@ -66,6 +67,7 @@ export default function DebugPanel({ isOpen, onClose }: DebugPanelProps) {
   const [logs, setLogs] = useState<typeof globalLogs>([])
   const [copied, setCopied] = useState(false)
   const [filter, setFilter] = useState<'all' | 'log' | 'warn' | 'error'>('all')
+  const [oneSignalInfo, setOneSignalInfo] = useState<any>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
   
   // ✅ Refresh logs when panel opens
@@ -122,6 +124,13 @@ export default function DebugPanel({ isOpen, onClose }: DebugPanelProps) {
   const handleClear = () => {
     globalLogs = []
     setLogs([])
+  }
+  
+  // ✅ NEW: Check OneSignal status
+  const checkOneSignal = async () => {
+    console.log('🔍 Checking OneSignal status...')
+    const info = await getOneSignalDebugInfo()
+    setOneSignalInfo(info)
   }
   
   const getLogColor = (type: string) => {
@@ -217,8 +226,60 @@ export default function DebugPanel({ isOpen, onClose }: DebugPanelProps) {
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear
                 </button>
+                
+                <button
+                  onClick={checkOneSignal}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500 hover:bg-purple-600 text-white transition-colors"
+                >
+                  <Bell className="h-3.5 w-3.5" />
+                  OneSignal
+                </button>
               </div>
             </div>
+            
+            {/* ✅ NEW: OneSignal Status Card */}
+            {oneSignalInfo && (
+              <div className="mt-3 p-3 rounded-lg bg-purple-500/20 border border-purple-500/30">
+                <div className="text-sm font-bold text-purple-300 mb-2">🔔 OneSignal Status</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">SDK:</span>
+                    <span className={oneSignalInfo.sdkLoaded ? 'text-green-400' : 'text-red-400'}>
+                      {oneSignalInfo.sdkLoaded ? '✅ Loaded' : '❌ Not Loaded'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Permission:</span>
+                    <span className={oneSignalInfo.permission === 'granted' ? 'text-green-400' : 'text-yellow-400'}>
+                      {oneSignalInfo.permission}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Subscribed:</span>
+                    <span className={oneSignalInfo.subscribed ? 'text-green-400' : 'text-red-400'}>
+                      {oneSignalInfo.subscribed ? '✅ Yes' : '❌ No'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">External ID:</span>
+                    <span className={oneSignalInfo.externalId ? 'text-green-400' : 'text-red-400'}>
+                      {oneSignalInfo.externalId ? oneSignalInfo.externalId.substring(0, 8) + '...' : '❌ Not Set'}
+                    </span>
+                  </div>
+                  <div className="col-span-2 flex justify-between">
+                    <span className="text-zinc-400">Player ID:</span>
+                    <span className={oneSignalInfo.playerId ? 'text-green-400' : 'text-red-400'}>
+                      {oneSignalInfo.playerId ? oneSignalInfo.playerId.substring(0, 12) + '...' : '❌ None'}
+                    </span>
+                  </div>
+                </div>
+                {!oneSignalInfo.externalId && (
+                  <div className="mt-2 text-xs text-yellow-400 bg-yellow-500/10 p-2 rounded">
+                    ⚠️ External ID not set! Push notifications from app won't work.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Logs */}

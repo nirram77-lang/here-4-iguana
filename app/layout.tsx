@@ -2,8 +2,11 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/AuthContext'
+import { LanguageProvider } from '@/lib/LanguageContext'  // ✅ NEW: Multi-language support
 import Script from 'next/script'
-import ConditionalAccessibility from '@/components/conditional-accessibility'
+import SentryInit from '@/components/sentry-init'  // ✅ Error monitoring
+// ❌ REMOVED: Accessibility widget - not needed for app
+// import ConditionalAccessibility from '@/components/conditional-accessibility'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,7 +17,7 @@ const GA_MEASUREMENT_ID = 'G-5BZR9TWG9N'
 const ONESIGNAL_APP_ID = 'e0009025-1eac-434c-ba27-353c60b0fcf7'
 
 // App Version - increment this to force cache clear on all users
-const APP_VERSION = '2.2.0'
+const APP_VERSION = '2.8.23'  // ✅ FIX: Delete account + fresh onboarding + language selection
 
 export const metadata: Metadata = {
   title: 'I4IGUANA - Meet Now',
@@ -84,7 +87,7 @@ export default function RootLayout({
           `}
         </Script>
         
-        {/* Auto Cache Clear on Version Change */}
+        {/* Auto Cache Clear on Version Change - FIXED: Don't break OneSignal! */}
         <Script id="cache-clear" strategy="beforeInteractive">
           {`
             (function() {
@@ -92,25 +95,24 @@ export default function RootLayout({
               var storedVersion = localStorage.getItem('app_version');
               
               if (storedVersion !== APP_VERSION) {
-                console.log('🔄 New version detected! Clearing cache...');
+                console.log('🔄 New version detected! Clearing app cache...');
                 
-                // Clear all caches
+                // Clear only OUR caches (NOT OneSignal!)
                 if ('caches' in window) {
                   caches.keys().then(function(names) {
                     names.forEach(function(name) {
-                      caches.delete(name);
+                      // ✅ Only delete i4iguana caches, preserve OneSignal
+                      if (name.startsWith('i4iguana-')) {
+                        console.log('🗑️ Deleting cache:', name);
+                        caches.delete(name);
+                      }
                     });
                   });
                 }
                 
-                // Clear service workers
-                if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    registrations.forEach(function(registration) {
-                      registration.unregister();
-                    });
-                  });
-                }
+                // ⚠️ DO NOT unregister service workers!
+                // OneSignal needs its SW for push notifications!
+                // The SW will update itself via skipWaiting()
                 
                 // Save new version
                 localStorage.setItem('app_version', APP_VERSION);
@@ -170,9 +172,20 @@ export default function RootLayout({
                 }
               });
               
-              // ✅ Handle notification clicks - navigate to app
+              // ✅ Handle notification clicks - navigate to chat!
               OneSignal.Notifications.addEventListener('click', function(event) {
                 console.log('🔔 Notification clicked:', event);
+                
+                // ✅ v2.8.22: Get matchId from notification data
+                const data = event.notification?.additionalData || event.notification?.data || {};
+                console.log('🔔 Notification data:', data);
+                
+                if (data.matchId) {
+                  // ✅ Save matchId to localStorage so app can open chat
+                  localStorage.setItem('i4iguana_open_chat_matchId', data.matchId);
+                  console.log('🔔 Saved matchId for chat:', data.matchId);
+                }
+                
                 // Navigate to app
                 window.location.href = '/app';
               });
@@ -370,9 +383,164 @@ export default function RootLayout({
           `}
         </Script>
         
+        {/* 🔒 v2.8.17: iOS PWA FIX - ONLY for /app route! */}
+        <Script id="ios-pwa-fix" strategy="afterInteractive">
+          {`
+            (function() {
+              // ✅ CRITICAL: Only run on /app route - NOT on main website!
+              var isAppRoute = window.location.pathname.startsWith('/app');
+              
+              if (!isAppRoute) {
+                console.log('📐 PWA fix skipped - not in /app');
+                return;
+              }
+              
+              console.log('📐 PWA fix active on /app');
+              
+              // ✅ Add PWA mode class to enable fixed positioning CSS
+              document.documentElement.classList.add('pwa-app-mode');
+              
+              // ✅ CRITICAL: Set app height ONCE and DON'T update on resize!
+              // This is the key to preventing jumping - resize events happen when
+              // Safari's toolbar appears/disappears, causing the viewport to change.
+              // By NOT updating, we keep the height stable.
+              var initialHeight = window.innerHeight;
+              document.documentElement.style.setProperty('--app-height', initialHeight + 'px');
+              console.log('📐 Initial app height set to:', initialHeight + 'px');
+              
+              // ✅ ONLY update on orientation change (landscape <-> portrait)
+              window.addEventListener('orientationchange', function() {
+                // Wait for orientation to settle
+                setTimeout(function() {
+                  var newHeight = window.innerHeight;
+                  document.documentElement.style.setProperty('--app-height', newHeight + 'px');
+                  console.log('📐 Orientation changed, new height:', newHeight + 'px');
+                }, 300);
+              });
+              
+              // ✅ Prevent iOS Safari bounce/rubber-band effect on body
+              document.body.addEventListener('touchmove', function(e) {
+                // Only prevent default on body itself, not on scrollable children
+                if (e.target === document.body) {
+                  e.preventDefault();
+                }
+              }, { passive: false });
+            })();
+          `}
+        </Script>
+        
+        {/* 🔒 v2.8.17: PORTRAIT LOCK - REAL LOCK (not just overlay!) */}
+        <Script id="portrait-lock" strategy="beforeInteractive">
+          {`
+            (function() {
+              // ✅ TRY 1: Screen Orientation API (best method for PWA!)
+              function lockPortrait() {
+                if (screen.orientation && screen.orientation.lock) {
+                  screen.orientation.lock('portrait-primary')
+                    .then(function() {
+                      console.log('🔒 Screen locked to portrait via Orientation API!');
+                    })
+                    .catch(function(err) {
+                      console.log('⚠️ Orientation lock not supported:', err.message);
+                      // Fallback to overlay method
+                      setupOverlay();
+                    });
+                } else {
+                  console.log('⚠️ Screen Orientation API not available');
+                  setupOverlay();
+                }
+              }
+              
+              // ✅ TRY 2: Fallback - show overlay when in landscape
+              function setupOverlay() {
+                function checkOrientation() {
+                  var blocker = document.getElementById('landscape-blocker');
+                  var appContent = document.getElementById('app-content');
+                  
+                  var width = window.innerWidth || document.documentElement.clientWidth;
+                  var height = window.innerHeight || document.documentElement.clientHeight;
+                  
+                  var isLandscape = width > height;
+                  var isPhone = height < 600;
+                  var shouldBlock = isLandscape && isPhone;
+                  
+                  if (blocker) {
+                    blocker.style.display = shouldBlock ? 'flex' : 'none';
+                    
+                    // ✅ v2.8.26: Show correct language text
+                    if (shouldBlock) {
+                      var savedLang = localStorage.getItem('i4iguana_language') || 'en';
+                      var textEn = document.getElementById('landscape-text-en');
+                      var textHe = document.getElementById('landscape-text-he');
+                      if (textEn && textHe) {
+                        textEn.style.display = savedLang === 'he' ? 'none' : 'block';
+                        textHe.style.display = savedLang === 'he' ? 'block' : 'none';
+                      }
+                    }
+                  }
+                  
+                  if (appContent) {
+                    if (shouldBlock) {
+                      appContent.style.display = 'none';
+                      appContent.style.visibility = 'hidden';
+                    } else {
+                      appContent.style.display = '';
+                      appContent.style.visibility = 'visible';
+                    }
+                  }
+                }
+                
+                window.addEventListener('orientationchange', function() {
+                  setTimeout(checkOrientation, 50);
+                  setTimeout(checkOrientation, 150);
+                });
+                window.addEventListener('resize', checkOrientation);
+                setInterval(checkOrientation, 500);
+                checkOrientation();
+              }
+              
+              // ✅ TRY 3: iOS specific - prevent zoom & orientation
+              var meta = document.querySelector('meta[name="viewport"]');
+              if (meta) {
+                meta.setAttribute('content', 
+                  'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
+                );
+              }
+              
+              // Run when DOM is ready
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', lockPortrait);
+              } else {
+                lockPortrait();
+              }
+              
+              // Also try when page fully loads (for PWA)
+              window.addEventListener('load', lockPortrait);
+            })();
+          `}
+        </Script>
+        
         <AuthProvider>
-          {children}
-          <ConditionalAccessibility />
+          <SentryInit /> {/* ✅ Error monitoring */}
+          <LanguageProvider>
+            {/* 🔒 PORTRAIT LOCK - Landscape blocker overlay */}
+            {/* ✅ v2.8.26: Added Hebrew support */}
+            <div className="landscape-blocker" id="landscape-blocker">
+              <div className="landscape-blocker-icon">📱</div>
+              <div className="landscape-blocker-text" id="landscape-text-en">
+                Please rotate your device to portrait mode
+              </div>
+              <div className="landscape-blocker-text" id="landscape-text-he" style={{ display: 'none', direction: 'rtl' }}>
+                נא לסובב את המכשיר למצב אנכי
+              </div>
+              <div style={{ fontSize: '3rem' }}>🔄</div>
+            </div>
+            
+            <div id="app-content">
+              {children}
+            </div>
+          </LanguageProvider>
+          {/* ❌ REMOVED: Accessibility widget - not needed for app */}
         </AuthProvider>
       </body>
     </html>

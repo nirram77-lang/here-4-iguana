@@ -54,7 +54,7 @@ export async function sendMessage(
   senderPhoto?: string
 ): Promise<string> {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     
     // ✅ FIXED: Include senderName and senderPhoto in message for Cloud Functions
     const messageData = {
@@ -225,7 +225,7 @@ export function listenToChatMessages(
   onMessagesUpdate: (messages: ChatMessage[]) => void
 ): Unsubscribe {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     const q = query(messagesRef, orderBy('timestamp', 'asc'))
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -257,7 +257,7 @@ export async function markMessagesAsDelivered(
   userId: string
 ): Promise<void> {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     const q = query(messagesRef)
     const snapshot = await getDocs(q)
     
@@ -268,7 +268,7 @@ export async function markMessagesAsDelivered(
       
       if (message.recipientId === userId && message.status === 'sent') {
         updates.push(
-          updateDoc(doc(db, 'chats', matchId, 'messages', docSnap.id), {
+          updateDoc(doc(db, 'matches', matchId, 'messages', docSnap.id), {
             status: 'delivered'
           })
         )
@@ -288,7 +288,7 @@ export async function markMessagesAsRead(
   userId: string
 ): Promise<void> {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     const q = query(messagesRef)
     const snapshot = await getDocs(q)
     
@@ -299,7 +299,7 @@ export async function markMessagesAsRead(
       
       if (message.recipientId === userId && message.status !== 'read') {
         updates.push(
-          updateDoc(doc(db, 'chats', matchId, 'messages', docSnap.id), {
+          updateDoc(doc(db, 'matches', matchId, 'messages', docSnap.id), {
             status: 'read'
           })
         )
@@ -322,7 +322,7 @@ export async function markMessagesAsRead(
 
 export async function getChatHistory(matchId: string): Promise<ChatMessage[]> {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     const q = query(messagesRef, orderBy('timestamp', 'asc'))
     const snapshot = await getDocs(q)
     
@@ -346,7 +346,7 @@ export async function getChatHistory(matchId: string): Promise<ChatMessage[]> {
 
 export async function deleteMessage(matchId: string, messageId: string): Promise<void> {
   try {
-    const messageRef = doc(db, 'chats', matchId, 'messages', messageId)
+    const messageRef = doc(db, 'matches', matchId, 'messages', messageId)
     await updateDoc(messageRef, {
       text: '🚫 Message deleted',
       deleted: true
@@ -362,7 +362,8 @@ export async function deleteMessage(matchId: string, messageId: string): Promise
 
 export async function chatHasMessages(matchId: string): Promise<boolean> {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    // ✅ v2.8.5 FIX: Messages are stored in 'matches' collection, not 'chats'!
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     const snapshot = await getDocs(messagesRef)
     
     return snapshot.size > 0
@@ -381,7 +382,8 @@ export async function clearChatMessages(matchId: string): Promise<void> {
   try {
     console.log(`🧹 Clearing chat messages for: ${matchId}`)
     
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    // ✅ v2.8.5 FIX: Messages are stored in 'matches' collection, not 'chats'!
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     const snapshot = await getDocs(messagesRef)
     
     if (snapshot.empty) {
@@ -397,9 +399,9 @@ export async function clearChatMessages(matchId: string): Promise<void> {
     
     await batch.commit()
     
-    // Also reset chat metadata
-    const chatRef = doc(db, 'chats', matchId)
-    await updateDoc(chatRef, {
+    // Also reset match metadata
+    const matchRef = doc(db, 'matches', matchId)
+    await updateDoc(matchRef, {
       lastMessage: null,
       lastMessageTime: null,
       lastMessageSenderId: null,
@@ -423,7 +425,7 @@ export async function clearChatMessages(matchId: string): Promise<void> {
  */
 export async function userHasSentMessage(matchId: string, userId: string): Promise<boolean> {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     const q = query(
       messagesRef,
       where('senderId', '==', userId),
@@ -522,7 +524,7 @@ export async function sendImageMessage(
   senderPhoto?: string
 ): Promise<string> {
   try {
-    const messagesRef = collection(db, 'chats', matchId, 'messages')
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
     
     const messageData = {
       matchId,
@@ -552,6 +554,27 @@ export async function sendImageMessage(
       senderId
     )
     
+    // ✅ FIXED: Send in-app notification for image messages!
+    const notificationText = imageType === 'view-once' ? '📷 תמונה חד-פעמית' : '📷 תמונה'
+    await sendInAppNotification(
+      recipientId,
+      senderId,
+      matchId,
+      notificationText,
+      senderName || 'Someone',
+      senderPhoto
+    )
+    
+    // ✅ FIXED: Send push notification for image messages!
+    await sendRealPushNotification(
+      recipientId,
+      senderName || 'Someone',
+      senderPhoto || '',
+      notificationText,
+      matchId,
+      senderId
+    )
+    
     console.log('✅ Image message sent:', docRef.id)
     return docRef.id
     
@@ -570,7 +593,7 @@ export async function markImageAsViewed(
   messageId: string
 ): Promise<void> {
   try {
-    const messageRef = doc(db, 'chats', matchId, 'messages', messageId)
+    const messageRef = doc(db, 'matches', matchId, 'messages', messageId)
     
     await updateDoc(messageRef, {
       imageViewed: true,
@@ -598,4 +621,158 @@ export async function deleteViewOnceImage(imageUrl: string): Promise<void> {
     // Image might already be deleted or URL format different
     console.warn('⚠️ Could not delete view-once image:', error)
   }
+}
+/**
+ * ✅ Clear ALL existing chats for a user - called when re-creating profile after account deletion
+ * This ensures no old chat history persists when same Firebase UID is reused
+ */
+export async function clearAllChatsForUser(userId: string): Promise<number> {
+  console.log(`🧹 Clearing all existing chats for user: ${userId}`)
+  
+  let clearedCount = 0
+  
+  try {
+    // Method 1: Find chats where matchId contains userId
+    const allChatsSnapshot = await getDocs(collection(db, 'matches'))
+    
+    for (const chatDoc of allChatsSnapshot.docs) {
+      // Check if this chat involves the user (matchId format: "userId1_userId2" sorted)
+      if (chatDoc.id.includes(userId)) {
+        console.log(`   🗑️ Clearing chat: ${chatDoc.id}`)
+        
+        // Delete all messages in this chat
+        const messagesRef = collection(db, 'matches', chatDoc.id, 'messages')
+        const messagesSnapshot = await getDocs(messagesRef)
+        
+        const batch = writeBatch(db)
+        messagesSnapshot.forEach((msgDoc) => {
+          batch.delete(msgDoc.ref)
+        })
+        
+        // Delete the chat document itself
+        batch.delete(chatDoc.ref)
+        
+        await batch.commit()
+        clearedCount++
+        console.log(`   ✅ Deleted ${messagesSnapshot.size} messages from chat ${chatDoc.id}`)
+      }
+    }
+    
+    console.log(`🧹 Total chats cleared: ${clearedCount}`)
+    return clearedCount
+    
+  } catch (error) {
+    console.error('❌ Error clearing chats for user:', error)
+    return clearedCount
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ✅ v2.8.13: END CHAT FUNCTIONALITY
+// Allows users to end a chat - the other user can still see messages but can't reply
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * End a chat - marks it as ended by the current user
+ * The other user can still see messages but cannot send new ones
+ */
+export async function endChat(matchId: string, userId: string): Promise<void> {
+  try {
+    console.log(`🔚 Ending chat ${matchId} by user ${userId.slice(0, 8)}...`)
+    
+    const matchRef = doc(db, 'matches', matchId)
+    const matchDoc = await getDoc(matchRef)
+    
+    if (!matchDoc.exists()) {
+      console.error('❌ Match not found:', matchId)
+      throw new Error('Chat not found')
+    }
+    
+    const data = matchDoc.data()
+    const currentEndedBy = data.chatEndedBy || []
+    
+    // Don't add if already ended by this user
+    if (currentEndedBy.includes(userId)) {
+      console.log('⚠️ Chat already ended by this user')
+      return
+    }
+    
+    // Update the match document
+    await updateDoc(matchRef, {
+      chatEndedBy: [...currentEndedBy, userId],
+      chatEndedAt: serverTimestamp(),
+      [`chatEndedByUser_${userId}`]: serverTimestamp()
+    })
+    
+    console.log(`✅ Chat ended by ${userId.slice(0, 8)}`)
+    
+  } catch (error) {
+    console.error('❌ Error ending chat:', error)
+    throw error
+  }
+}
+
+/**
+ * Check if chat is ended by the other user
+ */
+export async function getChatStatus(matchId: string, currentUserId: string): Promise<{
+  isEndedByOther: boolean
+  isEndedByMe: boolean
+  endedAt?: Date
+}> {
+  try {
+    const matchRef = doc(db, 'matches', matchId)
+    const matchDoc = await getDoc(matchRef)
+    
+    if (!matchDoc.exists()) {
+      return { isEndedByOther: false, isEndedByMe: false }
+    }
+    
+    const data = matchDoc.data()
+    const chatEndedBy = data.chatEndedBy || []
+    
+    // Check if current user ended it
+    const isEndedByMe = chatEndedBy.includes(currentUserId)
+    
+    // Check if OTHER user ended it (any user in the array that isn't current user)
+    const isEndedByOther = chatEndedBy.some((uid: string) => uid !== currentUserId)
+    
+    return {
+      isEndedByOther,
+      isEndedByMe,
+      endedAt: data.chatEndedAt?.toDate()
+    }
+    
+  } catch (error) {
+    console.error('❌ Error getting chat status:', error)
+    return { isEndedByOther: false, isEndedByMe: false }
+  }
+}
+
+/**
+ * Listen to chat status changes (real-time)
+ */
+export function listenToChatStatus(
+  matchId: string, 
+  currentUserId: string,
+  callback: (status: { isEndedByOther: boolean; isEndedByMe: boolean }) => void
+): Unsubscribe {
+  const matchRef = doc(db, 'matches', matchId)
+  
+  return onSnapshot(matchRef, (docSnapshot) => {
+    if (!docSnapshot.exists()) {
+      callback({ isEndedByOther: false, isEndedByMe: false })
+      return
+    }
+    
+    const data = docSnapshot.data()
+    const chatEndedBy = data.chatEndedBy || []
+    
+    const isEndedByMe = chatEndedBy.includes(currentUserId)
+    const isEndedByOther = chatEndedBy.some((uid: string) => uid !== currentUserId)
+    
+    callback({ isEndedByOther, isEndedByMe })
+  }, (error) => {
+    console.error('❌ Error in chat status listener:', error)
+  })
 }

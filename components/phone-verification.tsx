@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Phone, Shield, ArrowLeft, RefreshCw, CheckCircle, Sparkles } from 'lucide-react'
+import { getOrCreateDeviceId } from '@/lib/device-id'  // ✅ v2.8.4: Device ID for security
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface PhoneVerificationProps {
   onComplete: (phoneNumber: string) => void
   onSkip?: () => void
+  onLogout?: () => void  // ✅ v2.8.4: Allow user to sign out if wrong account
   userId: string
   userEmail?: string
   showSkip?: boolean
@@ -18,10 +21,14 @@ const DEMO_CODE = '123456'
 export default function PhoneVerification({ 
   onComplete, 
   onSkip,
+  onLogout,  // ✅ v2.8.4: Allow user to sign out
   userId, 
   userEmail,
   showSkip = false 
 }: PhoneVerificationProps) {
+  // ✅ v2.8.23: Language support
+  const { t } = useLanguage()
+  
   // States
   const [step, setStep] = useState<'phone' | 'code' | 'success'>('phone')
   const [localNumber, setLocalNumber] = useState('')
@@ -244,7 +251,10 @@ export default function PhoneVerification({
         return
       }
       
-      const { sendPhoneVerification } = await import('@/lib/phone-verification-service')
+      // ✅ Clear old reCAPTCHA before resending
+      const { clearRecaptcha, sendPhoneVerification } = await import('@/lib/phone-verification-service')
+      clearRecaptcha()
+      
       const result = await sendPhoneVerification(fullPhoneNumber)
       setConfirmationResult(result)
       setResendTimer(60)
@@ -260,19 +270,27 @@ export default function PhoneVerification({
   // Link phone to user profile in Firestore
   const linkPhoneToUser = async () => {
     try {
-      const { doc, updateDoc } = await import('firebase/firestore')
+      const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
       const { db } = await import('@/lib/firebase')
+      
+      // ✅ v2.8.4: Also save Device ID for security!
+      const currentDeviceId = getOrCreateDeviceId()
       
       await updateDoc(doc(db, 'users', userId), {
         phoneNumber: fullPhoneNumber,
         phoneVerified: true,
-        phoneVerifiedAt: new Date().toISOString()
+        phoneVerifiedAt: new Date().toISOString(),
+        verifiedDeviceId: currentDeviceId,  // ✅ v2.8.4: Save device ID
+        lastVerifiedAt: Timestamp.now(),
+        isAvailable: true  // ✅ v2.8.4: Always available after login!
       })
       
       // Cache verification status
       localStorage.setItem('i4iguana_phone_verified', 'true')
       
       console.log('✅ Phone linked to user profile')
+      console.log('🆔 Device ID saved:', currentDeviceId.slice(0, 15) + '...')
+      console.log('✅ isAvailable set to TRUE')
     } catch (err) {
       console.error('❌ Error linking phone:', err)
     }
@@ -340,17 +358,34 @@ export default function PhoneVerification({
 
             {/* Title */}
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold text-white">Verify Your Phone</h1>
+              <h1 className="text-3xl font-bold text-white">{t('auth.verifyPhone')}</h1>
               <p className="text-white/60">
-                We'll send you a verification code via SMS
+                {t('auth.verifyPhoneSubtitle')}
               </p>
+              
+              {/* ✅ v2.8.4: Show logged in user and logout option */}
+              {userEmail && (
+                <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
+                  <p className="text-white/50 text-sm">
+                    {t('auth.loggedInAs')}: <span className="text-white font-medium">{userEmail}</span>
+                  </p>
+                  {onLogout && (
+                    <button
+                      onClick={onLogout}
+                      className="mt-2 text-sm text-red-400 hover:text-red-300 underline"
+                    >
+                      {t('auth.notYou')}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Phone Input */}
             <div className="space-y-4">
               <div>
                 <label className="block text-white/60 text-sm mb-3">
-                  Mobile Number
+                  {t('auth.mobileNumber')}
                 </label>
                 <div className="flex items-center gap-2">
                   {/* Country Code - Fixed */}
@@ -376,7 +411,7 @@ export default function PhoneVerification({
                 
                 {/* Helper Text */}
                 <p className="text-white/40 text-xs mt-2 text-center">
-                  Enter without leading 0 (e.g., 52-265-3170)
+                  {t('auth.enterWithoutLeading')}
                 </p>
               </div>
 
@@ -406,10 +441,10 @@ export default function PhoneVerification({
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  Sending...
+                  {t('auth.sending')}
                 </span>
               ) : (
-                'Send Verification Code'
+                t('auth.sendCode')
               )}
             </button>
 
@@ -443,9 +478,9 @@ export default function PhoneVerification({
 
             {/* Title */}
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold text-white">Enter Code</h1>
+              <h1 className="text-3xl font-bold text-white">{t('auth.enterCode')}</h1>
               <p className="text-white/60">
-                Sent to {formatPhoneDisplay(localNumber)}
+                {t('auth.sentTo')} {formatPhoneDisplay(localNumber)}
               </p>
             </div>
 
@@ -496,10 +531,10 @@ export default function PhoneVerification({
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  Verifying...
+                  {t('auth.verifying')}
                 </span>
               ) : (
-                'Verify Code'
+                t('auth.verifyCode')
               )}
             </button>
 
@@ -507,7 +542,7 @@ export default function PhoneVerification({
             <div className="text-center space-y-3">
               {resendTimer > 0 ? (
                 <p className="text-white/40">
-                  Resend code in <span className="text-white font-bold">{resendTimer}s</span>
+                  {t('auth.resendIn')} <span className="text-white font-bold">{resendTimer}s</span>
                 </p>
               ) : (
                 <button
@@ -515,7 +550,7 @@ export default function PhoneVerification({
                   disabled={loading}
                   className="w-full py-3 bg-white/10 text-white font-medium rounded-xl hover:bg-white/20 transition-colors disabled:opacity-50"
                 >
-                  🔄 Resend Code
+                  🔄 {t('auth.resendCode')}
                 </button>
               )}
               
@@ -524,7 +559,7 @@ export default function PhoneVerification({
                 onClick={handleBack}
                 className="text-white/40 hover:text-white/60 text-sm underline"
               >
-                Change phone number
+                {t('auth.changeNumber')}
               </button>
             </div>
 

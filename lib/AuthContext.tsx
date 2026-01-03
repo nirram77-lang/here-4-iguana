@@ -13,6 +13,7 @@ import {
   setPersistence
 } from 'firebase/auth'
 import { auth } from './firebase'
+import { unsubscribeFromPushNotifications } from './firebase-messaging'  // ✅ v2.8.6
 
 interface AuthContextType {
   user: User | null
@@ -37,18 +38,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('🔄 Initializing authentication...')
     
-    // ✅ Set persistence
-    setPersistence(auth, browserLocalPersistence)
-      .then(() => console.log('✅ Auth persistence set'))
-      .catch((error) => console.error('❌ Persistence error:', error))
+    let unsubscribe: () => void = () => {}
+    let authStateReceived = false
     
-    // ✅ Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log('🔄 Auth state:', currentUser?.email || 'No user')
-      setUser(currentUser)
-      setLoading(false)
-      setInitializing(false)
-    })
+    // ✅ CRITICAL: Set a flag to prevent premature navigation
+    // This tells the app to WAIT for auth state before navigating
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('i4iguana_auth_initializing', 'true')
+    }
+    
+    // ✅ FIXED: Set persistence and WAIT for it before listening to auth state
+    const initAuth = async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence)
+        console.log('✅ Auth persistence set to LOCAL')
+      } catch (error) {
+        console.error('❌ Persistence error:', error)
+      }
+      
+      // ✅ Now listen for auth state changes (after persistence is set)
+      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        console.log('🔄 Auth state changed:', currentUser?.email || 'No user')
+        authStateReceived = true
+        setUser(currentUser)
+        setLoading(false)
+        setInitializing(false)
+        
+        // ✅ Clear the initializing flag - auth state is now known
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('i4iguana_auth_initializing')
+        }
+      })
+      
+      // ✅ SAFETY: If no auth state received after 3 seconds, clear loading
+      // This handles edge cases where onAuthStateChanged never fires
+      setTimeout(() => {
+        if (!authStateReceived) {
+          console.log('⚠️ No auth state received after 3s, assuming no user')
+          setLoading(false)
+          setInitializing(false)
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('i4iguana_auth_initializing')
+          }
+        }
+      }, 3000)
+    }
+    
+    initAuth()
 
     return () => unsubscribe()
   }, [])
@@ -99,7 +135,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    // ✅ Logout from OneSignal first (unlink device from user)
+    // ✅ v2.8.6: Unsubscribe from FCM push notifications FIRST
+    try {
+      if (user?.uid) {
+        console.log('🔔 Unsubscribing from FCM push notifications...');
+        await unsubscribeFromPushNotifications(user.uid);
+        console.log('   ✓ FCM unsubscribe successful');
+      }
+    } catch (fcmError) {
+      console.log('⚠️ FCM unsubscribe error (continuing anyway):', fcmError);
+    }
+    
+    // ✅ Clear ONLY authentication flags - NOT match state!
+    // Match state stays because the match is still active in Firestore
+    // When user logs back in, checkAuth will restore their match from Firestore
+    localStorage.removeItem('i4iguana_was_authenticated')
+    localStorage.removeItem('i4iguana_auth_wait_start')
+    localStorage.removeItem('i4iguana_auth_initializing')
+    // ✅ DON'T remove these - user might log back in and continue their match:
+    // - i4iguana_last_screen (they'll return to same screen)
+    // - i4iguana_enjoy_mode (they're still in a meeting!)
+    // - i4iguana_matched_user_id (match is still active)
+    // - i4iguana_phone_verified (phone is still verified)
+    console.log('🧹 Cleared auth flags only (match state preserved)')
+    
+    // ✅ Logout from OneSignal (unlink device from user)
     try {
       const OneSignal = (window as any).OneSignal;
       if (OneSignal) {

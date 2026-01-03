@@ -61,7 +61,7 @@ async function deleteChatImagesFromStorage(chatId: string): Promise<number> {
  */
 async function deleteAllChatMessages(chatId: string): Promise<number> {
   try {
-    const messagesRef = collection(db, 'chats', chatId, 'messages')
+    const messagesRef = collection(db, 'matches', chatId, 'messages')
     const messagesSnapshot = await getDocs(messagesRef)
     
     if (messagesSnapshot.empty) {
@@ -141,7 +141,7 @@ async function findAllUserChats(userId: string): Promise<string[]> {
     // Method 1: Query by participants field
     try {
       const participantsQuery = query(
-        collection(db, 'chats'),
+        collection(db, 'matches'),
         where('participants', 'array-contains', userId)
       )
       const participantsSnapshot = await getDocs(participantsQuery)
@@ -154,7 +154,7 @@ async function findAllUserChats(userId: string): Promise<string[]> {
     // Method 2: Query by users field (some chats might use this)
     try {
       const usersQuery = query(
-        collection(db, 'chats'),
+        collection(db, 'matches'),
         where('users', 'array-contains', userId)
       )
       const usersSnapshot = await getDocs(usersQuery)
@@ -169,7 +169,7 @@ async function findAllUserChats(userId: string): Promise<string[]> {
     }
     
     // Method 3: Scan all chats for matchId pattern (userId1_userId2)
-    const allChatsSnapshot = await getDocs(collection(db, 'chats'))
+    const allChatsSnapshot = await getDocs(collection(db, 'matches'))
     let patternMatches = 0
     allChatsSnapshot.docs.forEach(doc => {
       if (doc.id.includes(userId)) {
@@ -205,6 +205,57 @@ export const deleteUserAccount = async (userId: string): Promise<{
     console.log(`🗑️ STARTING ACCOUNT DELETION FOR USER: ${userId}`)
     console.log(`${'='.repeat(60)}\n`)
     
+    // ✅ NEW: Logout from OneSignal with TIMEOUT (prevent hanging)
+    const oneSignalLogout = async () => {
+      const OneSignal = (window as any)?.OneSignal
+      if (!OneSignal) return
+      
+      console.log('🔔 Logging out from OneSignal...')
+      
+      // Unsubscribe from push (with timeout)
+      if (OneSignal.User && OneSignal.User.PushSubscription) {
+        try {
+          await Promise.race([
+            OneSignal.User.PushSubscription.optOut(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+          ])
+          console.log('✅ OneSignal: Unsubscribed from push')
+        } catch (e) {
+          console.log('⚠️ OneSignal optOut timeout/error, continuing...')
+        }
+      }
+      
+      // Logout user (with timeout)
+      if (OneSignal.logout) {
+        try {
+          await Promise.race([
+            OneSignal.logout(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+          ])
+          console.log('✅ OneSignal: Logged out successfully')
+        } catch (e) {
+          console.log('⚠️ OneSignal logout timeout/error, continuing...')
+        }
+      }
+      
+      // Clear localStorage keys for this user (this is sync, no timeout needed)
+      localStorage.removeItem(`oneSignalLinked_${userId}`)
+      localStorage.removeItem(`notificationModalShown_${userId}`)
+      localStorage.removeItem('i4iguana_onesignal_linked')
+      localStorage.removeItem('i4iguana_notifications_enabled')
+      console.log('✅ OneSignal: Cleared localStorage keys')
+    }
+    
+    // Run OneSignal cleanup with overall timeout
+    try {
+      await Promise.race([
+        oneSignalLogout(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Overall timeout')), 5000))
+      ])
+    } catch (e) {
+      console.log('⚠️ OneSignal cleanup timed out, continuing with delete...')
+    }
+    
     // Step 1: Get user's phone number before deleting
     const userRef = doc(db, 'users', userId)
     const userDoc = await getDoc(userRef)
@@ -221,6 +272,31 @@ export const deleteUserAccount = async (userId: string): Promise<{
     const phoneNumber = userData.phoneNumber || getDevModePhoneNumber(userId)
     
     console.log(`📱 User's phone number: ${phoneNumber}`)
+    
+    // ✅ v2.8.5: CHECKOUT FROM VENUE FIRST!
+    if (userData.checkedInVenue) {
+      console.log(`🚪 User is checked into venue: ${userData.checkedInVenue} - checking out...`)
+      try {
+        const { checkOutUser } = await import('./venue-service')
+        await checkOutUser(userData.checkedInVenue, userId)
+        console.log('✅ User checked out from venue successfully')
+      } catch (checkoutError) {
+        console.error('⚠️ Error checking out from venue (continuing anyway):', checkoutError)
+        // Also try to remove from venue's checkedInUsers array directly
+        try {
+          const venueRef = doc(db, 'venues', userData.checkedInVenue)
+          const { arrayRemove: arrRemove } = await import('firebase/firestore')
+          await updateDoc(venueRef, {
+            checkedInUsers: arrRemove(userId)
+          })
+          console.log('✅ Manually removed user from venue checkedInUsers')
+        } catch (e) {
+          console.error('⚠️ Manual venue cleanup also failed:', e)
+        }
+      }
+    } else {
+      console.log('ℹ️ User not checked into any venue')
+    }
     
     // ✅ CRITICAL: Mark as deleted IMMEDIATELY
     await updateDoc(userRef, {
@@ -476,29 +552,29 @@ export const deleteUserAccount = async (userId: string): Promise<{
     console.log(`✅ Deleted ${notifsSnap.size} notifications\n`)
     
     // ═══════════════════════════════════════════════════════════════
-    // Step 8: Clear user profile data
+    // Step 8: DELETE USER DOCUMENT COMPLETELY
     // ═══════════════════════════════════════════════════════════════
-    console.log('👤 Step 8: Clearing user profile...')
+    console.log('👤 Step 8: DELETING user document completely...')
     
-    await updateDoc(userRef, {
-      email: null,
-      displayName: null,
-      name: null,
-      photoURL: null,
-      photos: [],
-      bio: '',
-      hobbies: [],
-      phoneNumber: null,
-      phoneVerifiedAt: null,
-      location: null,
-      preferences: null,
-      swipedRight: [],
-      swipedLeft: [],
-      matches: [],
-      checkedInVenue: null,
-      checkInData: null
-    })
-    console.log('✅ User profile cleared\n')
+    // ✅ v2.8.5 FIX: Actually DELETE the user, not just mark as deleted!
+    await deleteDoc(userRef)
+    console.log('✅ User document DELETED from database\n')
+    
+    // ✅ v2.8.4 FIX: Clear ALL localStorage to force fresh start!
+    console.log('🧹 Clearing localStorage...')
+    const keysToRemove = [
+      'i4iguana_phone_verified',
+      'i4iguana_onboarding',
+      'i4iguana_checkin',
+      'i4iguana_was_authenticated',
+      'i4iguana_just_deleted',
+      'i4iguana_cached_screen',
+      'i4iguana_user_id',
+      'i4iguana_profile_complete',
+      `onesignal_last_refresh_${userId}`
+    ]
+    keysToRemove.forEach(key => localStorage.removeItem(key))
+    console.log(`✅ Cleared ${keysToRemove.length} localStorage keys\n`)
     
     // ═══════════════════════════════════════════════════════════════
     // Step 9: Handle phoneIdentity

@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Plus, Loader2, ImagePlus, Camera } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface OnboardingPhotosProps {
   onComplete: (data: { photos: string[], bio: string }) => void
@@ -21,12 +22,29 @@ export default function OnboardingPhotos({
   initialPhotos = [],  // ✅ FIX: Use initial values
   initialBio = ''      // ✅ FIX: Use initial values
 }: OnboardingPhotosProps) {
+  const { t, isRTL } = useLanguage()
+  
   // ✅ FIX: Initialize with existing data for back navigation
   const [photos, setPhotos] = useState<string[]>(initialPhotos)
   const [bio, setBio] = useState(initialBio)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // ✅ NEW: Real viewport height for old Android/iOS
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  
+  useEffect(() => {
+    const updateViewportHeight = () => {
+      setViewportHeight(window.innerHeight)
+    }
+    updateViewportHeight()
+    window.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('orientationchange', () => setTimeout(updateViewportHeight, 100))
+    return () => {
+      window.removeEventListener('resize', updateViewportHeight)
+    }
+  }, [])
   
   // Drag & Drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -201,7 +219,13 @@ export default function OnboardingPhotos({
   const canComplete = photos.length >= 2 && bio.trim()
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-hidden">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto overflow-x-hidden"
+      style={{ 
+        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        paddingBottom: '120px'  // ✅ Extra space for buttons
+      }}
+    >
       <div className="absolute inset-0">
         {[...Array(20)].map((_, i) => (
           <motion.div
@@ -253,6 +277,7 @@ export default function OnboardingPhotos({
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="text-center mb-6"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             <motion.div
               animate={{ rotate: [0, -10, 10, -10, 0] }}
@@ -262,13 +287,13 @@ export default function OnboardingPhotos({
               📸
             </motion.div>
             <h1 className="font-serif text-3xl font-bold text-white mb-2">
-              Show yourself!
+              {t('onboarding.photos.title')}
             </h1>
             <p className="text-[#a8d5ba] text-base">
-              Add at least 2 photos (you can select multiple at once!)
+              {t('onboarding.photos.subtitle')}
             </p>
             <div className={`text-xl font-bold mt-2 ${photos.length >= 2 ? 'text-[#4ade80]' : 'text-amber-400'}`}>
-              {photos.length}/6 photos {photos.length >= 2 && '✓'}
+              {photos.length}/6 {isRTL ? 'תמונות' : 'photos'} {photos.length >= 2 && '✓'}
             </div>
           </motion.div>
 
@@ -278,11 +303,12 @@ export default function OnboardingPhotos({
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="mb-4 bg-[#1a4d3e]/70 rounded-2xl p-4 border border-[#4ade80]/30"
+              style={{ direction: isRTL ? 'rtl' : 'ltr' }}
             >
               <div className="flex items-center gap-3 mb-2">
                 <Loader2 className="h-5 w-5 text-[#4ade80] animate-spin" />
-                <span className="text-white font-medium">Uploading photos...</span>
-                <span className="text-[#4ade80] font-bold ml-auto">{uploadProgress}%</span>
+                <span className="text-white font-medium">{t('onboarding.photos.uploadingPhoto')}</span>
+                <span className={`text-[#4ade80] font-bold ${isRTL ? 'mr-auto' : 'ml-auto'}`}>{uploadProgress}%</span>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
@@ -409,25 +435,26 @@ export default function OnboardingPhotos({
               animate={{ opacity: 1, y: 0 }}
               className="mb-4 bg-[#4ade80]/10 border border-[#4ade80]/30 rounded-xl p-3 text-center"
             >
-              <p className="text-[#4ade80] text-sm font-medium">
-                👆 Drag & drop photos to reorder! First photo = Main profile photo ⭐
+              <p className="text-[#4ade80] text-sm font-medium" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('onboarding.photos.dragHint')}
               </p>
             </motion.div>
           )}
 
           {/* Bio Input */}
-          <div className="mb-6">
+          <div className="mb-6" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
             <label className="text-white/80 text-sm font-semibold mb-2 block">
-              About You
+              {t('onboarding.bio.title')}
             </label>
             <Textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell people a bit about yourself..."
+              placeholder={t('onboarding.bio.placeholder')}
               maxLength={200}
               className="bg-[#1a4d3e]/50 border-[#4ade80]/20 text-white rounded-xl min-h-28 resize-none focus:border-[#4ade80] focus:ring-[#4ade80]"
+              style={{ direction: isRTL ? 'rtl' : 'ltr' }}
             />
-            <div className="text-right text-xs text-white/40 mt-1">
+            <div className={`text-xs text-white/40 mt-1 ${isRTL ? 'text-left' : 'text-right'}`}>
               {bio.length}/200
             </div>
           </div>
@@ -440,7 +467,7 @@ export default function OnboardingPhotos({
               disabled={uploading}
               className="flex-1 h-14 rounded-full bg-transparent border-2 border-white/30 text-white hover:bg-white/10"
             >
-              Back
+              {t('onboarding.back')}
             </Button>
             <Button
               onClick={handleComplete}
@@ -449,11 +476,11 @@ export default function OnboardingPhotos({
             >
               {uploading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Uploading...
+                  <Loader2 className={`h-5 w-5 animate-spin ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                  {t('onboarding.photos.uploadingPhoto')}
                 </>
               ) : (
-                'Complete 🎉'
+                isRTL ? '🎉 סיום' : 'Complete 🎉'
               )}
             </Button>
           </div>
@@ -464,9 +491,10 @@ export default function OnboardingPhotos({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center text-white/50 text-sm pb-4"
+              style={{ direction: isRTL ? 'rtl' : 'ltr' }}
             >
-              {photos.length < 2 && <span>Add at least 2 photos • </span>}
-              {!bio.trim() && <span>Write something about yourself</span>}
+              {photos.length < 2 && <span>{isRTL ? 'הוסף לפחות 2 תמונות • ' : 'Add at least 2 photos • '}</span>}
+              {!bio.trim() && <span>{t('onboarding.bio.placeholder')}</span>}
             </motion.div>
           )}
         </div>

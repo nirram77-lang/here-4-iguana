@@ -1,26 +1,34 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function HebrewPrivacyPolicy() {
+function HebrewPrivacyContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromApp = searchParams.get('from') === 'app'
 
   const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      window.history.back()
+    if (fromApp) {
+      // Coming from app - go back to app
+      router.push('/app')
     } else {
+      // Coming from website - go back to Hebrew landing
       router.push('/he')
     }
   }
 
   return (
     <div className="min-h-screen bg-[#0a1f1a] text-white" dir="rtl">
-      {/* Header */}
-      <nav className="bg-[#0a1f1a]/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+      {/* Header - with iOS safe area */}
+      <nav 
+        className="bg-[#0a1f1a]/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-50"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/he" className="flex items-center gap-3">
+            <Link href={fromApp ? "/app" : "/he"} className="flex items-center gap-3">
               <img src="/notification-icon-192.png" alt="I4IGUANA" className="w-10 h-10" />
               <span className="text-xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
                 I4IGUANA
@@ -28,9 +36,9 @@ export default function HebrewPrivacyPolicy() {
             </Link>
             <button 
               onClick={handleBack}
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 min-h-[44px] px-3"
             >
-              חזרה
+              {fromApp ? 'חזרה לאפליקציה' : 'חזרה'}
               <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
@@ -221,9 +229,9 @@ export default function HebrewPrivacyPolicy() {
         <div className="mt-16 pt-8 border-t border-white/10">
           <button 
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors"
+            className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors min-h-[44px]"
           >
-            חזרה
+            {fromApp ? 'חזרה לאפליקציה' : 'חזרה'}
             <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -256,5 +264,13 @@ export default function HebrewPrivacyPolicy() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function HebrewPrivacyPolicy() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a1f1a]" />}>
+      <HebrewPrivacyContent />
+    </Suspense>
   )
 }

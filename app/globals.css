@@ -121,19 +121,51 @@
     @apply border-border outline-ring/50;
   }
   
-  /* ✅ NOTE: Scroll locking moved to app/app/page.tsx - website should scroll freely */
+  /* ═══════════════════════════════════════════════════════════════════════════
+     ✅ v2.8.17: CSS that works for BOTH website AND app
+     Website = scrollable, App = uses .pwa-app-mode class (added by JS)
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  :root {
+    --app-height: 100vh;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
   html {
-    overscroll-behavior: none;
-    overscroll-behavior-y: none;
-    /* overflow, position: fixed REMOVED - only app locks scroll */
+    -webkit-text-size-adjust: 100%;
   }
   
   body {
     @apply bg-background text-foreground;
-    overscroll-behavior: none;
-    overscroll-behavior-y: none;
-    /* overflow, position: fixed REMOVED - only app locks scroll */
     -webkit-overflow-scrolling: touch;
+  }
+  
+  /* ✅ PWA App Mode - ONLY applied when JavaScript adds this class */
+  html.pwa-app-mode,
+  html.pwa-app-mode body {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: var(--app-height, 100vh) !important;
+    touch-action: manipulation !important;
+  }
+  
+  html.pwa-app-mode body {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+  }
+  
+  /* ✅ Allow text selection in input fields */
+  input, textarea {
+    -webkit-user-select: text !important;
+    user-select: text !important;
   }
 }
 
@@ -527,4 +559,128 @@ a,
 
 /* ========================================
    END OF BROWSER POPUP PREVENTION
+   ======================================== */
+
+/* ========================================
+   DVH FALLBACK FOR OLDER iOS (< 15.4)
+   ======================================== */
+
+/* Fallback for browsers that don't support dvh */
+@supports not (min-height: 100dvh) {
+  .dvh-fallback {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* ========================================
+   END OF DVH FALLBACK
+   ======================================== */
+
+/* ========================================
+   🔒 PORTRAIT LOCK - IPHONE HERMETIC FIX
+   v2.8.17 - SUPER AGGRESSIVE PORTRAIT LOCK
+   ======================================== */
+
+/* Landscape overlay - shows "rotate device" message */
+.landscape-blocker {
+  display: none;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  width: 100dvw !important;
+  height: 100dvh !important;
+  background: linear-gradient(135deg, #0a1a14 0%, #15803d 50%, #0a1a14 100%) !important;
+  z-index: 2147483647 !important;  /* MAXIMUM possible z-index */
+  justify-content: center !important;
+  align-items: center !important;
+  flex-direction: column !important;
+  gap: 2rem !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+.landscape-blocker-icon {
+  font-size: 5rem;
+  animation: rotatePhone 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(74, 222, 128, 0.5));
+}
+
+@keyframes rotatePhone {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-20deg); }
+  75% { transform: rotate(20deg); }
+}
+
+.landscape-blocker-text {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0 2rem;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🔒 CRITICAL: CSS-ONLY LANDSCAPE DETECTION (NO JS NEEDED!)
+   This works even before JavaScript loads!
+   ═══════════════════════════════════════════════════════════════ */
+
+/* iPhone Portrait: ~390x844 | Landscape: ~844x390 */
+/* ✅ v2.8.22 FIX: Use aspect-ratio instead of orientation to support foldable devices */
+/* Phones in landscape have aspect ratio > 1.6 (e.g., 844/390 = 2.16) */
+/* Foldables in tablet mode are more square (aspect ratio ~1.0-1.3) */
+/* This prevents blocking foldable/tablet devices while still blocking phone landscape */
+
+@media screen and (min-aspect-ratio: 16/10) and (max-height: 600px) {
+  .landscape-blocker {
+    display: flex !important;
+  }
+  
+  #app-content {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  
+  /* Hide EVERYTHING else */
+  body > *:not(.landscape-blocker):not(script):not(style):not(link) {
+    display: none !important;
+  }
+  
+  html, body {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🔒 BACKUP: Secondary aspect ratio detection 
+   ✅ v2.8.22: This is now the primary detection method
+   Uses 16:10 ratio (1.6) to distinguish phones from foldables/tablets
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Already covered by the rule above - keeping for backwards compatibility */
+
+/* iOS Safari specific - prevent ANY horizontal scroll */
+html {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overflow-x: hidden;
+  position: relative;
+  width: 100%;
+}
+
+/* ========================================
+   END OF PORTRAIT LOCK
    ======================================== */

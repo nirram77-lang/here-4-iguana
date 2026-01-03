@@ -12,6 +12,8 @@ interface DatingCardProps {
     displayName?: string
     age?: number
     distance?: number
+    formattedDistance?: string  // ✅ NEW: Pre-formatted distance string
+    venueName?: string | null   // ✅ NEW: Name of nearest venue
     photos?: string[]
     photoURL?: string
     bio?: string
@@ -28,7 +30,11 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
   const photos = user.photos || (user.photoURL ? [user.photoURL] : ["/placeholder.jpg"])
   const userName = user.displayName || user.name || "User"
   const userAge = user.age || 25
-  const userDistance = user.distance ? `${Math.round(user.distance)}m away` : "nearby"
+  // ✅ NEW: Smart distance display with venue name
+  const distanceText = user.formattedDistance || (user.distance ? `${Math.round(user.distance)}m` : "nearby")
+  const userDistance = user.venueName 
+    ? `${distanceText} (${user.venueName})`  // "120m (Jack)"
+    : distanceText                            // "120m"
   const userBio = user.bio || "No bio yet"
   const userHobbies = user.hobbies || []
 
@@ -145,9 +151,9 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
             <h2 className="text-4xl font-bold mb-2">
               {userName}, {userAge}
             </h2>
-            <div className="flex items-center gap-2 text-white/80 mb-3">
-              <MapPin className="w-4 h-4" />
-              <span className="text-sm">{userDistance}</span>
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="w-4 h-4 text-[#4ade80]" />
+              <span className="text-sm font-medium text-[#4ade80]">{userDistance}</span>
             </div>
             {userBio && (
               <p className="text-white/90 text-sm line-clamp-2 mb-3">

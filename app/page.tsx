@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { trackPageView, trackSectionView } from '@/lib/analytics-service'
+import PilotButton from '@/components/PilotButton'
+import GlobalNewsTicker from '@/components/global-news-ticker'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
@@ -64,8 +66,40 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [trackedSections])
 
+  // Share functionality
+  const handleShare = async (method: string) => {
+    const url = 'https://i4iguana.com'
+    const title = 'I4IGUANA - Real-Time Dating Revolution'
+    const text = 'Meet real people near you! No endless swipes. Real meeting. Now.'
+
+    switch (method) {
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank')
+        break
+      case 'email':
+        window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + url)}`, '_blank')
+        break
+      case 'copy':
+        await navigator.clipboard.writeText(url)
+        alert('Link copied!')
+        break
+      case 'native':
+        if (navigator.share) {
+          await navigator.share({ title, text, url })
+        }
+        break
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden">
+    <div 
+      className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden landing-page"
+      style={{
+        touchAction: 'manipulation',
+        overscrollBehavior: 'none',
+        WebkitOverflowScrolling: 'touch'
+      }}
+    >
       
       {/* Floating Hearts - Fixed on screen */}
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
@@ -74,6 +108,9 @@ export default function LandingPage() {
         <div className="absolute bottom-0 right-[15%] text-pink-400/50 text-3xl animate-floatHeart" style={{animationDelay: '3s'}}>💕</div>
         <div className="absolute bottom-0 right-[35%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '4.5s'}}>💕</div>
       </div>
+
+      {/* 🌍 Global News Ticker - Bottom Left */}
+      <GlobalNewsTicker />
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* NAVIGATION */}
@@ -98,30 +135,45 @@ export default function LandingPage() {
               </span>
               
               {/* Launch Pilot Button */}
-              <Link 
-                href="#"
-                className="ml-3 px-3 py-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-semibold text-black text-xs shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all whitespace-nowrap animate-shimmer"
-                style={{ backgroundSize: '200% 100%' }}
-              >
-                <span role="img" aria-label="rocket">🚀</span> Pilot Soon
-              </Link>
+              <div className="ml-3">
+                <PilotButton lang="en" />
+              </div>
             </div>
 
             {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-4">
               <a href="#how-it-works" className="text-gray-300 hover:text-green-400 transition-colors">How It Works</a>
               <a href="#features" className="text-gray-300 hover:text-green-400 transition-colors">Features</a>
               <a href="#partners" className="text-gray-300 hover:text-green-400 transition-colors">For Venues</a>
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">Download</a>
               
+              {/* PT Language Button */}
+              <Link 
+                href="/br"
+                className="group relative px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
+              >
+                <span className="relative flex items-center gap-1">
+                  <svg className="w-5 h-4" viewBox="0 0 640 480">
+                    <path fill="#229e45" d="M0 0h640v480H0z"/>
+                    <path fill="#f8e509" d="M321.4 36.2L594.8 240l-273.4 203.8L48 240z"/>
+                    <circle fill="#2b49a3" cx="321.4" cy="240" r="68.8"/>
+                    <path fill="#fff" d="M270 210c30-18 73-18 103 0-3 8-8 15-15 20-25-14-48-14-73 0-7-5-12-12-15-20z"/>
+                  </svg>
+                  <span>PT</span>
+                </span>
+              </Link>
+
               {/* HE Language Button */}
               <Link 
                 href="/he"
-                className="group relative px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
+                className="group relative px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
               >
-                <span className="absolute inset-0 rounded-full bg-white/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                <span className="relative flex items-center gap-1.5">
-                  <span className="text-base">🇮🇱</span>
+                <span className="relative flex items-center gap-1">
+                  <svg className="w-4 h-3" viewBox="0 0 640 480">
+                    <path fill="#fff" d="M0 0h640v480H0z"/>
+                    <path fill="#0038b8" d="M0 57.6h640v48H0zm0 316.8h640v48H0z"/>
+                    <path fill="#0038b8" d="M320 146.4l-54.6 94.6h109.2zm0 187.2l-54.6-94.6h109.2zm0-160.8l-54.6 94.6 54.6 31.8 54.6-31.8zm0 134.4l-54.6-94.6 54.6-31.8 54.6 31.8z" fillRule="evenodd"/>
+                  </svg>
                   <span>HE</span>
                 </span>
               </Link>
@@ -164,14 +216,47 @@ export default function LandingPage() {
               <a href="#partners" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">For Venues</a>
               <a href="#download" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Download</a>
               <a href="#contact" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400">Contact</a>
-              <Link 
-                href="/he" 
-                onClick={() => setMenuOpen(false)}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
-              >
-                <span>🇮🇱</span>
-                <span>HE</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link 
+                  href="/br" 
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
+                >
+                  <svg className="w-5 h-4" viewBox="0 0 640 480">
+                    <path fill="#229e45" d="M0 0h640v480H0z"/>
+                    <path fill="#f8e509" d="M321.4 36.2L594.8 240l-273.4 203.8L48 240z"/>
+                    <circle fill="#2b49a3" cx="321.4" cy="240" r="68.8"/>
+                    <path fill="#fff" d="M270 210c30-18 73-18 103 0-3 8-8 15-15 20-25-14-48-14-73 0-7-5-12-12-15-20z"/>
+                  </svg>
+                  <span>PT</span>
+                </Link>
+                <Link 
+                  href="/he" 
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
+                >
+                  <svg className="w-4 h-3" viewBox="0 0 640 480">
+                    <path fill="#fff" d="M0 0h640v480H0z"/>
+                    <path fill="#0038b8" d="M0 57.6h640v48H0zm0 316.8h640v48H0z"/>
+                    <path fill="#0038b8" d="M320 146.4l-54.6 94.6h109.2zm0 187.2l-54.6-94.6h109.2zm0-160.8l-54.6 94.6 54.6 31.8 54.6-31.8zm0 134.4l-54.6-94.6 54.6-31.8 54.6 31.8z" fillRule="evenodd"/>
+                  </svg>
+                  <span>HE</span>
+                </Link>
+              </div>
+              
+              {/* Share - Mobile */}
+              <div className="flex items-center gap-2 py-2">
+                <button onClick={() => handleShare('whatsapp')} className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full text-sm font-bold text-white">
+                  💬 WhatsApp
+                </button>
+                <button onClick={() => handleShare('email')} className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-sm font-bold text-white">
+                  📧 Email
+                </button>
+                <button onClick={() => handleShare('copy')} className="px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white">
+                  🔗 Copy
+                </button>
+              </div>
+
               <Link 
                 href="/join"
                 onClick={() => setMenuOpen(false)}
@@ -228,31 +313,76 @@ export default function LandingPage() {
         {/* Content */}
         <div className="relative z-20 text-center px-6 max-w-4xl mx-auto pt-20">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full mb-8 animate-fadeIn">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full mb-4 animate-fadeIn">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
             <span className="text-green-400 text-sm font-medium">Real-Time Dating Revolution</span>
           </div>
 
+          {/* ✨ HOLLYWOOD LIVE NOW Badge - Clickable - Opens Pilot Modal */}
+          <div className="flex justify-center mb-8 animate-fadeIn" style={{animationDelay: '0.1s'}}>
+            <button
+              onClick={() => {
+                // Find and click the pilot button
+                const pilotBtn = document.querySelector('[data-pilot-button]') as HTMLButtonElement
+                if (pilotBtn) pilotBtn.click()
+              }}
+              className="relative group cursor-pointer"
+            >
+              {/* Outer Glow */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 rounded-full blur-md opacity-60 group-hover:opacity-100 transition-opacity"></div>
+              
+              {/* Badge Container */}
+              <div className="relative flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 rounded-full shadow-lg shadow-yellow-500/50 group-hover:scale-105 transition-transform">
+                {/* Shimmer Effect */}
+                <div className="absolute inset-0 rounded-full overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-shimmer"></div>
+                </div>
+                
+                {/* Live Dot */}
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                </span>
+                
+                {/* Text */}
+                <span className="relative text-sm font-black text-black tracking-wide">
+                  🌍 LIVE NOW
+                </span>
+                
+                {/* Sparkle */}
+                <span className="relative text-lg animate-pulse">✨</span>
+              </div>
+            </button>
+          </div>
+
           {/* Main Heading */}
           <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight animate-fadeInUp">
-            <span className="bg-gradient-to-r from-white via-green-100 to-white bg-clip-text text-transparent">
-              She Decides.
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
-              You Meet.
+            <span className="text-white">
+              No endless swipes.
             </span>
             <br />
             <span className="text-white">
-              Right Now.
+              No games.
+            </span>
+            <br />
+            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(74,222,128,0.5)]">
+              Real meeting.
+            </span>
+            {' '}
+            <span className="bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
+              Now.
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-            No endless swiping. No fake profiles. 
-            <br className="hidden md:block" />
-            Meet <span className="text-pink-400">real people</span> at real places within <span className="text-green-400 font-semibold">10-500 meters</span>.
+          <p className="text-xl md:text-2xl text-gray-400 mb-4 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+            <span className="text-pink-400">Real people.</span> <span className="text-white">Real places.</span> <span className="text-green-400 font-semibold">10-500 meters from you.</span>
+          </p>
+          
+          {/* She Decides - Subtitle */}
+          <p className="text-lg md:text-xl text-pink-400 font-semibold mb-10 animate-fadeInUp flex items-center justify-center gap-2" style={{animationDelay: '0.3s'}}>
+            <span className="text-pink-500">💜</span>
+            <span>She decides. You meet.</span>
           </p>
 
           {/* CTA Buttons */}
@@ -648,7 +778,7 @@ export default function LandingPage() {
           {/* QR Code with enhanced styling */}
           <div className="inline-block p-8 bg-white rounded-3xl shadow-2xl shadow-green-500/20">
             <img 
-              src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://i4iguana.com/app&bgcolor=ffffff&color=0d2920"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://www.i4iguana.com/landing&bgcolor=ffffff&color=0d2920"
               alt="Scan to download"
               className="w-44 h-44 mx-auto"
             />
@@ -855,10 +985,6 @@ export default function LandingPage() {
                 Real-time dating revolution. Meet real people at real places. 
                 She decides, you meet - instantly.
               </p>
-              {/* ✅ NEW: Creator Credit */}
-              <p className="text-gray-500 text-sm mt-4">
-                Created by <span className="text-green-400 font-medium">Nir Ram</span>
-              </p>
             </div>
 
             {/* Links */}
@@ -877,6 +1003,7 @@ export default function LandingPage() {
               <div className="space-y-2">
                 <Link href="/terms" className="block text-gray-400 hover:text-green-400 transition-colors">Terms of Service</Link>
                 <Link href="/privacy" className="block text-gray-400 hover:text-green-400 transition-colors">Privacy Policy</Link>
+                <Link href="/accessibility" className="block text-gray-400 hover:text-green-400 transition-colors">Accessibility</Link>
                 <a href="#contact" className="block text-gray-400 hover:text-green-400 transition-colors">Contact</a>
               </div>
             </div>
@@ -889,7 +1016,7 @@ export default function LandingPage() {
                 © {new Date().getFullYear()} I4IGUANA. All rights reserved.
               </p>
               <p className="text-gray-500 text-xs mt-1">
-                A product by <span className="text-green-400">Nir Ram</span> • All copyrights reserved
+                A product by <span className="text-green-400">Nir Ram</span>
               </p>
             </div>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
@@ -923,11 +1050,11 @@ export default function LandingPage() {
       {/* ═══════════════════════════════════════════════════════════════ */}
       <style jsx global>{`
         @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
         }
         .animate-shimmer {
-          animation: shimmer 3s ease-in-out infinite;
+          animation: shimmer 2s ease-in-out infinite;
         }
         @keyframes fadeIn {
           from { opacity: 0; }

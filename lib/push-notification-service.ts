@@ -55,15 +55,19 @@ export const getUserFCMTokens = async (userId: string): Promise<string[]> => {
 
 /**
  * ✅ Create notification payload for match
+ * ✅ v2.8.26: Added language support for Hebrew
  */
 export const createMatchNotification = (
   matchedUserName: string,
   matchedUserPhoto: string,
   matchId: string,
-  fromUserId: string
+  fromUserId: string,
+  language: 'en' | 'he' = 'en'
 ): PushNotificationPayload => ({
-  title: '🦎 It\'s a Match!',
-  body: `You and ${matchedUserName} liked each other! Start chatting now! 💚`,
+  title: language === 'he' ? '🦎 יש לך Match!' : '🦎 It\'s a Match!',
+  body: language === 'he' 
+    ? `לך ול${matchedUserName} יש חיבור! התחילו לדבר עכשיו! 💚`
+    : `You and ${matchedUserName} liked each other! Start chatting now! 💚`,
   icon: '/notification-icon-192.png',
   badge: '/notification-badge-72.png',
   tag: `match-${matchId}`,
@@ -78,13 +82,15 @@ export const createMatchNotification = (
 
 /**
  * ✅ Create notification payload for message
+ * ✅ v2.8.26: Added language support for Hebrew
  */
 export const createMessageNotification = (
   senderName: string,
   senderPhoto: string,
   messagePreview: string,
   chatId: string,
-  fromUserId: string
+  fromUserId: string,
+  language: 'en' | 'he' = 'en'
 ): PushNotificationPayload => ({
   title: `💬 ${senderName}`,
   body: messagePreview.length > 50 ? messagePreview.substring(0, 50) + '...' : messagePreview,
@@ -102,15 +108,19 @@ export const createMessageNotification = (
 
 /**
  * ✅ Create notification payload for "We're Meeting!"
+ * ✅ v2.8.26: Added language support for Hebrew
  */
 export const createMeetingNotification = (
   partnerName: string,
   partnerPhoto: string,
   matchId: string,
-  fromUserId: string
+  fromUserId: string,
+  language: 'en' | 'he' = 'en'
 ): PushNotificationPayload => ({
-  title: '🎉 We\'re Meeting!',
-  body: `${partnerName} confirmed you're meeting! Have a great time! 💕`,
+  title: language === 'he' ? '🎉 אנחנו נפגשים!' : '🎉 We\'re Meeting!',
+  body: language === 'he'
+    ? `${partnerName} אישר/ה שאתם נפגשים! בהצלחה! 💕`
+    : `${partnerName} confirmed you're meeting! Have a great time! 💕`,
   icon: '/notification-icon-192.png',
   badge: '/notification-badge-72.png',
   tag: `meeting-${matchId}`,
@@ -174,20 +184,23 @@ export const queuePushNotification = async (
 
 /**
  * ✅ Queue match notification
+ * ✅ v2.8.26: Added language support
  */
 export const sendMatchPushNotification = async (
   recipientUserId: string,
   matchedUserName: string,
   matchedUserPhoto: string,
   matchId: string,
-  fromUserId: string
+  fromUserId: string,
+  language: 'en' | 'he' = 'en'
 ): Promise<void> => {
-  const payload = createMatchNotification(matchedUserName, matchedUserPhoto, matchId, fromUserId);
+  const payload = createMatchNotification(matchedUserName, matchedUserPhoto, matchId, fromUserId, language);
   await queuePushNotification(recipientUserId, payload);
 };
 
 /**
  * ✅ Queue message notification
+ * ✅ v2.8.26: Added language support
  */
 export const sendMessagePushNotification = async (
   recipientUserId: string,
@@ -195,23 +208,26 @@ export const sendMessagePushNotification = async (
   senderPhoto: string,
   messagePreview: string,
   chatId: string,
-  fromUserId: string
+  fromUserId: string,
+  language: 'en' | 'he' = 'en'
 ): Promise<void> => {
-  const payload = createMessageNotification(senderName, senderPhoto, messagePreview, chatId, fromUserId);
+  const payload = createMessageNotification(senderName, senderPhoto, messagePreview, chatId, fromUserId, language);
   await queuePushNotification(recipientUserId, payload);
 };
 
 /**
  * ✅ Queue meeting notification
+ * ✅ v2.8.26: Added language support
  */
 export const sendMeetingPushNotification = async (
   recipientUserId: string,
   partnerName: string,
   partnerPhoto: string,
   matchId: string,
-  fromUserId: string
+  fromUserId: string,
+  language: 'en' | 'he' = 'en'
 ): Promise<void> => {
-  const payload = createMeetingNotification(partnerName, partnerPhoto, matchId, fromUserId);
+  const payload = createMeetingNotification(partnerName, partnerPhoto, matchId, fromUserId, language);
   await queuePushNotification(recipientUserId, payload);
 };
 

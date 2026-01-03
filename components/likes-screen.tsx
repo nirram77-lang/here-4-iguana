@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Heart, Lock, Crown, X } from 'lucide-react'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useLanguage } from '@/lib/LanguageContext'
 
 interface LikesScreenProps {
   userId: string
@@ -33,6 +34,8 @@ export default function LikesScreen({
   onUpgrade,
   onUserClick
 }: LikesScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [likes, setLikes] = useState<LikeUser[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -103,9 +106,9 @@ export default function LikesScreen({
           <X className="h-6 w-6" />
         </button>
         
-        <h1 className="text-2xl font-black text-white flex items-center gap-2">
+        <h1 className={`text-2xl font-black text-white flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Heart className="h-6 w-6 text-red-500 fill-red-500" />
-          Likes
+          {t('likes.title')}
         </h1>
         
         <div className="w-6" />
@@ -154,18 +157,18 @@ export default function LikesScreen({
                   </div>
                 </motion.div>
 
-                <h2 className="text-3xl font-black text-white mb-3">
-                  Premium Feature
+                <h2 className="text-3xl font-black text-white mb-3" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  {t('likes.premiumFeature')}
                 </h2>
                 
-                <p className="text-white/80 mb-2">
-                  See who likes you!
+                <p className="text-white/80 mb-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  {t('likes.seeWhoLikes')}
                 </p>
                 
-                <p className="text-white/60 text-sm mb-6">
+                <p className="text-white/60 text-sm mb-6" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                   {likes.length > 0 
-                    ? `You have ${likes.length} ${likes.length === 1 ? 'like' : 'likes'} waiting!`
-                    : 'Discover your admirers'}
+                    ? (likes.length === 1 ? t('likes.likeWaiting') : t('likes.likesWaiting', { count: likes.length }))
+                    : t('likes.discoverAdmirers')}
                 </p>
 
                 {/* Upgrade Button */}
@@ -173,8 +176,8 @@ export default function LikesScreen({
                   onClick={onUpgrade}
                   className="w-full h-14 text-lg font-bold bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d97706] text-white rounded-2xl"
                 >
-                  <Crown className="mr-2 h-6 w-6" />
-                  Upgrade to Premium
+                  <Crown className={`${isRTL ? 'ml-2' : 'mr-2'} h-6 w-6`} />
+                  {t('likes.upgradePremium')}
                 </Button>
               </motion.div>
             </div>
@@ -193,22 +196,22 @@ export default function LikesScreen({
                 >
                   🦎
                 </motion.div>
-                <p className="text-white/60">Loading likes...</p>
+                <p className="text-white/60">{t('likes.loadingLikes')}</p>
               </div>
             ) : likes.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">💔</div>
-                <h3 className="text-2xl font-bold text-white mb-2">
-                  No Likes Yet
+                <h3 className="text-2xl font-bold text-white mb-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  {t('likes.noLikesYet')}
                 </h3>
-                <p className="text-white/60">
-                  Keep swiping to find your matches!
+                <p className="text-white/60" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  {t('likes.keepSwiping')}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-white/60 text-sm mb-4">
-                  {likes.length} {likes.length === 1 ? 'person' : 'people'} liked you
+                <p className="text-white/60 text-sm mb-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  {likes.length === 1 ? t('likes.personLiked') : t('likes.peopleLiked', { count: likes.length })}
                 </p>
                 
                 {likes.map((likeUser) => (

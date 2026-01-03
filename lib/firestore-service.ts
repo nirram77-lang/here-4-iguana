@@ -6,12 +6,14 @@ import {
   getDocs,
   addDoc,
   deleteDoc,
+  updateDoc,
   query,
   where,
   orderBy,
   limit,
   Timestamp,
   arrayUnion,
+  writeBatch,
 } from "firebase/firestore"
 import { db } from "./firebase"
 import { calculateDistance, getGeohashNeighbors } from "./location-service"
@@ -60,7 +62,7 @@ async function isMatchOnCooldown(userId1: string, userId2: string): Promise<bool
  * ✅ Get set of user IDs that are on match cooldown (matched within 12 hours)
  * Pre-loads all matches for efficient filtering
  */
-async function getMatchesOnCooldown(userId: string): Promise<Set<string>> {
+async function getMatchesOnCooldown(userId: string, currentVenue?: string): Promise<Set<string>> {
   const cooldownSet = new Set<string>()
   
   try {
@@ -89,14 +91,23 @@ async function getMatchesOnCooldown(userId: string): Promise<Set<string>> {
       
       const msSinceMatch = now - matchTime.getTime()
       
-      // If less than 12 hours, add to cooldown set
+      // If less than 12 hours AND same venue → cooldown applies
+      // Different venue → NO cooldown! (viral feature: "fate brought us together again!")
       if (msSinceMatch < MATCH_COOLDOWN_MS) {
+        const matchVenue = data.venue || data.venueId
+        
+        // ✅ NEW: Only apply cooldown if SAME venue!
+        if (currentVenue && matchVenue && matchVenue !== currentVenue) {
+          console.log(`🔥 ${otherUserId.substring(0, 8)} matched at different venue (${matchVenue}) - NO cooldown! Fate! 💕`)
+          return  // Skip - different venue = can match again!
+        }
+        
         cooldownSet.add(otherUserId)
-        console.log(`⏰ ${otherUserId.substring(0, 8)} on cooldown (${Math.round((MATCH_COOLDOWN_MS - msSinceMatch) / 3600000)}h remaining)`)
+        console.log(`⏰ ${otherUserId.substring(0, 8)} on cooldown at SAME venue (${Math.round((MATCH_COOLDOWN_MS - msSinceMatch) / 3600000)}h remaining)`)
       }
     })
     
-    console.log(`📋 Found ${cooldownSet.size} users on match cooldown`)
+    console.log(`📋 Found ${cooldownSet.size} users on venue-specific cooldown`)
     return cooldownSet
   } catch (error) {
     console.error('Error getting matches on cooldown:', error)
@@ -133,6 +144,7 @@ export interface UserProfile {
     ageRange: [number, number]
     lookingFor: 'male' | 'female' | 'both'
     expandSearch?: boolean  // ✅ NEW: Show profiles outside preferred range when running out
+    smokingFilter?: 'any' | 'no' | 'no_or_social'  // ✅ v2.8.27: Filter by smoking preference
   }
   swipedRight: string[]
   swipedLeft: string[]
@@ -233,7 +245,9 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     const userSnap = await getDoc(userRef)
 
     if (userSnap.exists()) {
-      return userSnap.data() as UserProfile
+      // ✅ v2.8.5 FIX: Include uid in the returned profile!
+      // Firestore's doc.data() doesn't include the document ID
+      return { ...userSnap.data(), uid } as UserProfile
     }
     return null
   } catch (error) {
@@ -253,6 +267,7 @@ export const updateUserPreferences = async (
     ageRange?: [number, number]
     lookingFor?: 'male' | 'female' | 'both'
     expandSearch?: boolean
+    smokingFilter?: 'any' | 'no' | 'no_or_social'  // ✅ v2.8.27: Smoking filter
   }
 ): Promise<void> => {
   try {
@@ -308,11 +323,12 @@ export const findNearbyUsers = async (
     
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]
+    const smokingFilter = currentUserProfile.preferences?.smokingFilter || 'any'  // ✅ v2.8.27: Smoking filter
     
     // ✅ 12-hour match cooldown - load users on cooldown
     const matchesOnCooldown = await getMatchesOnCooldown(currentUserId)
     
-    console.log(`👤 Current user: age=${currentUserAge}, gender=${currentUserGender}, looking for ages ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}`)
+    console.log(`👤 Current user: age=${currentUserAge}, gender=${currentUserGender}, looking for ages ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}, smoking filter: ${smokingFilter}`)
     console.log(`⏰ Users on 12h match cooldown: ${matchesOnCooldown.size}`)
     
     const geohashes = getGeohashNeighbors(userLocation.geohash)
@@ -333,8 +349,9 @@ export const findNearbyUsers = async (
 
       const snapshot = await getDocs(q)
 
-      snapshot.forEach((doc) => {
-        const user = doc.data() as UserProfile
+      snapshot.forEach((docSnap) => {
+        // ✅ v2.8.5 FIX: Include uid from document ID!
+        const user = { ...docSnap.data(), uid: docSnap.id } as UserProfile
 
         // Skip current user
         if (user.uid === currentUserId) return
@@ -385,6 +402,19 @@ export const findNearbyUsers = async (
         if (currentUserAge) {
           if (currentUserAge < otherUserAgeRange[0] || currentUserAge > otherUserAgeRange[1]) {
             console.log(`⚠️ User ${user.name} filtered - current user (age ${currentUserAge}) outside their age range ${otherUserAgeRange[0]}-${otherUserAgeRange[1]}`)
+            return
+          }
+        }
+
+        // ✅ v2.8.27: Smoking filter
+        if (smokingFilter !== 'any') {
+          const otherUserSmoking = (user as any).smoking || 'no'  // Default to 'no' if not set
+          if (smokingFilter === 'no' && otherUserSmoking !== 'no') {
+            console.log(`🚬 User ${user.name} filtered - smoker (${otherUserSmoking}), looking for non-smokers only`)
+            return
+          }
+          if (smokingFilter === 'no_or_social' && otherUserSmoking === 'yes') {
+            console.log(`🚬 User ${user.name} filtered - regular smoker, looking for non-smokers or social only`)
             return
           }
         }
@@ -504,10 +534,26 @@ const createMatch = async (userId1: string, userId2: string): Promise<void> => {
     const matchId = [userId1, userId2].sort().join("_")
     const matchRef = doc(db, "matches", matchId)
 
+    // ✅ NEW: Get the venue where this match happened (for venue-based cooldown)
+    let matchVenue: string | null = null
+    try {
+      const user1Doc = await getDoc(doc(db, "users", userId1))
+      if (user1Doc.exists()) {
+        matchVenue = user1Doc.data().checkedInVenue || null
+      }
+    } catch (e) {
+      console.warn('Could not get venue for match:', e)
+    }
+
+    // ✅ v2.8.14: Clear chatEndedBy to ensure fresh chat state for new match
     await setDoc(matchRef, {
       users: [userId1, userId2],
       timestamp: Timestamp.now(),
       chatId: matchId,
+      venue: matchVenue,  // ✅ NEW: Save venue for venue-based cooldown
+      chatEndedBy: [],  // ✅ v2.8.14: Clear any previous "End Chat" status!
+      chatEndedAt: null,  // ✅ v2.8.14: Clear end time
+      status: 'active'  // ✅ v2.8.14: Set initial status
     })
 
     // Add to both users' matches array
@@ -529,7 +575,7 @@ const createMatch = async (userId1: string, userId2: string): Promise<void> => {
       console.warn('⚠️ Could not consume pass:', passError)
     }
     
-    console.log('🎉 Match created:', matchId)
+    console.log('🎉 Match created:', matchId, matchVenue ? `at venue: ${matchVenue}` : '(no venue)')
     
   } catch (error) {
     console.error('Error creating match:', error)
@@ -723,8 +769,9 @@ export const findNearbyAvailableUsers = async (
 
       const snapshot = await getDocs(q)
 
-      snapshot.forEach((doc) => {
-        const user = doc.data() as UserProfile
+      snapshot.forEach((docSnap) => {
+        // ✅ v2.8.5 FIX: Include uid from document ID!
+        const user = { ...docSnap.data(), uid: docSnap.id } as UserProfile
 
         if (user.uid === currentUserId) return
         if ((user as any).isDummy === true) return
@@ -811,23 +858,53 @@ export const updateAvailableStatus = async (
 /**
  * Create or update active match with expiration timer
  * Saves matchExpiresAt as Timestamp in Firestore
+ * @param lockedForUser - If provided, this user needs to pay to unlock the match
  */
 export const createActiveMatch = async (
   userId: string,
   matchedUserId: string,
-  durationMinutes: number = 10
+  durationMinutes: number = 10,
+  lockedForUser?: string  // ✅ NEW: User ID that needs to pay
 ): Promise<Date> => {
   try {
     const matchId = [userId, matchedUserId].sort().join('_')
     const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000)
     
     console.log(`⏰ Creating active match: ${matchId} (expires in ${durationMinutes} minutes)`)
+    if (lockedForUser) {
+      console.log(`🔒 Match locked for user: ${lockedForUser}`)
+    }
+    
+    // ✅ v2.8.4 CRITICAL: Clear previous chat history for FRESH START!
+    // This ensures: clean chat, pink button works, suggested messages appear!
+    console.log(`🧹 Clearing previous chat history for fresh start...`)
+    try {
+      // ✅ v2.8.5 FIX: Messages are stored in 'matches' collection, not 'chats'!
+      const messagesRef = collection(db, 'matches', matchId, 'messages')
+      const messagesSnap = await getDocs(messagesRef)
+      
+      if (!messagesSnap.empty) {
+        console.log(`🧹 Deleting ${messagesSnap.size} old messages from chat: ${matchId}`)
+        const batch = writeBatch(db)
+        messagesSnap.forEach((docSnap) => {
+          batch.delete(docSnap.ref)
+        })
+        await batch.commit()
+        console.log('✅ Previous chat cleared - fresh start!')
+      } else {
+        console.log('✅ Chat already clean - no old messages')
+      }
+    } catch (chatClearError) {
+      console.error('⚠️ Error clearing chat (non-critical):', chatClearError)
+      // Continue anyway - not critical
+    }
     
     await setDoc(doc(db, 'activeMatches', matchId), {
       users: [userId, matchedUserId],
       createdAt: Timestamp.now(),
       expiresAt: Timestamp.fromDate(expiresAt),
-      isActive: true
+      isActive: true,
+      lockedForUsers: lockedForUser ? [lockedForUser] : []  // ✅ NEW: Track locked users
     })
     
     console.log(`✅ Active match created, expires at: ${expiresAt.toLocaleString()}`)
@@ -881,15 +958,80 @@ export const getActiveMatchExpiration = async (
 }
 
 /**
+ * Check if a user is locked on a specific match (needs to pay)
+ */
+export const isUserLockedOnMatch = async (
+  userId: string,
+  matchedUserId: string
+): Promise<boolean> => {
+  try {
+    const matchId = [userId, matchedUserId].sort().join('_')
+    const matchDoc = await getDoc(doc(db, 'activeMatches', matchId))
+    
+    if (!matchDoc.exists()) {
+      return false  // No match = not locked
+    }
+    
+    const data = matchDoc.data()
+    const lockedUsers = data.lockedForUsers || []
+    
+    const isLocked = lockedUsers.includes(userId)
+    console.log(`🔒 User ${userId.slice(0, 8)}... locked on match: ${isLocked}`)
+    
+    return isLocked
+  } catch (error) {
+    console.error('Error checking if user locked on match:', error)
+    return false  // Default to not locked on error
+  }
+}
+
+/**
+ * Unlock a match for a user (after payment)
+ */
+export const unlockMatchForUser = async (
+  userId: string,
+  matchedUserId: string
+): Promise<void> => {
+  try {
+    const matchId = [userId, matchedUserId].sort().join('_')
+    const matchRef = doc(db, 'activeMatches', matchId)
+    const matchDoc = await getDoc(matchRef)
+    
+    if (!matchDoc.exists()) {
+      console.log('❌ No match to unlock')
+      return
+    }
+    
+    const data = matchDoc.data()
+    const lockedUsers = data.lockedForUsers || []
+    
+    // Remove user from locked list
+    const updatedLockedUsers = lockedUsers.filter((id: string) => id !== userId)
+    
+    await updateDoc(matchRef, {
+      lockedForUsers: updatedLockedUsers
+    })
+    
+    console.log(`🔓 Match unlocked for user ${userId.slice(0, 8)}...`)
+  } catch (error) {
+    console.error('Error unlocking match:', error)
+    throw error
+  }
+}
+
+/**
  * ✅ NEW: Get active match for a user (without knowing matched user)
  * This is used when app is reopened from memory to restore match state
  */
 export const getActiveMatchForUser = async (userId: string): Promise<{
   matchedUser: any | null
   expiresAt: Date | null
+  createdAt?: Date | null  // ✅ NEW: When match was created (for Chat First logic)
   status?: string  // ✅ NEW: 'matched' | 'successful' | 'meeting'
   meetingStartedAt?: Date | null  // ✅ NEW: When meeting started
   matchId?: string  // ✅ NEW: For reference
+  lockedForUsers?: string[]  // ✅ NEW: Users who need to pay
+  meetingConfirmedBy?: string | null  // ✅ v2.8.13: Who clicked "We're Meeting"
 } | null> => {
   try {
     console.log(`🔍 Searching for active match for user: ${userId}`)
@@ -916,7 +1058,25 @@ export const getActiveMatchForUser = async (userId: string): Promise<{
     const expiresAt = matchData.expiresAt.toDate()
     const now = new Date()
     
-    if (expiresAt <= now) {
+    // ✅ v2.8.18 FIX: If status is 'meeting', use meetingStartedAt + 20 min instead of expiresAt!
+    const status = matchData.status || 'matched'
+    const meetingStartedAt = matchData.meetingStartedAt ? matchData.meetingStartedAt.toDate() : null
+    
+    if (status === 'meeting' && meetingStartedAt) {
+      // Meeting mode - check meeting timer (20 minutes from meeting start)
+      const meetingEndTime = new Date(meetingStartedAt.getTime() + 20 * 60 * 1000)
+      
+      if (now > meetingEndTime) {
+        console.log(`⏰ Meeting time expired (started: ${meetingStartedAt.toLocaleString()})`)
+        const otherUserId = matchData.users.find((id: string) => id !== userId)
+        if (otherUserId) {
+          await clearActiveMatch(userId, otherUserId)
+        }
+        return null
+      }
+      
+      console.log(`🎉 Meeting still active! Time remaining: ${Math.round((meetingEndTime.getTime() - now.getTime()) / 60000)} min`)
+    } else if (expiresAt <= now) {
       console.log(`⏰ Match expired, clearing...`)
       const otherUserId = matchData.users.find((id: string) => id !== userId)
       if (otherUserId) {
@@ -941,17 +1101,24 @@ export const getActiveMatchForUser = async (userId: string): Promise<{
       return null
     }
     
+    const lockedForUsers = matchData.lockedForUsers || []
+    const isLocked = lockedForUsers.includes(userId)
+    
     console.log(`✅ Active match found! Matched with: ${matchedUserProfile.name}`)
     console.log(`⏰ Match expires at: ${expiresAt.toLocaleString()}`)
     console.log(`📊 Match status: ${matchData.status || 'matched'}`)
+    console.log(`🔒 User locked: ${isLocked}`)
     
-    // ✅ NEW: Return status and meetingStartedAt for Enjoy Mode restoration
+    // ✅ NEW: Return status, meetingStartedAt, createdAt, and lockedForUsers
     return {
       matchedUser: matchedUserProfile,
       expiresAt,
+      createdAt: matchData.createdAt ? matchData.createdAt.toDate() : null,
       status: matchData.status || 'matched',
       meetingStartedAt: matchData.meetingStartedAt ? matchData.meetingStartedAt.toDate() : null,
-      matchId: matchDoc.id
+      matchId: matchDoc.id,
+      lockedForUsers,
+      meetingConfirmedBy: matchData.meetingConfirmedBy || null  // ✅ v2.8.13: Who clicked "We're Meeting"
     }
   } catch (error) {
     console.error('Error getting active match for user:', error)
@@ -1038,14 +1205,17 @@ export const markMatchAsSuccessful = async (
     }, { merge: true })
     
     // ✅ Also save to 'matches' collection for 12-hour cooldown
+    // ✅ v2.8.14: CRITICAL - Clear chatEndedBy to prevent "HAS LEFT" showing incorrectly!
     await setDoc(doc(db, 'matches', matchId), {
       users: [userId, matchedUserId].sort(),
       status: 'meeting',  // ✅ Changed from 'successful' to 'meeting'
       timestamp: Timestamp.now(),
       meetingStartedAt: Timestamp.now(),
-      meetingConfirmedBy: userId
+      meetingConfirmedBy: userId,
+      chatEndedBy: [],  // ✅ v2.8.14: Clear any previous "End Chat" status!
+      chatEndedAt: null  // ✅ v2.8.14: Clear end time
     }, { merge: true })
-    console.log(`✅ Match saved to 'matches' collection with 'meeting' status`)
+    console.log(`✅ Match saved to 'matches' collection with 'meeting' status (chatEndedBy cleared)`)
     
     // ✅ Send notification to the OTHER user!
     await sendWeAreMeetingNotification(userId, matchedUserId)
@@ -1085,13 +1255,36 @@ export const markMeetingAsCompleted = async (
     }, { merge: true })
     
     console.log(`✅ Meeting marked as completed: ${matchId}`)
+    
+    // ✅ NEW: Create notifications for BOTH users so they can access chat history
+    const userIds = matchId.split('_')
+    if (userIds.length === 2) {
+      await createMeetingCompletedNotifications(userIds[0], userIds[1], matchId)
+    }
+    
   } catch (error) {
     console.error('Error marking meeting as completed:', error)
   }
 }
 
 /**
- * ✅ NEW: Send "We're Meeting!" notification to the other user
+ * ✅ DISABLED: Meeting completed notifications - clutters notification screen
+ * Users can still access chat history through their recent chats
+ */
+export const createMeetingCompletedNotifications = async (
+  user1Id: string,
+  user2Id: string,
+  matchId: string
+): Promise<void> => {
+  // ✅ DISABLED: No longer creating in-app notifications for meeting completion
+  // Chat history is still accessible through the chat system
+  console.log(`📭 Skipping meeting_completed notifications (disabled) for ${user1Id} and ${user2Id}`)
+  return
+}
+
+/**
+ * ✅ UPDATED: Send "We're Meeting!" notification - PUSH only, no in-app clutter
+ * Push notification brings user back to app where they see the modal
  */
 async function sendWeAreMeetingNotification(
   senderId: string,
@@ -1105,23 +1298,11 @@ async function sendWeAreMeetingNotification(
     const senderName = senderData?.name || senderData?.displayName || 'Your match'
     const senderPhoto = senderData?.photos?.[0] || senderData?.photoURL || ''
     
-    // 1️⃣ Save to notifications collection (real-time in-app!)
-    await addDoc(collection(db, 'notifications'), {
-      userId: recipientId,
-      type: 'meeting',
-      title: '🎉 We\'re Meeting!',
-      subtitle: `${senderName} confirmed you're meeting!`,
-      message: `${senderName} clicked "We're Meeting!" - Have a great time!`,
-      fromUserId: senderId,
-      fromUserName: senderName,
-      fromUserPhoto: senderPhoto,
-      timestamp: Timestamp.now(),
-      isRead: false
-    })
+    // ✅ REMOVED: In-app notification (clutters notification screen)
+    // User will see modal when they open app from push notification
+    console.log('📱 Skipping in-app notification for meeting (user sees modal instead)')
     
-    console.log('🔔 In-app notification sent to:', recipientId)
-    
-    // 2️⃣ Send PUSH notification via OneSignal API!
+    // ✅ KEEP: Send PUSH notification via OneSignal API (for when user is outside app)
     try {
       const matchId = [senderId, recipientId].sort().join('_')
       const response = await fetch('/api/send-notification', {
@@ -1148,12 +1329,11 @@ async function sendWeAreMeetingNotification(
         console.error('❌ Push API error:', error)
       }
     } catch (pushError) {
-      console.error('⚠️ Push notification failed (in-app still sent):', pushError)
+      console.error('⚠️ Push notification failed:', pushError)
     }
     
   } catch (error) {
     console.error('❌ Error sending "We\'re Meeting" notification:', error)
-    // Don't throw - notification failure shouldn't break the meeting confirmation
   }
 }
 
@@ -1202,7 +1382,7 @@ export const getMatchStatus = async (
 export interface Notification {
   id: string
   userId?: string  // ✅ Optional - not stored in subcollection
-  type: 'match' | 'message' | 'like' | 'event' | 'venue_announcement' | 'meeting'
+  type: 'match' | 'message' | 'like' | 'event' | 'venue_announcement' | 'meeting' | 'meeting_completed'
   title: string
   subtitle: string
   body?: string  // ✅ Message body
@@ -1287,15 +1467,27 @@ export const getNotifications = async (
  */
 export const markNotificationAsRead = async (userId: string, notificationId: string): Promise<void> => {
   try {
-    const notificationRef = doc(db, 'users', userId, 'notifications', notificationId)
-    await setDoc(notificationRef, {
+    // ✅ FIXED: Notifications are stored in top-level 'notifications' collection
+    const notificationRef = doc(db, 'notifications', notificationId)
+    
+    // ✅ FIXED: Field name is 'isRead' to match how notifications are created
+    await updateDoc(notificationRef, {
       isRead: true
-    }, { merge: true })
+    })
     
     console.log(`✅ Notification marked as read: ${notificationId}`)
   } catch (error) {
     console.error('Error marking notification as read:', error)
-    throw new Error('Failed to mark notification as read')
+    // Try user subcollection as fallback
+    try {
+      const userNotificationRef = doc(db, 'users', userId, 'notifications', notificationId)
+      await updateDoc(userNotificationRef, {
+        isRead: true
+      })
+      console.log(`✅ Notification marked as read (user subcollection): ${notificationId}`)
+    } catch (fallbackError) {
+      console.error('Error marking notification as read (both paths failed):', fallbackError)
+    }
   }
 }
 
@@ -1303,13 +1495,33 @@ export const markNotificationAsRead = async (userId: string, notificationId: str
  * Delete a notification
  */
 export const deleteNotification = async (userId: string, notificationId: string): Promise<void> => {
+  console.log(`🗑️ deleteNotification called: userId=${userId}, notificationId=${notificationId}`)
+  
   try {
-    const notificationRef = doc(db, 'users', userId, 'notifications', notificationId)
-    await deleteDoc(notificationRef)
+    // ✅ FIXED: Notifications are stored in top-level 'notifications' collection, NOT under users
+    const notificationRef = doc(db, 'notifications', notificationId)
+    console.log(`   Path: notifications/${notificationId}`)
     
-    console.log(`🗑️ Notification deleted: ${notificationId}`)
+    // Check if document exists first
+    const docSnap = await getDoc(notificationRef)
+    if (!docSnap.exists()) {
+      console.log(`   ⚠️ Notification not found at top-level, trying user subcollection...`)
+      // Try user subcollection as fallback (for old notifications)
+      const userNotificationRef = doc(db, 'users', userId, 'notifications', notificationId)
+      const userDocSnap = await getDoc(userNotificationRef)
+      if (userDocSnap.exists()) {
+        await deleteDoc(userNotificationRef)
+        console.log(`   ✅ Deleted from user subcollection`)
+        return
+      }
+      console.log(`   ❌ Notification not found in either location`)
+      throw new Error('Notification not found')
+    }
+    
+    await deleteDoc(notificationRef)
+    console.log(`   ✅ Notification deleted from top-level collection`)
   } catch (error) {
-    console.error('Error deleting notification:', error)
+    console.error('❌ Error deleting notification:', error)
     throw new Error('Failed to delete notification')
   }
 }
@@ -1319,10 +1531,12 @@ export const deleteNotification = async (userId: string, notificationId: string)
  */
 export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
   try {
-    const notificationsRef = collection(db, 'users', userId, 'notifications')
+    // ✅ FIXED: Notifications are stored in top-level 'notifications' collection
+    const notificationsRef = collection(db, 'notifications')
     const q = query(
       notificationsRef,
-      where('isRead', '==', false)
+      where('userId', '==', userId),
+      where('read', '==', false)  // ✅ FIXED: Field name is 'read', not 'isRead'
     )
     
     const snapshot = await getDocs(q)
@@ -1337,7 +1551,8 @@ export const getUnreadNotificationCount = async (userId: string): Promise<number
 }
 
 /**
- * Create match notification for both users
+ * ✅ UPDATED: Create match notifications - PUSH only, no in-app clutter
+ * User already sees match screen, no need for in-app notification
  */
 export const createMatchNotifications = async (
   user1Id: string,
@@ -1350,31 +1565,10 @@ export const createMatchNotifications = async (
   try {
     const matchId = [user1Id, user2Id].sort().join('_')
     
-    // 1️⃣ In-app notification for user 1
-    await createNotification(user1Id, {
-      type: 'match',
-      title: 'New Match! 🦎',
-      subtitle: `You matched with ${user2Name}`,
-      icon: '🦎',
-      fromUserId: user2Id,
-      fromUserName: user2Name,
-      fromUserPhoto: user2Photo,
-      matchId
-    })
+    // ✅ DISABLED: In-app notifications (user already sees match screen)
+    console.log('📭 Skipping in-app notifications for match (user sees match screen)')
     
-    // 2️⃣ In-app notification for user 2
-    await createNotification(user2Id, {
-      type: 'match',
-      title: 'New Match! 🦎',
-      subtitle: `You matched with ${user1Name}`,
-      icon: '🦎',
-      fromUserId: user1Id,
-      fromUserName: user1Name,
-      fromUserPhoto: user1Photo,
-      matchId
-    })
-    
-    // 3️⃣ PUSH notifications via OneSignal!
+    // ✅ KEEP: PUSH notifications via OneSignal (for when user is outside app)
     try {
       // Push to user 1
       await fetch('/api/send-notification', {
@@ -1407,7 +1601,7 @@ export const createMatchNotifications = async (
       console.error('⚠️ Push notifications failed:', pushError)
     }
     
-    console.log(`✅ Match notifications created for ${user1Name} & ${user2Name}`)
+    console.log(`✅ Match push notifications created for ${user1Name} & ${user2Name}`)
   } catch (error) {
     console.error('Error creating match notifications:', error)
     throw new Error('Failed to create match notifications')
@@ -1457,9 +1651,11 @@ export const getUsersByVenue = async (
     
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]
+    const smokingFilter = currentUserProfile.preferences?.smokingFilter || 'any'  // ✅ v2.8.27: Smoking filter
     
-    // ✅ 12-hour match cooldown - load users on cooldown
-    const matchesOnCooldown = await getMatchesOnCooldown(currentUserId)
+    // ✅ VENUE-BASED COOLDOWN: Only applies at SAME venue!
+    // Different venue = "fate brought us together!" = no cooldown 🔥
+    const matchesOnCooldown = await getMatchesOnCooldown(currentUserId, venueId)
     
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
     console.log(`👤 CURRENT USER PROFILE:`)
@@ -1468,8 +1664,10 @@ export const getUsersByVenue = async (
     console.log(`   Age: ${currentUserAge}`)
     console.log(`   Looking for: ${lookingFor}`)
     console.log(`   Age range: ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}`)
+    console.log(`   Smoking filter: ${smokingFilter}`)
     console.log(`   Onboarding complete: ${currentUserProfile.onboardingComplete}`)
-    console.log(`⏰ Users on 12h match cooldown: ${matchesOnCooldown.size}`)
+    console.log(`⏰ Users on venue-specific cooldown: ${matchesOnCooldown.size}`)
+    console.log(`🔥 Different venue = NO cooldown (fate feature!)`)
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
     
     // Query users checked in at this venue
@@ -1484,8 +1682,9 @@ export const getUsersByVenue = async (
     
     const users: UserProfile[] = []
     
-    snapshot.forEach(doc => {
-      const userData = doc.data() as UserProfile
+    snapshot.forEach(docSnap => {
+      // ✅ v2.8.5 FIX: Include uid from document ID!
+      const userData = { ...docSnap.data(), uid: docSnap.id } as UserProfile
       
       console.log(`\n🔍 Checking user: ${userData.name || 'Unknown'} (${userData.uid?.substring(0, 8)}...)`)
       
@@ -1506,10 +1705,10 @@ export const getUsersByVenue = async (
         return
       }
       
-      // ✅ 12-hour cooldown: Skip users that matched within last 12 hours
-      // This prevents re-matching too quickly after a successful match
+      // ✅ VENUE-BASED COOLDOWN: Skip users that matched at THIS venue within 12 hours
+      // Different venue = "fate!" = they CAN match again 🔥
       if (matchesOnCooldown.has(userData.uid)) {
-        console.log(`   ⏭️ SKIP: Match cooldown (12h) - matched recently`)
+        console.log(`   ⏭️ SKIP: Same-venue cooldown (12h) - matched at this venue recently`)
         return
       }
       
@@ -1522,12 +1721,6 @@ export const getUsersByVenue = async (
       // ✅ NEW: Skip deleted users
       if (userData.deleted === true) {
         console.log(`   ⏭️ SKIP: User account was deleted`)
-        return
-      }
-      
-      // ✅ 12-hour cooldown: Skip users that matched within last 12 hours
-      if (matchesOnCooldown.has(userData.uid)) {
-        console.log(`   ⏭️ SKIP: Match cooldown (12h) - matched recently`)
         return
       }
       
@@ -1561,6 +1754,19 @@ export const getUsersByVenue = async (
       if (currentUserAge) {
         if (currentUserAge < otherUserAgeRange[0] || currentUserAge > otherUserAgeRange[1]) {
           console.log(`   ⏭️ SKIP: YOUR age (${currentUserAge}) is outside THEIR age range (${otherUserAgeRange[0]}-${otherUserAgeRange[1]})`)
+          return
+        }
+      }
+      
+      // ✅ v2.8.27: Smoking filter
+      if (smokingFilter !== 'any') {
+        const otherUserSmoking = userData.smoking || 'no'  // Default to 'no' if not set
+        if (smokingFilter === 'no' && otherUserSmoking !== 'no') {
+          console.log(`   🚬 SKIP: Smoker (${otherUserSmoking}), looking for non-smokers only`)
+          return
+        }
+        if (smokingFilter === 'no_or_social' && otherUserSmoking === 'yes') {
+          console.log(`   🚬 SKIP: Regular smoker, looking for non-smokers or social only`)
           return
         }
       }
@@ -1623,5 +1829,323 @@ export const getUserVenue = async (userId: string): Promise<string | null> => {
   } catch (error) {
     console.error('❌ Error getting user venue:', error)
     return null
+  }
+}
+
+/**
+ * ✅ CRITICAL: Clear all swipe references to a user from other users' profiles
+ * Called when a user re-creates their profile after account deletion
+ * This ensures the "new" user isn't blocked by old swipe data
+ */
+export const clearSwipeReferencesToUser = async (userId: string): Promise<number> => {
+  console.log(`🧹 Clearing swipe references to user: ${userId}`)
+  
+  let clearedCount = 0
+  
+  try {
+    // Get all users
+    const usersSnapshot = await getDocs(collection(db, 'users'))
+    
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data()
+      let needsUpdate = false
+      const updates: any = {}
+      
+      // Check swipedRight
+      if (userData.swipedRight && Array.isArray(userData.swipedRight)) {
+        if (userData.swipedRight.includes(userId)) {
+          updates.swipedRight = userData.swipedRight.filter((id: string) => id !== userId)
+          needsUpdate = true
+          console.log(`   🗑️ Removing from ${userData.name || userDoc.id}'s swipedRight`)
+        }
+      }
+      
+      // Check swipedLeft
+      if (userData.swipedLeft && Array.isArray(userData.swipedLeft)) {
+        if (userData.swipedLeft.includes(userId)) {
+          updates.swipedLeft = userData.swipedLeft.filter((id: string) => id !== userId)
+          needsUpdate = true
+          console.log(`   🗑️ Removing from ${userData.name || userDoc.id}'s swipedLeft`)
+        }
+      }
+      
+      // Update if needed
+      if (needsUpdate) {
+        await updateDoc(doc(db, 'users', userDoc.id), updates)
+        clearedCount++
+      }
+    }
+    
+    console.log(`🧹 Cleared swipe references from ${clearedCount} users`)
+    return clearedCount
+    
+  } catch (error) {
+    console.error('❌ Error clearing swipe references:', error)
+    return clearedCount
+  }
+}
+
+/**
+ * ✅ Clear match cooldown entries for a user
+ * Called when a user re-creates their profile after account deletion
+ */
+export const clearMatchCooldownsForUser = async (userId: string): Promise<number> => {
+  console.log(`🧹 Clearing match cooldowns for user: ${userId}`)
+  
+  let clearedCount = 0
+  
+  try {
+    // Query matchCooldowns collection for entries involving this user
+    const cooldownsRef = collection(db, 'matchCooldowns')
+    const snapshot = await getDocs(cooldownsRef)
+    
+    for (const docSnap of snapshot.docs) {
+      // matchCooldown IDs are formatted as "userId1_userId2" (sorted)
+      if (docSnap.id.includes(userId)) {
+        await deleteDoc(doc(db, 'matchCooldowns', docSnap.id))
+        clearedCount++
+        console.log(`   🗑️ Deleted cooldown: ${docSnap.id}`)
+      }
+    }
+    
+    console.log(`🧹 Cleared ${clearedCount} match cooldowns`)
+    return clearedCount
+    
+  } catch (error) {
+    console.error('❌ Error clearing match cooldowns:', error)
+    return clearedCount
+  }
+}
+
+/**
+ * ✅ NEW: Check if both users have sent at least one message in the chat
+ * This is required before "We're Meeting!" button is enabled
+ */
+export const checkBidirectionalChat = async (
+  matchId: string,
+  user1Id: string,
+  user2Id: string,
+  matchCreatedAt?: Date  // ✅ NEW: Only count messages AFTER this timestamp
+): Promise<{
+  hasBidirectionalChat: boolean
+  user1HasSent: boolean
+  user2HasSent: boolean
+  messageCount: number
+}> => {
+  try {
+    console.log(`💬 Checking bidirectional chat for match: ${matchId}`)
+    console.log(`   user1Id: ${user1Id}`)
+    console.log(`   user2Id: ${user2Id}`)
+    if (matchCreatedAt) {
+      console.log(`   Only counting messages after: ${matchCreatedAt.toLocaleString()}`)
+    }
+    
+    // Get all messages in this chat
+    // ✅ v2.8.5 FIX: Messages are stored in 'matches' collection, not 'chats'!
+    const messagesRef = collection(db, 'matches', matchId, 'messages')
+    const messagesSnap = await getDocs(messagesRef)
+    
+    console.log(`💬 Found ${messagesSnap.size} total messages in matches/${matchId}/messages`)
+    
+    if (messagesSnap.empty) {
+      console.log('💬 No messages yet - bidirectional: false')
+      return {
+        hasBidirectionalChat: false,
+        user1HasSent: false,
+        user2HasSent: false,
+        messageCount: 0
+      }
+    }
+    
+    let user1HasSent = false
+    let user2HasSent = false
+    let relevantMessageCount = 0
+    
+    messagesSnap.docs.forEach(doc => {
+      const data = doc.data()
+      const senderId = data.senderId
+      const messageTime = data.timestamp?.toDate ? data.timestamp.toDate() : 
+                          data.createdAt?.toDate ? data.createdAt.toDate() : null
+      
+      console.log(`💬 Message: senderId=${senderId?.slice(0,8)}..., time=${messageTime?.toLocaleString() || 'null'}, text="${data.text?.slice(0,20)}..."`)
+      
+      // ✅ NEW: Skip messages from BEFORE the current match
+      if (matchCreatedAt && messageTime && messageTime < matchCreatedAt) {
+        console.log(`   ⏭️ SKIPPED (before match created)`)
+        return  // Skip old messages
+      }
+      
+      relevantMessageCount++
+      console.log(`   ✅ COUNTED as relevant`)
+      
+      if (senderId === user1Id) {
+        user1HasSent = true
+        console.log(`   → User1 sent this message`)
+      } else if (senderId === user2Id) {
+        user2HasSent = true
+        console.log(`   → User2 sent this message`)
+      } else {
+        console.log(`   ⚠️ Unknown sender!`)
+      }
+    })
+    
+    const hasBidirectionalChat = user1HasSent && user2HasSent
+    
+    console.log(`💬 Bidirectional chat check:`)
+    console.log(`   User1 (${user1Id.slice(0, 8)}...) sent: ${user1HasSent}`)
+    console.log(`   User2 (${user2Id.slice(0, 8)}...) sent: ${user2HasSent}`)
+    console.log(`   Bidirectional: ${hasBidirectionalChat}`)
+    console.log(`   Relevant messages (this match): ${relevantMessageCount}`)
+    console.log(`   Total messages (all time): ${messagesSnap.size}`)
+    
+    return {
+      hasBidirectionalChat,
+      user1HasSent,
+      user2HasSent,
+      messageCount: relevantMessageCount
+    }
+    
+  } catch (error) {
+    console.error('❌ Error checking bidirectional chat:', error)
+    return {
+      hasBidirectionalChat: false,
+      user1HasSent: false,
+      user2HasSent: false,
+      messageCount: 0
+    }
+  }
+}
+
+/**
+ * 💕 Save meeting feedback from user
+ * Called after Enjoy Mode ends to collect user's experience
+ */
+export const saveMeetingFeedback = async (
+  userId: string,
+  matchId: string,
+  partnerId: string,
+  partnerName: string,
+  feedback: {
+    rating: 'positive' | 'negative'
+    feedbackText: string
+  }
+): Promise<void> => {
+  try {
+    console.log(`💕 Saving meeting feedback from ${userId} for match ${matchId}`)
+    
+    const feedbackDoc = {
+      matchId,
+      userId,
+      partnerId: partnerId,
+      partnerName,
+      rating: feedback.rating,
+      feedbackText: feedback.feedbackText,
+      submittedAt: Timestamp.now(),
+      createdAt: Timestamp.now()
+    }
+    
+    // Save to meetingFeedback collection
+    await addDoc(collection(db, 'meetingFeedback'), feedbackDoc)
+    
+    // Also mark that this user has submitted feedback for this match
+    await setDoc(doc(db, 'users', userId, 'feedbackSubmitted', matchId), {
+      submittedAt: Timestamp.now(),
+      rating: feedback.rating
+    })
+    
+    console.log('✅ Meeting feedback saved successfully')
+  } catch (error) {
+    console.error('❌ Error saving meeting feedback:', error)
+    throw error
+  }
+}
+
+/**
+ * 💕 Check if user has pending feedback to submit
+ * Returns the match info if feedback is pending
+ */
+export const checkPendingFeedback = async (
+  userId: string
+): Promise<{
+  hasPendingFeedback: boolean
+  matchId?: string
+  partnerId?: string
+  partnerName?: string
+  partnerPhoto?: string
+  meetingEndedAt?: Date
+} | null> => {
+  try {
+    console.log(`🔍 Checking pending feedback for user ${userId}`)
+    
+    // Look for completed meetings where this user hasn't submitted feedback
+    const pendingRef = doc(db, 'users', userId, 'pendingFeedback', 'current')
+    const pendingDoc = await getDoc(pendingRef)
+    
+    if (!pendingDoc.exists()) {
+      console.log('📭 No pending feedback found')
+      return { hasPendingFeedback: false }
+    }
+    
+    const data = pendingDoc.data()
+    console.log('📋 Pending feedback found:', data)
+    
+    return {
+      hasPendingFeedback: true,
+      matchId: data.matchId,
+      partnerId: data.partnerId,
+      partnerName: data.partnerName,
+      partnerPhoto: data.partnerPhoto,
+      meetingEndedAt: data.meetingEndedAt?.toDate()
+    }
+  } catch (error) {
+    console.error('❌ Error checking pending feedback:', error)
+    return { hasPendingFeedback: false }
+  }
+}
+
+/**
+ * 💕 Set pending feedback for user
+ * Called when Enjoy Mode ends to mark that user should provide feedback
+ */
+export const setPendingFeedback = async (
+  userId: string,
+  matchId: string,
+  partnerId: string,
+  partnerName: string,
+  partnerPhoto?: string
+): Promise<void> => {
+  try {
+    console.log(`📝 Setting pending feedback for user ${userId}`)
+    
+    const pendingRef = doc(db, 'users', userId, 'pendingFeedback', 'current')
+    await setDoc(pendingRef, {
+      matchId,
+      partnerId,
+      partnerName,
+      partnerPhoto: partnerPhoto || null,
+      meetingEndedAt: Timestamp.now()
+    })
+    
+    console.log('✅ Pending feedback set')
+  } catch (error) {
+    console.error('❌ Error setting pending feedback:', error)
+    throw error
+  }
+}
+
+/**
+ * 💕 Clear pending feedback after user submits or skips
+ */
+export const clearPendingFeedback = async (userId: string): Promise<void> => {
+  try {
+    console.log(`🗑️ Clearing pending feedback for user ${userId}`)
+    
+    const pendingRef = doc(db, 'users', userId, 'pendingFeedback', 'current')
+    await deleteDoc(pendingRef)
+    
+    console.log('✅ Pending feedback cleared')
+  } catch (error) {
+    console.error('❌ Error clearing pending feedback:', error)
+    // Don't throw - not critical
   }
 }

@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChevronLeft, Calendar } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface OnboardingAgeProps {
   onNext: (data: { age: number; ageRange: [number, number]; minDistance: number; maxDistance: number }) => void
@@ -22,6 +23,19 @@ export default function OnboardingAge({
   initialAgeRange = [21, 35],
   initialMaxDistance = 500
 }: OnboardingAgeProps) {
+  const { t, isRTL } = useLanguage()
+
+  // ✅ NEW: Real viewport height for old Android/iOS
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  
+  useEffect(() => {
+    const updateViewportHeight = () => setViewportHeight(window.innerHeight)
+    updateViewportHeight()
+    window.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('orientationchange', () => setTimeout(updateViewportHeight, 100))
+    return () => window.removeEventListener('resize', updateViewportHeight)
+  }, [])
+
   // ✅ Calculate age from birth date
   const calculateAge = (birthDate: Date): number => {
     const today = new Date()
@@ -61,7 +75,7 @@ export default function OnboardingAge({
       
       // Validation
       if (calculatedAge < 18) {
-        setError("You must be at least 18 years old")
+        setError(t('onboarding.age.mustBe18'))
         return
       }
       
@@ -113,7 +127,13 @@ export default function OnboardingAge({
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] overflow-hidden">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] overflow-y-auto"
+      style={{ 
+        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        paddingBottom: '100px'
+      }}
+    >
       {/* Header with back button */}
       <div className="flex items-center justify-between p-4 flex-shrink-0">
         <Button
@@ -157,11 +177,12 @@ export default function OnboardingAge({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="text-center space-y-4"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             <h1 className="text-3xl font-bold text-white mb-2">
-              When's your birthday?
+              {t('onboarding.age.title')}
             </h1>
-            <p className="text-white/60 mb-6 text-sm">Your age will be shown on your profile</p>
+            <p className="text-white/60 mb-6 text-sm">{t('onboarding.age.subtitle')}</p>
 
             {/* ✅ Date Picker */}
             <div className="relative">
@@ -209,8 +230,8 @@ export default function OnboardingAge({
             transition={{ delay: 0.4 }}
             className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10"
           >
-            <h2 className="text-xl font-bold text-white mb-4 text-center">
-              Age Range Preferences
+            <h2 className="text-xl font-bold text-white mb-4 text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('onboarding.age.ageRange')}
             </h2>
 
             {/* Age Range Display */}
@@ -301,8 +322,8 @@ export default function OnboardingAge({
             transition={{ delay: 0.6 }}
             className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10"
           >
-            <h2 className="text-xl font-bold text-white mb-4 text-center">
-              Maximum Distance
+            <h2 className="text-xl font-bold text-white mb-4 text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('onboarding.age.maxDistance')}
             </h2>
 
             {/* Distance Display */}
@@ -351,8 +372,8 @@ export default function OnboardingAge({
                   [&::-moz-range-thumb]:shadow-lg"
               />
             </div>
-            <p className="text-white/40 text-xs text-center mt-4">
-              Maximum distance from your current location
+            <p className="text-white/40 text-xs text-center mt-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('onboarding.age.distanceInfo')}
             </p>
           </motion.div>
         </div>
@@ -369,7 +390,7 @@ export default function OnboardingAge({
             text-[#0d2920] shadow-xl shadow-[#4ade80]/30
             disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Continue
+          {t('common.continue')}
         </Button>
       </div>
     </div>

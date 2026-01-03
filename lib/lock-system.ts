@@ -115,7 +115,7 @@ export async function unlockUser(
     await updateDoc(userRef, {
       isLocked: false,
       lockUntil: 0,
-      passesLeft: 1,
+      passesLeft: 4,  // ✅ v2.8.15: Was 1, now 4
       matchesCountToday: 0,
       lastMatchTimestamp: 0
     })

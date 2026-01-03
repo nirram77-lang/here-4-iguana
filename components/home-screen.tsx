@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { X, Heart, MessageCircle, Bell, User as UserIcon, RefreshCw, Target } from "lucide-react"
+import { X, Heart, MessageCircle, Bell, User as UserIcon, RefreshCw, Target, Map, Building2 } from "lucide-react"
 import DatingCard from "./dating-card"
 import AvailableToggle from "./available-toggle"
 import HiddenState from "./hidden-state"
@@ -12,6 +12,7 @@ import DebugPanel from "./debug-panel"  // ✅ NEW: Debug panel for pilot testin
 import { useAuth } from "@/lib/AuthContext"
 import { useAvailableStatus } from "@/lib/useAvailableStatus"
 import { getUserProfile, updateUserPreferences } from "@/lib/firestore-service"  // ✅ NEW
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface HomeScreenProps {
   onNavigate: (screen: "home" | "notifications" | "profile" | "chat") => void
@@ -33,6 +34,8 @@ interface HomeScreenProps {
     expiresAt: Date
   } | null
   onShowVenueStatus?: () => void  // ✅ NEW: Show venue details modal
+  onSwitchMode?: () => void  // ✅ NEW: Switch between Venue/Zone mode
+  appMode?: 'venue' | 'zone' | null  // ✅ NEW: Current app mode
 }
 
 export default function HomeScreen({
@@ -50,12 +53,46 @@ export default function HomeScreen({
   hasActiveMatch = false,
   onScan,  // ✅ NEW: QR Scanner callback
   venueData,  // ✅ NEW: Current venue info
-  onShowVenueStatus  // ✅ NEW: Show venue details modal
+  onShowVenueStatus,  // ✅ NEW: Show venue details modal
+  onSwitchMode,  // ✅ NEW: Switch between Venue/Zone mode
+  appMode  // ✅ NEW: Current app mode
 }: HomeScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [currentIndex, setCurrentIndex] = useState(0)
   const [direction, setDirection] = useState<'left' | 'right' | null>(null)
   const [showSearchSettings, setShowSearchSettings] = useState(false)  // ✅ NEW: Renamed from showDistanceModal
   const [showDebugPanel, setShowDebugPanel] = useState(false)  // ✅ NEW: Debug panel for pilot
+  
+  // ✅ v2.8.26 FIX: Track previous real user IDs to detect NEW real users
+  const prevRealUserIdsRef = useRef<Set<string>>(new Set())
+  
+  // ✅ v2.8.26 FIX: Reset index when NEW real users appear (priority over dummies!)
+  useEffect(() => {
+    // Get current real user IDs (non-dummy)
+    const currentRealUserIds = new Set(
+      nearbyUsers
+        .filter(u => !u.isDummy && !u.uid?.startsWith('dummy_'))
+        .map(u => u.uid)
+    )
+    
+    // Check if there are NEW real users that weren't in the previous set
+    const newRealUsers: string[] = []
+    currentRealUserIds.forEach(id => {
+      if (!prevRealUserIdsRef.current.has(id)) {
+        newRealUsers.push(id)
+      }
+    })
+    
+    // If new real users appeared, reset index to show them first!
+    if (newRealUsers.length > 0 && currentIndex > 0) {
+      console.log(`🚀 NEW REAL USERS DETECTED: ${newRealUsers.length} - resetting to first card!`)
+      setCurrentIndex(0)
+    }
+    
+    // Update the ref for next comparison
+    prevRealUserIdsRef.current = currentRealUserIds
+  }, [nearbyUsers])
   
   // ✅ NEW: Long press detection for debug panel (3 seconds)
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -66,7 +103,8 @@ export default function HomeScreen({
     radius: maxDistance || 500,
     ageRange: [18, 80] as [number, number],
     lookingFor: 'both' as 'male' | 'female' | 'both',
-    expandSearch: false
+    expandSearch: false,
+    smokingFilter: 'any' as 'any' | 'no' | 'no_or_social'  // ✅ NEW: Smoking filter
   })
   
   // ✅ NEW: First-time user detection for QR scan hint
@@ -89,7 +127,8 @@ export default function HomeScreen({
             radius: profile.preferences.maxDistance || 500,
             ageRange: profile.preferences.ageRange || [18, 80],
             lookingFor: profile.preferences.lookingFor || 'both',
-            expandSearch: profile.preferences.expandSearch || false
+            expandSearch: profile.preferences.expandSearch || false,
+            smokingFilter: profile.preferences.smokingFilter || 'any'  // ✅ NEW
           })
         }
       } catch (error) {
@@ -131,10 +170,21 @@ export default function HomeScreen({
   const currentUser = nearbyUsers[currentIndex]
 
   const handleSwipe = (swipeDirection: 'left' | 'right') => {
+    console.log(`🔄 handleSwipe called: ${swipeDirection}`)
+    console.log(`   current direction state: ${direction}`)
+    
+    // ✅ Prevent double-clicks during animation
+    if (direction !== null) {
+      console.log(`   ⚠️ BLOCKED: direction is not null (${direction})`)
+      return
+    }
+    
     setDirection(swipeDirection)
+    console.log(`   ✅ Direction set to: ${swipeDirection}`)
 
     // If swiped right and there's a match callback
     if (swipeDirection === 'right' && onMatch && currentUser) {
+      console.log(`   💚 Calling onMatch for: ${currentUser.name}`)
       onMatch(currentUser)
     }
     
@@ -144,11 +194,13 @@ export default function HomeScreen({
       onPass(currentUser)
     }
 
-    // Move to next card after animation
+    // ✅ v2.8.6 FIX: Wait for exit animation to FULLY complete
+    // Exit animation is 300ms, wait 350ms to be safe
     setTimeout(() => {
-      setCurrentIndex(prev => prev + 1)
-      setDirection(null)
-    }, 300)
+      console.log(`   🔄 Clearing direction and moving to next`)
+      setDirection(null)  // Clear direction FIRST
+      setCurrentIndex(prev => prev + 1)  // Then update index
+    }, 350)
   }
 
   const handleButtonSwipe = (swipeDirection: 'left' | 'right') => {
@@ -193,6 +245,7 @@ export default function HomeScreen({
     ageRange: [number, number]
     lookingFor: 'male' | 'female' | 'both'
     expandSearch: boolean
+    smokingFilter: 'any' | 'no' | 'no_or_social'  // ✅ NEW
   }) => {
     try {
       if (!user?.uid) return
@@ -205,7 +258,8 @@ export default function HomeScreen({
         maxDistance: settings.radius,
         ageRange: settings.ageRange,
         lookingFor: settings.lookingFor,
-        expandSearch: settings.expandSearch
+        expandSearch: settings.expandSearch,
+        smokingFilter: settings.smokingFilter  // ✅ NEW
       })
       
       // Update parent if callback provided
@@ -228,28 +282,42 @@ export default function HomeScreen({
   const noMoreUsers = currentIndex >= nearbyUsers.length
 
   return (
-    <div className="flex h-screen flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] overflow-hidden">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] overflow-hidden" 
+      style={{ 
+        height: 'var(--app-height, 100dvh)',
+        minHeight: 'var(--app-height, 100dvh)',
+        maxHeight: 'var(--app-height, 100dvh)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        paddingTop: 'env(safe-area-inset-top, 0px)'
+      }}
+    >
       {/* Top Bar - Hollywood Clean Design */}
-      <div className="flex items-center justify-between px-3 py-3 bg-[#0d2920]/50 border-b border-[#4ade80]/20">
-        {/* Left: Iguana Scan QR only */}
-        <div className="flex items-center flex-shrink-0 w-12">
-          {/* Iguana with Scan QR - ALWAYS visible */}
-          {onScan ? (
+      <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 bg-[#0d2920]/50 border-b border-[#4ade80]/20">
+        {/* Left: SCAN + Zone Button */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* SCAN Button - Only in Venue Mode (not in Zone Mode) */}
+          {onScan && appMode !== 'zone' ? (
             <div className="relative">
               {/* ✅ First-time user hint (only for first-timers) */}
               {showQRHint && (
                 <motion.div
-                  initial={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-[#4ade80] text-[#0d2920] px-4 py-2 rounded-lg shadow-lg z-50 whitespace-nowrap"
+                  className="absolute top-full mt-3 left-1/2 transform -translate-x-1/2 bg-[#4ade80] text-[#0d2920] px-4 py-2 rounded-lg shadow-lg z-50 whitespace-nowrap"
                 >
-                  <div className="flex items-center gap-2">
+                  {/* Arrow pointing UP at the button */}
+                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-[#4ade80]"></div>
+                  <div className="flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                     <span className="text-xl">📍</span>
-                    <span className="text-sm font-bold">סרוק QR code להתחברות למקום</span>
+                    <span className="text-sm font-bold">{isRTL ? 'סרוק QR להתחברות למקום' : 'Scan QR to connect'}</span>
                   </div>
-                  {/* Arrow pointing down */}
-                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-[#4ade80]"></div>
                 </motion.div>
               )}
               
@@ -273,23 +341,14 @@ export default function HomeScreen({
                 } : {}}
                 transition={{ duration: 2, repeat: showQRHint ? Infinity : 0 }}
               >
-                {/* ✅ Iguana with side-to-side animation */}
                 <motion.div
-                  animate={{ 
-                    x: [-3, 3, -3],  // Side to side
-                    rotate: [0, -5, 5, -5, 0]  // Slight rotation
-                  }}
-                  transition={{ 
-                    duration: 3, 
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  className="text-2xl"
+                  animate={{ x: [-2, 2, -2], rotate: [0, -5, 5, -5, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="text-xl"
                 >
                   🦎
                 </motion.div>
-                {/* ✅ Text - always visible, small and elegant */}
-                <span className="text-[8px] font-semibold tracking-wider text-[#4ade80]/90 uppercase">
+                <span className="text-[7px] font-semibold tracking-wider text-[#4ade80]/90 uppercase">
                   Scan
                 </span>
               </motion.button>
@@ -298,18 +357,50 @@ export default function HomeScreen({
             <motion.div
               animate={{ rotate: [0, -10, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              className="text-3xl"
+              className="text-2xl"
             >
               🦎
             </motion.div>
           )}
+          
+          {/* ✅ Zone Button - Luxurious Bronze/Black Round */}
+          {onSwitchMode && (
+            <motion.button
+              onClick={onSwitchMode}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative w-9 h-9 rounded-full flex items-center justify-center overflow-hidden"
+              style={{
+                background: 'linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 50%, #3d3d3d 100%)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), 0 0 12px rgba(205,127,50,0.25)',
+                border: '1.5px solid rgba(205,127,50,0.5)'
+              }}
+              title="Switch to Zone Mode"
+            >
+              {/* Shimmer effect */}
+              <motion.div
+                className="absolute inset-0 pointer-events-none rounded-full"
+                animate={{
+                  background: [
+                    'linear-gradient(90deg, transparent 0%, rgba(205,127,50,0.15) 50%, transparent 100%)',
+                    'linear-gradient(90deg, transparent 100%, rgba(205,127,50,0.2) 150%, transparent 200%)'
+                  ],
+                  x: ['-100%', '100%']
+                }}
+                transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 2 }}
+              />
+              <Map className="h-4 w-4 relative z-10" style={{ color: '#cd7f32' }} />
+            </motion.button>
+          )}
         </div>
         
-        {/* Center: Title + Venue Badge */}
-        <div className="flex items-center gap-2 flex-1 justify-center">
-          {/* ✅ Title with long press for Debug Panel */}
+        {/* Center: Title + Venue Badge (smaller, display only) */}
+        <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
+          {/* ✅ Title - smaller, display only */}
           <h1 
-            className="font-sans text-xl font-bold text-white select-none cursor-pointer"
+            className="font-sans text-base font-bold text-white select-none cursor-pointer tracking-wide"
             onTouchStart={handleLongPressStart}
             onTouchEnd={handleLongPressEnd}
             onTouchCancel={handleLongPressEnd}
@@ -328,19 +419,51 @@ export default function HomeScreen({
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 bg-white/15 px-2.5 py-1 rounded-full border border-white/30"
+              className="flex items-center gap-1 bg-white/15 px-2 py-0.5 rounded-full border border-white/30"
               title={venueData.venueName}
             >
-              <div className="w-2.5 h-2.5 bg-[#4ade80] rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]" />
-              <span className="text-[10px] font-bold text-[#ff6b6b] max-w-[70px] truncate">
+              <div className="w-2 h-2 bg-[#4ade80] rounded-full animate-pulse shadow-[0_0_6px_rgba(74,222,128,0.6)]" />
+              <span className="text-[9px] font-bold text-[#4ade80] max-w-[50px] truncate">
                 {venueData.venueName.split(' - ')[0]}
               </span>
             </motion.button>
           )}
         </div>
         
-        {/* Right: Search + Available + Refresh - Hollywood sizing */}
+        {/* Right: Join Venue + Search + Available + Refresh - Hollywood sizing */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* ✅ v2.8.6: Join a Venue Button - Zone Mode Only - Premium Style! */}
+          {appMode === 'zone' && onScan && (
+            <motion.button
+              onClick={onScan}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative w-9 h-9 rounded-full flex items-center justify-center overflow-hidden"
+              style={{
+                background: 'linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 50%, #3d3d3d 100%)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), 0 0 12px rgba(74,222,128,0.25)',
+                border: '1.5px solid rgba(74,222,128,0.5)'
+              }}
+              title="Join a Venue"
+            >
+              {/* Shimmer effect */}
+              <motion.div
+                className="absolute inset-0 pointer-events-none rounded-full"
+                animate={{
+                  background: [
+                    'linear-gradient(90deg, transparent 0%, rgba(74,222,128,0.2) 50%, transparent 100%)',
+                    'linear-gradient(90deg, transparent 100%, rgba(74,222,128,0.3) 150%, transparent 200%)'
+                  ],
+                  x: ['-100%', '100%']
+                }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5 }}
+              />
+              <span className="text-base relative z-10">🍸</span>
+            </motion.button>
+          )}
+          
           {/* ✅ Search Settings - FIRST (leftmost for quick access) */}
           <button
             onClick={() => setShowSearchSettings(true)}
@@ -389,11 +512,11 @@ export default function HomeScreen({
               className="text-center"
             >
               <div className="text-8xl mb-6 animate-bounce">🦎</div>
-              <h2 className="text-2xl font-bold text-white mb-4">
-                Searching for nearby users...
+              <h2 className="text-2xl font-bold text-white mb-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('loading.searching')}
               </h2>
-              <p className="text-white/60">
-                We're scanning your area
+              <p className="text-white/60" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('loading.scanningArea')}
               </p>
             </motion.div>
           ) : noMoreUsers ? (
@@ -405,31 +528,36 @@ export default function HomeScreen({
               className="text-center"
             >
               <div className="text-8xl mb-6">🦎</div>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                No More Profiles
+              <h2 className="text-3xl font-bold text-white mb-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('loading.noMoreProfiles')}
               </h2>
-              <p className="text-white/60 mb-6">
+              <p className="text-white/60 mb-6" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                 {nearbyUsers.length === 0 
-                  ? "No nearby users right now. Check back soon!"
-                  : "You've seen everyone nearby! Check back later for new people."}
+                  ? t('loading.noUsersNearby')
+                  : t('loading.seenEveryone')}
               </p>
               <Button
                 onClick={handleStartOver}
                 className="bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold px-8 py-6 text-lg"
               >
-                Refresh
+                {t('loading.refresh')}
               </Button>
             </motion.div>
           ) : (
             <motion.div
-              key={currentIndex}
-              initial={{ scale: 0.9, opacity: 0 }}
+              key={`card-${currentIndex}`}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{
-                x: direction === 'left' ? -500 : direction === 'right' ? 500 : 0,
+                x: direction === 'left' ? -400 : direction === 'right' ? 400 : 0,
                 opacity: 0,
-                rotate: direction === 'left' ? -20 : direction === 'right' ? 20 : 0,
-                transition: { duration: 0.3 }
+                rotate: direction === 'left' ? -15 : direction === 'right' ? 15 : 0,
+              }}
+              transition={{ 
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+                duration: 0.3
               }}
             >
               <DatingCard
@@ -441,39 +569,92 @@ export default function HomeScreen({
         </AnimatePresence>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - ✅ v2.8.19: Fixed for iOS 12! */}
       {!noMoreUsers && !loading && isAvailable && (
-        <div className="flex items-center justify-center gap-6 p-4">
+        <div className="flex-shrink-0 flex items-center justify-center gap-6 p-4 pb-2">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => handleButtonSwipe('left')}
+            onTouchStart={(e) => {
+              // ✅ v2.8.19: Mark that this is a touch interaction
+              (e.currentTarget as any)._isTouchEvent = true
+            }}
+            onTouchEnd={(e) => {
+              // ✅ v2.8.19: onTouchEnd for iOS (including iOS 12!)
+              e.preventDefault()
+              console.log('❌ PASS onTouchEnd!')
+              if (!isLocked && direction === null) {
+                handleButtonSwipe('left')
+              }
+            }}
+            onClick={(e) => {
+              // ✅ v2.8.19: onClick only for non-touch (desktop)
+              if ((e.currentTarget as any)._isTouchEvent) {
+                (e.currentTarget as any)._isTouchEvent = false
+                return // Skip - already handled by onTouchEnd
+              }
+              console.log('❌ PASS onClick!')
+              if (!isLocked && direction === null) {
+                handleButtonSwipe('left')
+              }
+            }}
             disabled={isLocked}
-            className="h-16 w-16 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center hover:bg-red-500/30 transition-all shadow-lg disabled:opacity-50"
+            className="h-14 w-14 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center hover:bg-red-500/30 transition-all shadow-lg disabled:opacity-50 flex-shrink-0"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }}
           >
-            <X className="h-8 w-8 text-red-500" />
+            <X className="h-7 w-7 text-red-500" />
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => handleButtonSwipe('right')}
+            onTouchStart={(e) => {
+              // ✅ v2.8.19: Mark that this is a touch interaction
+              (e.currentTarget as any)._isTouchEvent = true
+            }}
+            onTouchEnd={(e) => {
+              // ✅ v2.8.19: onTouchEnd for iOS (including iOS 12!)
+              e.preventDefault()
+              console.log('💚 AWESOME onTouchEnd!')
+              console.log('   isLocked:', isLocked)
+              console.log('   direction:', direction)
+              if (!isLocked && direction === null) {
+                handleButtonSwipe('right')
+              }
+            }}
+            onClick={(e) => {
+              // ✅ v2.8.19: onClick only for non-touch (desktop)
+              if ((e.currentTarget as any)._isTouchEvent) {
+                (e.currentTarget as any)._isTouchEvent = false
+                return // Skip - already handled by onTouchEnd
+              }
+              console.log('💚 AWESOME onClick!')
+              if (!isLocked && direction === null) {
+                handleButtonSwipe('right')
+              }
+            }}
             disabled={isLocked}
-            className="h-20 w-20 rounded-full bg-[#4ade80]/30 border-4 border-[#4ade80] flex items-center justify-center hover:bg-[#4ade80]/40 transition-all shadow-xl disabled:opacity-50"
+            className="h-18 w-18 rounded-full bg-[#4ade80]/30 border-4 border-[#4ade80] flex items-center justify-center hover:bg-[#4ade80]/40 transition-all shadow-xl disabled:opacity-50 flex-shrink-0"
+            style={{ height: '72px', width: '72px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }}
           >
-            <Heart className="h-10 w-10 text-[#4ade80]" fill="currentColor" />
+            <Heart className="h-9 w-9 text-[#4ade80]" fill="currentColor" />
           </motion.button>
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <div className="flex items-center justify-around p-3 bg-[#0d2920]/80 border-t border-[#4ade80]/20">
+      {/* Bottom Navigation - ✅ v2.8.25: Fixed with safe-area */}
+      <div 
+        className="flex-shrink-0 flex items-center justify-around p-2 bg-[#0d2920]/90 backdrop-blur-sm border-t border-[#4ade80]/20"
+        style={{
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))'
+        }}
+      >
         <button
           onClick={() => onNavigate("home")}
           className="flex flex-col items-center gap-1"
         >
           <div className="text-2xl">🦎</div>
-          <span className="text-xs text-[#4ade80] font-semibold">Home</span>
+          <span className="text-xs text-[#4ade80] font-semibold">{t('nav.home')}</span>
         </button>
 
         <button
@@ -481,7 +662,7 @@ export default function HomeScreen({
           className="flex flex-col items-center gap-1"
         >
           <Bell className="h-6 w-6 text-white/60" />
-          <span className="text-xs text-white/60">Notifications</span>
+          <span className="text-xs text-white/60">{t('nav.notifications')}</span>
         </button>
 
         {hasActiveMatch && (
@@ -490,7 +671,7 @@ export default function HomeScreen({
             className="flex flex-col items-center gap-1 relative"
           >
             <MessageCircle className="h-6 w-6 text-[#4ade80]" />
-            <span className="text-xs text-[#4ade80] font-semibold">Chats</span>
+            <span className="text-xs text-[#4ade80] font-semibold">{t('nav.chats')}</span>
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#4ade80] rounded-full border-2 border-[#0d2920] animate-pulse" />
           </button>
         )}
@@ -500,7 +681,7 @@ export default function HomeScreen({
           className="flex flex-col items-center gap-1"
         >
           <UserIcon className="h-6 w-6 text-white/60" />
-          <span className="text-xs text-white/60">Profile</span>
+          <span className="text-xs text-white/60">{t('nav.profile')}</span>
         </button>
       </div>
 
@@ -512,6 +693,7 @@ export default function HomeScreen({
         currentAgeRange={searchPreferences.ageRange}
         currentGender={searchPreferences.lookingFor}
         currentExpandSearch={searchPreferences.expandSearch}
+        currentSmokingFilter={searchPreferences.smokingFilter}
         onSave={handleSaveSettings}
       />
 

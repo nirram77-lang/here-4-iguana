@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getVenue, Venue } from '@/lib/venue-service'
-import { Smartphone, Download, ArrowRight } from 'lucide-react'
+import { Smartphone, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function CheckInLandingPage() {
@@ -143,7 +143,7 @@ export default function CheckInLandingPage() {
           
           {/* Title */}
           <h1 className="text-3xl font-black text-white text-center mb-2">
-            Welcome to
+            ברוכים הבאים
           </h1>
           <h2 className="text-4xl font-black text-[#4ade80] text-center mb-6">
             {venue.displayName}
@@ -162,8 +162,8 @@ export default function CheckInLandingPage() {
                 <span className="text-[#4ade80] font-bold">1</span>
               </div>
               <div>
-                <p className="text-white font-semibold">Download I4IGUANA</p>
-                <p className="text-white/60 text-sm">Get the app from App Store or Google Play</p>
+                <p className="text-white font-semibold">לחץ על הכפתור</p>
+                <p className="text-white/60 text-sm">להתחברות לפאנל הניהול</p>
               </div>
             </div>
 
@@ -172,8 +172,8 @@ export default function CheckInLandingPage() {
                 <span className="text-[#4ade80] font-bold">2</span>
               </div>
               <div>
-                <p className="text-white font-semibold">Check In</p>
-                <p className="text-white/60 text-sm">Scan the QR code to check in at this venue</p>
+                <p className="text-white font-semibold">הזן פרטי התחברות</p>
+                <p className="text-white/60 text-sm">אימייל וסיסמא שקיבלת</p>
               </div>
             </div>
 
@@ -182,31 +182,21 @@ export default function CheckInLandingPage() {
                 <span className="text-[#4ade80] font-bold">3</span>
               </div>
               <div>
-                <p className="text-white font-semibold">Start Matching</p>
-                <p className="text-white/60 text-sm">Meet people at the venue right now!</p>
+                <p className="text-white font-semibold">התחל לנהל!</p>
+                <p className="text-white/60 text-sm">צפה בסטטיסטיקות ונהל את המקום</p>
               </div>
             </div>
           </div>
 
           {/* Buttons */}
           <div className="space-y-3">
-            {/* Already Have App */}
+            {/* Admin Login Button */}
             <Button
-              onClick={handleOpenInApp}
+              onClick={() => router.push('/admin/login')}
               className="w-full h-14 text-lg font-bold bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] rounded-2xl"
             >
               <ArrowRight className="mr-2 h-5 w-5" />
-              Open in I4IGUANA App
-            </Button>
-
-            {/* Download App */}
-            <Button
-              onClick={handleDownloadApp}
-              variant="outline"
-              className="w-full h-14 text-lg font-bold border-2 border-[#4ade80]/30 hover:bg-[#4ade80]/10 text-white rounded-2xl"
-            >
-              <Download className="mr-2 h-5 w-5" />
-              Download App
+              התחבר לפאנל הניהול
             </Button>
           </div>
 

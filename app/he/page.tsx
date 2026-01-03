@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import PilotButton from '@/components/PilotButton'
+import VenueTicker from '@/components/VenueTicker'
 
 export default function HebrewLandingPage() {
   const [scrollY, setScrollY] = useState(0)
@@ -13,8 +15,49 @@ export default function HebrewLandingPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Share functionality
+  const handleShare = async (method: string) => {
+    const url = 'https://i4iguana.com/he'
+    const title = 'I4IGUANA - מהפכת ההיכרויות בזמן אמת'
+    const text = 'הכירו אנשים אמיתיים קרוב אליכם! בלי סוויפים אינסופיים. מפגש אמיתי. עכשיו.'
+
+    switch (method) {
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank')
+        break
+      case 'email':
+        window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + url)}`, '_blank')
+        break
+      case 'copy':
+        await navigator.clipboard.writeText(url)
+        alert('הקישור הועתק!')
+        break
+      case 'native':
+        if (navigator.share) {
+          await navigator.share({ title, text, url })
+        }
+        break
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden" dir="rtl">
+    <div 
+      className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden landing-page" 
+      dir="rtl"
+      style={{
+        touchAction: 'manipulation',
+        overscrollBehavior: 'none',
+        WebkitOverflowScrolling: 'touch'
+      }}
+    >
+      
+      {/* Floating Hearts - Fixed on screen */}
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+        <div className="absolute bottom-0 left-[10%] text-pink-400/50 text-3xl animate-floatHeart" style={{animationDelay: '0s'}}>💕</div>
+        <div className="absolute bottom-0 left-[30%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '1.5s'}}>💕</div>
+        <div className="absolute bottom-0 right-[15%] text-pink-400/50 text-3xl animate-floatHeart" style={{animationDelay: '3s'}}>💕</div>
+        <div className="absolute bottom-0 right-[35%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '4.5s'}}>💕</div>
+      </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* NAVIGATION */}
@@ -39,33 +82,53 @@ export default function HebrewLandingPage() {
               </span>
               
               {/* Launch Pilot Button */}
-              <Link 
-                href="#"
-                className="mr-3 px-3 py-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-full font-semibold text-black text-xs shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all whitespace-nowrap animate-shimmer"
-                style={{ backgroundSize: '200% 100%' }}
-              >
-                <span role="img" aria-label="rocket">🚀</span> פיילוט בקרוב
-              </Link>
+              <div className="mr-3">
+                <PilotButton lang="he" />
+              </div>
             </div>
 
             {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-4">
               <a href="#how-it-works" className="text-gray-300 hover:text-green-400 transition-colors">איך זה עובד</a>
               <a href="#features" className="text-gray-300 hover:text-green-400 transition-colors">יתרונות</a>
               <a href="#for-venues" className="text-gray-300 hover:text-green-400 transition-colors">לבעלי מועדונים</a>
               <a href="#download" className="text-gray-300 hover:text-green-400 transition-colors">הורדה</a>
+              
+              {/* PT Language Button */}
+              <Link 
+                href="/br"
+                className="group relative px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
+              >
+                <span className="relative flex items-center gap-1">
+                  <svg className="w-5 h-4" viewBox="0 0 640 480">
+                    <path fill="#229e45" d="M0 0h640v480H0z"/>
+                    <path fill="#f8e509" d="M321.4 36.2L594.8 240l-273.4 203.8L48 240z"/>
+                    <circle fill="#2b49a3" cx="321.4" cy="240" r="68.8"/>
+                    <path fill="#fff" d="M270 210c30-18 73-18 103 0-3 8-8 15-15 20-25-14-48-14-73 0-7-5-12-12-15-20z"/>
+                  </svg>
+                  <span>PT</span>
+                </span>
+              </Link>
+
+              {/* EN Language Button */}
               <Link 
                 href="/"
-                className="group relative px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
+                className="group relative px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white hover:bg-white/20 hover:border-white/50 transition-all"
               >
-                <span className="absolute inset-0 rounded-full bg-white/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                <span className="relative flex items-center gap-1.5">
-                  <span className="text-base">🌐</span>
+                <span className="relative flex items-center gap-1">
+                  <svg className="w-5 h-4" viewBox="0 0 640 480">
+                    <path fill="#012169" d="M0 0h640v480H0z"/>
+                    <path fill="#FFF" d="M75 0l244 181L562 0h78v62L400 241l240 178v61h-80L320 301 81 480H0v-60l239-178L0 64V0h75z"/>
+                    <path fill="#C8102E" d="M424 281l216 159v40L369 281h55zm-184 20l6 35L54 480H0l240-179zM640 0v3L391 191l2-44L590 0h50zM0 0l239 176h-60L0 42V0z"/>
+                    <path fill="#FFF" d="M241 0v480h160V0H241zM0 160v160h640V160H0z"/>
+                    <path fill="#C8102E" d="M0 193v96h640v-96H0zM273 0v480h96V0h-96z"/>
+                  </svg>
                   <span>EN</span>
                 </span>
               </Link>
+
               <Link 
-                href="/download"
+                href="/app"
                 className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all"
               >
                 פתח אפליקציה
@@ -87,22 +150,56 @@ export default function HebrewLandingPage() {
 
           {/* Mobile Menu */}
           {menuOpen && (
-            <div className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4 space-y-4">
-              <a href="#how-it-works" className="block text-gray-300 hover:text-green-400">איך זה עובד</a>
-              <a href="#features" className="block text-gray-300 hover:text-green-400">יתרונות</a>
-              <a href="#for-venues" className="block text-gray-300 hover:text-green-400">לבעלי מועדונים</a>
-              <a href="#download" className="block text-gray-300 hover:text-green-400">הורדה</a>
+            <div className="md:hidden absolute top-full left-0 right-0 bg-[#0a1f1a]/98 backdrop-blur-lg border-b border-white/10 px-6 py-6 space-y-4 shadow-2xl">
+              <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">איך זה עובד</a>
+              <a href="#features" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">יתרונות</a>
+              <a href="#for-venues" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">לבעלי מועדונים</a>
+              <a href="#download" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">הורדה</a>
+              <div className="flex items-center gap-2">
+                <Link 
+                  href="/br" 
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
+                >
+                  <svg className="w-5 h-4" viewBox="0 0 640 480">
+                    <path fill="#229e45" d="M0 0h640v480H0z"/>
+                    <path fill="#f8e509" d="M321.4 36.2L594.8 240l-273.4 203.8L48 240z"/>
+                    <circle fill="#2b49a3" cx="321.4" cy="240" r="68.8"/>
+                    <path fill="#fff" d="M270 210c30-18 73-18 103 0-3 8-8 15-15 20-25-14-48-14-73 0-7-5-12-12-15-20z"/>
+                  </svg>
+                  <span>PT</span>
+                </Link>
+                <Link 
+                  href="/" 
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
+                >
+                  <svg className="w-5 h-4" viewBox="0 0 640 480">
+                    <path fill="#012169" d="M0 0h640v480H0z"/>
+                    <path fill="#FFF" d="M75 0l244 181L562 0h78v62L400 241l240 178v61h-80L320 301 81 480H0v-60l239-178L0 64V0h75z"/>
+                    <path fill="#C8102E" d="M424 281l216 159v40L369 281h55zm-184 20l6 35L54 480H0l240-179zM640 0v3L391 191l2-44L590 0h50zM0 0l239 176h-60L0 42V0z"/>
+                    <path fill="#FFF" d="M241 0v480h160V0H241zM0 160v160h640V160H0z"/>
+                    <path fill="#C8102E" d="M0 193v96h640v-96H0zM273 0v480h96V0h-96z"/>
+                  </svg>
+                  <span>EN</span>
+                </Link>
+              </div>
+              
+              {/* Share - Mobile */}
+              <div className="flex items-center gap-2 py-2">
+                <button onClick={() => handleShare('whatsapp')} className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full text-sm font-bold text-white">
+                  💬 וואטסאפ
+                </button>
+                <button onClick={() => handleShare('email')} className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-sm font-bold text-white">
+                  📧 אימייל
+                </button>
+                <button onClick={() => handleShare('copy')} className="px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white">
+                  🔗 העתק
+                </button>
+              </div>
+
+              <Link href="/he/terms" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">תנאי שימוש</Link>
               <Link 
-                href="/" 
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white"
-              >
-                <span>🌐</span>
-                <span>EN</span>
-              </Link>
-              <Link href="/he/terms" className="block text-gray-300 hover:text-green-400">תנאי שימוש</Link>
-              <Link 
-                href="/download"
-                className="block w-full text-center px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold"
+                href="/app"
+                className="block w-full text-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-semibold mt-4"
               >
                 פתח אפליקציה
               </Link>
@@ -110,6 +207,13 @@ export default function HebrewLandingPage() {
           )}
         </div>
       </nav>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* FLOATING VENUE TICKER - Physical LEFT side of screen            */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <div className="hidden lg:block fixed left-4 top-24 z-40">
+        <VenueTicker lang="he" />
+      </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* HERO SECTION */}
@@ -123,12 +227,6 @@ export default function HebrewLandingPage() {
           {/* Animated Circles */}
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-          
-          {/* Floating Hearts */}
-          <div className="absolute bottom-0 left-[10%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '0s'}}>💕</div>
-          <div className="absolute bottom-0 left-[25%] text-pink-400/20 text-xl animate-floatHeart" style={{animationDelay: '2s'}}>💕</div>
-          <div className="absolute bottom-0 right-[15%] text-pink-400/30 text-2xl animate-floatHeart" style={{animationDelay: '4s'}}>💕</div>
-          <div className="absolute bottom-0 right-[35%] text-pink-400/20 text-lg animate-floatHeart" style={{animationDelay: '6s'}}>💕</div>
           
           {/* Radar Effect */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px]">
@@ -158,32 +256,40 @@ export default function HebrewLandingPage() {
             <span className="text-green-400 text-sm font-medium">✨ הכרויות בזמן אמת - פה ועכשיו ✨</span>
           </div>
 
-          {/* Main Heading */}
+          {/* Main Heading - בלי-בלי-נפגשים-עכשיו */}
           <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight animate-fadeInUp">
-            <span className="bg-gradient-to-r from-white via-green-100 to-white bg-clip-text text-transparent">
-              היא בוחרת.
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
-              אתם נפגשים.
+            <span className="text-white">
+              בלי סווייפים אינסופיים.
             </span>
             <br />
             <span className="text-white">
+              בלי משחקים.
+            </span>
+            <br />
+            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(74,222,128,0.5)]">
+              פגישה אמיתית.
+            </span>
+            {' '}
+            <span className="bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
               עכשיו.
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-            בלי סוויפים אינסופיים. בלי פרופילים מזויפים.
-            <br className="hidden md:block" />
-            פגשו <span className="text-pink-400">אנשים אמיתיים</span> במקומות אמיתיים במרחק <span className="text-green-400 font-semibold">10-500 מטר</span>.
+          <p className="text-xl md:text-2xl text-gray-400 mb-4 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+            <span className="text-pink-400">אנשים אמיתיים.</span> <span className="text-white">מקומות אמיתיים.</span> <span className="text-green-400 font-semibold">10-500 מטר ממך.</span>
+          </p>
+          
+          {/* She Decides - כותרת משנה */}
+          <p className="text-lg md:text-xl text-pink-400 font-semibold mb-10 animate-fadeInUp flex items-center justify-center gap-2" style={{animationDelay: '0.3s'}}>
+            <span className="text-pink-500">💜</span>
+            <span>היא בוחרת. אתם נפגשים.</span>
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
             <Link 
-              href="/download"
+              href="/app"
               className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-2"
             >
               <span>פתח אפליקציה</span>
@@ -203,17 +309,17 @@ export default function HebrewLandingPage() {
           <div className="flex items-center justify-center gap-8 md:gap-16 mt-16 animate-fadeInUp" style={{animationDelay: '0.6s'}}>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-green-400">10m</div>
-              <div className="text-gray-500 text-sm">מרחק מינימלי</div>
+              <div className="text-sm md:text-base font-medium" style={{ color: '#8B7355' }}>מרחק מינימלי</div>
             </div>
             <div className="w-px h-12 bg-white/20"></div>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-green-400">500m</div>
-              <div className="text-gray-500 text-sm">טווח מקסימלי</div>
+              <div className="text-sm md:text-base font-medium" style={{ color: '#8B7355' }}>טווח מקסימלי</div>
             </div>
             <div className="w-px h-12 bg-white/20"></div>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-green-400">בזמן</div>
-              <div className="text-gray-500 text-sm">אמת</div>
+              <div className="text-base md:text-lg font-semibold" style={{ color: '#8B7355' }}>אמת</div>
             </div>
           </div>
         </div>
@@ -243,12 +349,88 @@ export default function HebrewLandingPage() {
 
           {/* Steps */}
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Step 1 */}
+            {/* Step 1 - Install App */}
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
                   1
+                </div>
+                <h3 className="text-2xl font-bold mb-4">התקנת אפליקציה</h3>
+                <p className="text-gray-400 mb-4">
+                  הוסיפו את I4IGUANA למסך הבית לחוויה מושלמת. גישה מהירה, התראות מיידיות.
+                </p>
+                {/* Install Button with Tooltip */}
+                <div className="relative group/install">
+                  <button
+                    id="install-app-btn-he"
+                    onClick={() => {
+                      // @ts-ignore
+                      if (window.deferredPrompt) {
+                        // @ts-ignore
+                        window.deferredPrompt.prompt()
+                        // @ts-ignore
+                        window.deferredPrompt.userChoice.then((choiceResult: any) => {
+                          // @ts-ignore
+                          window.deferredPrompt = null
+                        })
+                      } else {
+                        // Fallback: redirect to /app
+                        window.location.href = '/app'
+                      }
+                    }}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    התקנת אפליקציה
+                  </button>
+                  
+                  {/* Tooltip - appears on hover */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-72 opacity-0 invisible group-hover/install:opacity-100 group-hover/install:visible transition-all duration-300 z-50">
+                    {/* Arrow */}
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] rotate-45 border-r border-b border-green-500/30"></div>
+                    
+                    {/* Content Box */}
+                    <div className="relative bg-gradient-to-br from-[#1a3d2e] to-[#0d2920] border border-green-500/30 rounded-xl p-4 shadow-2xl shadow-green-500/20">
+                      <div className="absolute inset-0 bg-green-500/5 rounded-xl blur-xl"></div>
+                      
+                      <div className="relative">
+                        <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">
+                          <span>💡</span>
+                          לא רואים את ההתקנה?
+                        </h4>
+                        
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                            <span className="text-green-400">🤖</span>
+                            <span className="text-gray-300">אנדרואיד: <span className="text-white font-medium">⋮</span> ← התקן אפליקציה</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                            <span className="text-blue-400">🍎</span>
+                            <span className="text-gray-300">אייפון: <span className="text-white font-medium">⬆️</span> ← הוסף למסך הבית</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-green-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm">עובד אופליין</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2 - Check In */}
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
+              <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
+                  2
                 </div>
                 <h3 className="text-2xl font-bold mb-4">צ'ק-אין</h3>
                 <p className="text-gray-400">
@@ -264,28 +446,7 @@ export default function HebrewLandingPage() {
               </div>
             </div>
 
-            {/* Step 2 */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
-              <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-bold mb-6">
-                  2
-                </div>
-                <h3 className="text-2xl font-bold mb-4">גלו</h3>
-                <p className="text-gray-400">
-                  ראו מי נמצא בקרבת מקום ב-10-500 מטר. פרופילים אמיתיים, תמונות אמיתיות, אנשים אמיתיים - עכשיו.
-                </p>
-                <div className="mt-6 flex items-center gap-2 text-green-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span className="text-sm">פרופילים מאומתים</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3 */}
+            {/* Step 3 - She Decides */}
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative bg-[#0d2920] rounded-2xl p-8 h-full border border-green-500/20">
@@ -294,7 +455,7 @@ export default function HebrewLandingPage() {
                 </div>
                 <h3 className="text-2xl font-bold mb-4">היא בוחרת</h3>
                 <p className="text-gray-400">
-                  נשים בשליטה. היא בוחרת את מי לפגוש, מתי ואיפה. אם יש התאמה - נפגשים מיד. בלי המתנה.
+                  נשים בשליטה. היא בוחרת את מי לפגוש. אם יש התאמה - נפגשים מיד. בלי המתנה.
                 </p>
                 <div className="mt-6 flex items-center gap-2 text-green-400">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -331,7 +492,7 @@ export default function HebrewLandingPage() {
               
               <div className="space-y-4">
                 {[
-                  'נשים יוזמות את כל השיחות',
+                  'נשים מחליטות על המפגש',
                   'מיקומים בטוחים ומאומתים GPS',
                   'נוכחות בזמן אמת - בלי קטפישינג',
                   'חסימה ודיווח בלחיצה אחת',
@@ -449,7 +610,7 @@ export default function HebrewLandingPage() {
           {/* App Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link 
-              href="/download"
+              href="/app"
               className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-3"
             >
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
@@ -462,7 +623,7 @@ export default function HebrewLandingPage() {
             </Link>
             
             <Link 
-              href="/download"
+              href="/app"
               className="group px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 rounded-2xl font-bold text-lg shadow-lg hover:shadow-gray-500/30 hover:scale-105 transition-all flex items-center gap-3 border border-white/20"
             >
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
@@ -478,7 +639,7 @@ export default function HebrewLandingPage() {
           {/* QR Code */}
           <div className="inline-block p-6 bg-white rounded-2xl">
             <img 
-              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.i4iguana.com/download&bgcolor=ffffff&color=0d2920"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.i4iguana.com/app&bgcolor=ffffff&color=0d2920"
               alt="סרקו להורדה"
               className="w-36 h-36"
             />
@@ -541,20 +702,14 @@ export default function HebrewLandingPage() {
                 </a>
               </div>
 
-              {/* CTA Buttons */}
-              <div className="space-y-3">
+              {/* CTA Button */}
+              <div className="pt-2">
                 <Link 
                   href="/join?lang=he"
                   className="block w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-bold text-center hover:shadow-lg hover:shadow-green-500/30 transition-all"
                 >
-                  📝 Join Now - Digital Form
+                  📝 הצטרפו עכשיו - טופס דיגיטלי
                 </Link>
-                <a 
-                  href="tel:+972522653170"
-                  className="block w-full py-3 bg-white/10 border border-white/20 rounded-xl font-bold text-center hover:bg-white/20 transition-all"
-                >
-                  📞 Let's Talk Partnership
-                </a>
               </div>
             </div>
           </div>
@@ -575,7 +730,7 @@ export default function HebrewLandingPage() {
               </div>
               <p className="text-gray-400 max-w-sm">
                 מהפכת ההכרויות בזמן אמת. פגשו אנשים אמיתיים במקומות אמיתיים.
-                היא בוחרת, אתם נפגשים - מיד.
+                בלי סווייפים אינסופיים. בלי משחקים. נפגשים באמת.
               </p>
             </div>
 
@@ -595,6 +750,7 @@ export default function HebrewLandingPage() {
               <div className="space-y-2">
                 <Link href="/he/terms" className="block text-gray-400 hover:text-green-400 transition-colors">תנאי שימוש</Link>
                 <Link href="/he/privacy" className="block text-gray-400 hover:text-green-400 transition-colors">מדיניות פרטיות</Link>
+                <Link href="/accessibility" className="block text-gray-400 hover:text-green-400 transition-colors">הצהרת נגישות</Link>
                 <a href="#contact" className="block text-gray-400 hover:text-green-400 transition-colors">צור קשר</a>
               </div>
             </div>
@@ -657,10 +813,10 @@ export default function HebrewLandingPage() {
           }
         }
         @keyframes floatHeart {
-          0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(-100px) scale(1); opacity: 0; }
+          0% { transform: translateY(0) scale(1); opacity: 0; }
+          20% { opacity: 0.8; }
+          80% { opacity: 0.8; }
+          100% { transform: translateY(-100vh) scale(1.3); opacity: 0; }
         }
         .animate-fadeIn {
           animation: fadeIn 1s ease-out forwards;
@@ -669,7 +825,7 @@ export default function HebrewLandingPage() {
           animation: fadeInUp 1s ease-out forwards;
         }
         .animate-floatHeart {
-          animation: floatHeart 10s ease-in-out infinite;
+          animation: floatHeart 8s ease-in-out infinite;
         }
         html {
           scroll-behavior: smooth;

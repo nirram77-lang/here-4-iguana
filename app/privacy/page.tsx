@@ -1,29 +1,32 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function PrivacyPolicy() {
+function PrivacyContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromApp = searchParams.get('from') === 'app'
 
-  // Smart back function - goes back in history or to app
   const handleBack = () => {
-    // Check if there's history to go back to
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      window.history.back()
-    } else {
-      // Fallback to app
+    if (fromApp) {
       router.push('/app')
+    } else {
+      router.push('/')
     }
   }
 
   return (
     <div className="min-h-screen bg-[#0a1f1a] text-white">
-      {/* Header */}
-      <nav className="bg-[#0a1f1a]/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+      {/* Header - with iOS safe area */}
+      <nav 
+        className="bg-[#0a1f1a]/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-50"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
+            <Link href={fromApp ? "/app" : "/"} className="flex items-center gap-3">
               <img src="/notification-icon-192.png" alt="I4IGUANA" className="w-10 h-10" />
               <span className="text-xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
                 I4IGUANA
@@ -31,12 +34,12 @@ export default function PrivacyPolicy() {
             </Link>
             <button 
               onClick={handleBack}
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 min-h-[44px] px-3"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Back
+              {fromApp ? 'Back to App' : 'Back'}
             </button>
           </div>
         </div>
@@ -121,7 +124,37 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">5. Location Privacy</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">5. Venue Partner Notifications</h2>
+            <div className="bg-[#1a4d3e]/30 border border-green-500/30 rounded-xl p-4 mb-4">
+              <p className="text-gray-300 leading-relaxed mb-4">
+                <strong className="text-green-400">Important:</strong> When you check in to a venue (bar, club, or other partner location), 
+                you agree to receive push notifications from that venue's management. Here's what this means:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
+                <li><strong>What venue owners CAN do:</strong> Send collective announcements to all users currently checked in (e.g., "Happy Hour starting now!", "Live DJ at 10pm")</li>
+                <li><strong>What venue owners CANNOT see:</strong> Your name, photo, phone number, or any identifying information. They only see the total count of checked-in users.</li>
+                <li><strong>When notifications stop:</strong> When you check out of the venue or your check-in expires (after 8 hours)</li>
+                <li><strong>Control:</strong> You can disable venue notifications in your device settings at any time</li>
+              </ul>
+            </div>
+            
+            {/* Hebrew Version */}
+            <div className="bg-[#1a4d3e]/30 border border-green-500/30 rounded-xl p-4" dir="rtl">
+              <p className="text-gray-300 leading-relaxed mb-4">
+                <strong className="text-green-400">חשוב:</strong> כאשר אתה מתחבר למועדון (בר, מועדון או מקום שותף אחר), 
+                אתה מסכים לקבל התראות מהנהלת המקום. הנה מה שזה אומר:
+              </p>
+              <ul className="list-disc list-inside text-gray-300 space-y-2 mr-4">
+                <li><strong>מה בעלי המועדון יכולים לעשות:</strong> לשלוח הודעות קולקטיביות לכל המשתמשים המחוברים כרגע (למשל: "Happy Hour מתחיל עכשיו!", "DJ בשעה 22:00")</li>
+                <li><strong>מה בעלי המועדון לא רואים:</strong> את השם שלך, התמונה, מספר טלפון או כל מידע מזהה. הם רואים רק את מספר המשתמשים המחוברים.</li>
+                <li><strong>מתי ההתראות נפסקות:</strong> כשאתה יוצא מהמועדון או שההתחברות פגה (אחרי 8 שעות)</li>
+                <li><strong>שליטה:</strong> אתה יכול לכבות התראות מועדון בהגדרות המכשיר שלך בכל עת</li>
+              </ul>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">6. Location Privacy</h2>
             <p className="text-gray-300 leading-relaxed">
               Location is central to I4IGUANA's functionality. We collect your location only when you 
               actively use the App. Your exact location is never shown to other users - only your 
@@ -131,7 +164,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">6. Data Security</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">7. Data Security</h2>
             <p className="text-gray-300 leading-relaxed">
               We implement appropriate technical and organizational measures to protect your personal 
               information, including encryption, secure servers, and access controls. However, no method 
@@ -140,7 +173,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">7. Data Retention</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">8. Data Retention</h2>
             <p className="text-gray-300 leading-relaxed">
               We retain your personal information for as long as your account is active or as needed to 
               provide services. When you delete your account, we will delete or anonymize your information 
@@ -149,7 +182,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">8. Your Rights</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">9. Your Rights</h2>
             <p className="text-gray-300 leading-relaxed mb-4">You have the right to:</p>
             <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
               <li><strong>Access:</strong> Request a copy of your personal data</li>
@@ -165,7 +198,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">9. Cookies and Tracking</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">10. Cookies and Tracking</h2>
             <p className="text-gray-300 leading-relaxed">
               We use cookies and similar technologies to enhance your experience, analyze usage, and 
               deliver personalized content. You can control cookies through your browser settings, though 
@@ -174,7 +207,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">10. Third-Party Services</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">11. Third-Party Services</h2>
             <p className="text-gray-300 leading-relaxed">
               The App may contain links to third-party websites or services. We are not responsible for 
               the privacy practices of these third parties. We encourage you to read their privacy policies.
@@ -182,7 +215,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">11. Children's Privacy</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">12. Children's Privacy</h2>
             <p className="text-gray-300 leading-relaxed">
               I4IGUANA is not intended for anyone under 18 years of age. We do not knowingly collect 
               personal information from children. If we discover that a child has provided us with 
@@ -191,7 +224,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">12. International Data Transfers</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">13. International Data Transfers</h2>
             <p className="text-gray-300 leading-relaxed">
               Your information may be transferred to and processed in countries other than your own. 
               We ensure appropriate safeguards are in place to protect your information in accordance 
@@ -200,7 +233,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">13. Changes to This Policy</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">14. Changes to This Policy</h2>
             <p className="text-gray-300 leading-relaxed">
               We may update this Privacy Policy from time to time. We will notify you of any changes by 
               posting the new policy on this page and updating the "Last updated" date. Continued use of 
@@ -209,7 +242,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">14. Contact Us</h2>
+            <h2 className="text-2xl font-bold text-green-400 mb-4">15. Contact Us</h2>
             <p className="text-gray-300 leading-relaxed">
               If you have questions or concerns about this Privacy Policy or our data practices, please contact us at:
             </p>
@@ -224,12 +257,12 @@ export default function PrivacyPolicy() {
         <div className="mt-16 pt-8 border-t border-white/10">
           <button 
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors"
+            className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors min-h-[44px]"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back
+            {fromApp ? 'Back to App' : 'Back'}
           </button>
         </div>
       </div>
@@ -241,5 +274,13 @@ export default function PrivacyPolicy() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function PrivacyPolicy() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a1f1a]" />}>
+      <PrivacyContent />
+    </Suspense>
   )
 }

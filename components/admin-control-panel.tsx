@@ -14,6 +14,7 @@ import {
   AnalyticsSummary,
   PageView 
 } from '@/lib/analytics-service'
+import VenuesImportPanel from './venues-import-panel'
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -69,7 +70,7 @@ interface CheckIn {
 // ═══════════════════════════════════════════════════════════════
 
 export default function AdminControlPanel() {
-  const [activeTab, setActiveTab] = useState<'coupons' | 'users' | 'checkins' | 'stats' | 'analytics'>('stats')
+  const [activeTab, setActiveTab] = useState<'coupons' | 'users' | 'checkins' | 'stats' | 'analytics' | 'venues'>('stats')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
 
@@ -588,8 +589,18 @@ export default function AdminControlPanel() {
     <div className="min-h-screen bg-gray-900 text-white p-6">
       {/* Header */}
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">🦎 I4IGUANA Control Panel</h1>
-        <p className="text-gray-400 mb-6">Manage coupons, users, and check-ins</p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">🦎 I4IGUANA Control Panel</h1>
+            <p className="text-gray-400">Manage coupons, users, and check-ins</p>
+          </div>
+          <button
+            onClick={() => window.location.href = '/admin/super/db'}
+            className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-lg font-medium flex items-center gap-2"
+          >
+            🗄️ Database Manager
+          </button>
+        </div>
 
         {/* Message */}
         {message && (
@@ -605,6 +616,7 @@ export default function AdminControlPanel() {
           {[
             { id: 'stats', icon: TrendingUp, label: '📊 Dashboard' },
             { id: 'analytics', icon: BarChart3, label: '📈 Analytics' },
+            { id: 'venues', icon: MapPin, label: '🗺️ Venues' },
             { id: 'coupons', icon: Ticket, label: '🎫 Coupons' },
             { id: 'users', icon: Users, label: '👥 Users' },
             { id: 'checkins', icon: MapPin, label: '📍 Check-ins' },
@@ -875,6 +887,15 @@ export default function AdminControlPanel() {
               </a>
             </div>
           </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* VENUES TAB - Google Places Import */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {activeTab === 'venues' && (
+          <VenuesImportPanel 
+            onMessage={(type, text) => setMessage({ type, text })}
+          />
         )}
 
         {/* ═══════════════════════════════════════════════════════════════ */}

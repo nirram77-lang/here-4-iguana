@@ -3,8 +3,9 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Loader2, Mail, Phone } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
+import { useLanguage } from "@/lib/LanguageContext"
 import { GA } from "@/lib/ga-events"
 
 interface LoginScreenProps {
@@ -17,6 +18,7 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
   const [error, setError] = useState("")
   
   const { signInWithGoogle } = useAuth()
+  const { t, isRTL } = useLanguage()
 
   const handleGoogleAuth = async () => {
     setLoading(true)
@@ -47,7 +49,10 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-between bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] p-6 relative overflow-hidden">
+    <div 
+      className="flex flex-col items-center justify-between bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] p-6 relative overflow-hidden"
+      style={{ minHeight: '100dvh', paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
+    >
       {/* Animated background */}
       <div className="absolute inset-0">
         {[...Array(25)].map((_, i) => (
@@ -102,11 +107,11 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
           transition={{ delay: 0.2 }}
           className="mb-10 text-center"
         >
-          <h1 className="mb-2 font-serif text-4xl font-bold text-white drop-shadow-lg">
-            {isSignUp ? "Create Account" : "Welcome Back!"}
+          <h1 className="mb-2 font-serif text-4xl font-bold text-white drop-shadow-lg" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            {isSignUp ? t('login.createAccount') : t('login.welcomeBack')}
           </h1>
-          <p className="text-[#a8d5ba] text-base">
-            {isSignUp ? "Sign up to start meeting people" : "Log in to continue"}
+          <p className="text-[#a8d5ba] text-base" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            {isSignUp ? t('login.signUpToStart') : t('login.logInToContinue')}
           </p>
         </motion.div>
 
@@ -132,11 +137,12 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
             onClick={handleGoogleAuth}
             disabled={loading}
             className="w-full h-16 rounded-full bg-white hover:bg-gray-100 text-gray-800 font-sans text-base font-semibold shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-3"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             {loading ? (
               <>
                 <Loader2 className="h-6 w-6 animate-spin" />
-                <span>Signing in...</span>
+                <span>{t('login.signingIn')}</span>
               </>
             ) : (
               <>
@@ -158,7 +164,7 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>{t('login.continueWithGoogle')}</span>
               </>
             )}
           </Button>
@@ -168,8 +174,8 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
               <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-[#0d2920] px-4 text-white/40">
-                Quick & Secure Login
+              <span className="bg-[#0d2920] px-4 text-white/40" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('login.quickSecure')}
               </span>
             </div>
           </div>
@@ -181,43 +187,21 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
           className="mt-8 text-center space-y-2"
+          style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
-          <p className="text-sm text-[#a8d5ba] px-4">
+          <p className="text-sm text-[#a8d5ba] px-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
             {isSignUp 
-              ? <>By signing up, you agree to our <a href="/terms" className="underline text-[#4ade80] hover:text-white">Terms</a> & <a href="/privacy" className="underline text-[#4ade80] hover:text-white">Privacy Policy</a></>
-              : "We use GPS/WiFi for live matching only"}
+              ? <>
+                  {t('landing.terms')}
+                  <a href={isRTL ? '/he/terms?from=app' : '/terms?from=app'} target="_blank" rel="noopener noreferrer" className="underline text-[#4ade80] hover:text-white">{t('landing.termsOfService')}</a>
+                  {t('landing.and')}
+                  <a href={isRTL ? '/he/privacy?from=app' : '/privacy?from=app'} target="_blank" rel="noopener noreferrer" className="underline text-[#4ade80] hover:text-white">{t('landing.privacyPolicy')}</a>
+                </>
+              : t('login.gpsInfo')}
           </p>
-          <p className="text-sm text-[#4ade80] font-semibold px-4">
-            No passwords. Just quick social login! 🚀
+          <p className="text-sm text-[#4ade80] font-semibold px-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            {t('login.noPasswords')} 🚀
           </p>
-        </motion.div>
-        
-        {/* ✅ Contact Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="mt-8 pt-6 border-t border-white/10 text-center space-y-3"
-        >
-          <p className="text-xs text-white/50 uppercase tracking-wider font-medium">
-            Contact Info
-          </p>
-          <div className="flex flex-col items-center gap-2">
-            <a 
-              href="mailto:nir@i4iguana.com"
-              className="flex items-center gap-2 text-sm text-[#a8d5ba] hover:text-[#4ade80] transition-colors"
-            >
-              <Mail className="h-4 w-4" />
-              nir@i4iguana.com
-            </a>
-            <a 
-              href="tel:+972522653170"
-              className="flex items-center gap-2 text-sm text-[#a8d5ba] hover:text-[#4ade80] transition-colors"
-            >
-              <Phone className="h-4 w-4" />
-              +972-52-265-3170
-            </a>
-          </div>
         </motion.div>
       </div>
     </div>

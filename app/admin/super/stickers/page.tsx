@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { ArrowLeft, Printer, Download, RefreshCw, Building2, QrCode, Sparkles, Target, Sun, Moon, Smartphone } from 'lucide-react'
+import { ArrowLeft, Printer, Download, RefreshCw, Building2, QrCode, Sparkles, Target, Sun, Moon, Smartphone, FileImage } from 'lucide-react'
 import Link from 'next/link'
 
 interface Venue {
@@ -12,7 +12,7 @@ interface Venue {
   displayName?: string
 }
 
-type TemplateType = 'venue' | 'club-owners' | 'customers-dark' | 'customers-light' | 'challenge-card' | 'download-only' | 'download-only-light' | 'discreet-dating' | 'pride-edition' | 'same-connection'
+type TemplateType = 'venue' | 'club-owners' | 'customers-dark' | 'customers-light' | 'challenge-card' | 'download-only' | 'download-only-light' | 'discreet-dating' | 'pride-edition' | 'same-connection' | 'marketing-clean' | 'marketing-spark' | 'marketing-fomo' | 'marketing-minimal' | 'zone-marketing-dark-he' | 'zone-marketing-dark-en' | 'zone-marketing-light-he' | 'zone-marketing-light-en'
 
 export default function StickerGeneratorPage() {
   const [venues, setVenues] = useState<Venue[]>([])
@@ -22,10 +22,11 @@ export default function StickerGeneratorPage() {
   const [loading, setLoading] = useState(true)
   const [challengeVariant, setChallengeVariant] = useState(0)
   const [cardStyle, setCardStyle] = useState<'light' | 'full'>('light')
+  const [marketingBg, setMarketingBg] = useState<'dark' | 'light'>('dark')
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // ✅ URL יחיד לכל הסטיקרים - דף הנחיתה!
-  const DOWNLOAD_URL = 'https://www.i4iguana.com/download'
+  const DOWNLOAD_URL = 'https://i4iguana.com/landing'
   const QR_API = 'https://api.qrserver.com/v1/create-qr-code/'
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export default function StickerGeneratorPage() {
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     @keyframes glow { 0%, 100% { box-shadow: 0 0 30px rgba(74, 222, 128, 0.3); } 50% { box-shadow: 0 0 60px rgba(74, 222, 128, 0.6); } }
     @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
     body {
       font-family: "Heebo", sans-serif;
       background: #e0e0e0;
@@ -132,10 +134,27 @@ export default function StickerGeneratorPage() {
     }
     .logo-row {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 16px;
+      gap: 8px;
       margin-bottom: 8px;
+    }
+    .iguanas-heart {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .iguana-left {
+      font-size: 48px;
+      transform: scaleX(-1);
+    }
+    .iguana-right {
+      font-size: 48px;
+    }
+    .heart-icon {
+      font-size: 36px;
+      animation: heartbeat 1.5s ease-in-out infinite;
     }
     .logo-img, .logo-container { background: linear-gradient(135deg, #0d2920, #1a4d3e); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(74, 222, 128, 0.4); } .logo-emoji { font-size: 36px; } .logo-img-old {
       width: 70px;
@@ -236,7 +255,7 @@ export default function StickerGeneratorPage() {
     <div class="header">
       ${venueName ? `<div class="venue-tag">📍 ${venueName}</div>` : ''}
       <div class="logo-row">
-        <div class="logo-container"><div class="logo-emoji">🦎</div></div>
+        <div class="iguanas-heart"><span class="iguana-left">🦎</span><span class="heart-icon">💚</span><span class="iguana-right">🦎</span></div>
         <div class="brand"><span>I4</span>IGUANA</div>
       </div>
       <div class="tagline">✨ הכרויות בזמן אמת ✨</div>
@@ -284,7 +303,12 @@ export default function StickerGeneratorPage() {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     @keyframes glow { 0%, 100% { box-shadow: 0 0 30px rgba(74, 222, 128, 0.3); } 50% { box-shadow: 0 0 60px rgba(74, 222, 128, 0.6); } }
-    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes float { 0%, 100% { transform: translateY(0); }
+    @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+    .iguanas-heart { display: flex; align-items: center; gap: 8px; }
+    .iguana-left { font-size: 48px; transform: scaleX(-1); }
+    .iguana-right { font-size: 48px; }
+    .heart-icon { font-size: 36px; animation: heartbeat 1.5s ease-in-out infinite; } 50% { transform: translateY(-10px); } }
     body {
       font-family: "Poppins", sans-serif;
       background: #e0e0e0;
@@ -396,7 +420,7 @@ export default function StickerGeneratorPage() {
     <div class="header">
       ${venueName ? `<div class="venue-tag">📍 ${venueName}</div>` : ''}
       <div class="logo-row">
-        <div class="logo-container"><div class="logo-emoji">🦎</div></div>
+        <div class="iguanas-heart"><span class="iguana-left">🦎</span><span class="heart-icon">💚</span><span class="iguana-right">🦎</span></div>
         <div class="brand"><span>I4</span>IGUANA</div>
       </div>
       <div class="tagline">✨ Real-time Dating ✨</div>
@@ -600,7 +624,7 @@ export default function StickerGeneratorPage() {
     <div class="header">
       ${venueName ? `<div class="venue-tag">📍 ${venueName}</div>` : ''}
       <div class="logo-row">
-        <div class="logo-container"><div class="logo-emoji">🦎</div></div>
+        <div class="iguanas-heart"><span class="iguana-left">🦎</span><span class="heart-icon">💚</span><span class="iguana-right">🦎</span></div>
         <div class="brand"><span>I4</span>IGUANA</div>
       </div>
       <div class="tagline">✨ הכרויות בזמן אמת ✨</div>
@@ -793,7 +817,7 @@ export default function StickerGeneratorPage() {
     <div class="header">
       ${venueName ? `<div class="venue-tag">📍 ${venueName}</div>` : ''}
       <div class="logo-row">
-        <div class="logo-container"><div class="logo-emoji">🦎</div></div>
+        <div class="iguanas-heart"><span class="iguana-left">🦎</span><span class="heart-icon">💚</span><span class="iguana-right">🦎</span></div>
         <div class="brand"><span>I4</span>IGUANA</div>
       </div>
       <div class="tagline">✨ Real-time Dating ✨</div>
@@ -1816,7 +1840,7 @@ export default function StickerGeneratorPage() {
         </div>
       </div>
       <div class="logo-section">
-        <div class="logo-container"><div class="logo-emoji">🦎</div></div>
+        <div class="iguanas-heart"><span class="iguana-left">🦎</span><span class="heart-icon">💚</span><span class="iguana-right">🦎</span></div>
         <div class="brand-name"><span>I4</span>IGUANA</div>
         <div class="brand-sub">Dating App for Real Meetings</div>
       </div>
@@ -2639,13 +2663,15 @@ export default function StickerGeneratorPage() {
   // 🏳️‍🌈 PRIDE EDITION TEMPLATE - לתוך בר להט"ב (20x20cm)
   // ═══════════════════════════════════════════════════════════════════════════════
   const generatePrideEditionHTML = () => {
-    const qrUrl = `${QR_API}?size=300x300&data=${encodeURIComponent(DOWNLOAD_URL)}&color=732982&bgcolor=ffffff`
+    const selectedVenueData = venues.find(v => v.id === selectedVenue)
+    const venueName = selectedVenueData?.displayName || selectedVenueData?.name || ''
+    const qrUrl = `${QR_API}?size=400x400&data=${encodeURIComponent(DOWNLOAD_URL)}&color=000000&bgcolor=ffffff`
     
     const hebrewHTML = `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>I4IGUANA - Pride Edition</title>
+  <title>I4IGUANA - Pride Edition${venueName ? ' - ' + venueName : ''}</title>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
@@ -2692,12 +2718,20 @@ export default function StickerGeneratorPage() {
     .blue { background: #24408E; }
     .purple { background: #732982; }
     .heart-icon {
-      font-size: 70px;
-      margin-top: 25px;
+      font-size: 60px;
+      margin-top: 15px;
+    }
+    .venue-name {
+      font-size: 32px;
+      font-weight: 900;
+      color: #732982;
+      text-shadow: 0 2px 4px rgba(115, 41, 130, 0.3);
+      margin: 8px 0;
+      letter-spacing: 1px;
     }
     .title-section { text-align: center; }
     .title-eng {
-      font-size: 38px;
+      font-size: 34px;
       font-weight: 900;
       background: linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982);
       -webkit-background-clip: text;
@@ -2772,12 +2806,12 @@ export default function StickerGeneratorPage() {
       text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
     .qr-box {
-      padding: 10px;
+      padding: 12px;
       background: white;
       border-radius: 12px;
       border: 3px solid #22c55e;
     }
-    .qr-box img { display: block; width: 100px; height: 100px; }
+    .qr-box img { display: block; width: 140px; height: 140px; }
     .brand {
       font-size: 24px;
       font-weight: 900;
@@ -2809,6 +2843,7 @@ export default function StickerGeneratorPage() {
       <div class="stripe purple"></div>
     </div>
     <div class="heart-icon">❤️</div>
+    ${venueName ? `<div class="venue-name">📍 ${venueName}</div>` : ''}
     <div class="title-section">
       <div class="title-eng">LOVE IS LOVE</div>
       <div class="pride-badge"><span>🏳️‍🌈 PRIDE EDITION 🏳️‍🌈</span></div>
@@ -2898,12 +2933,20 @@ export default function StickerGeneratorPage() {
     .blue { background: #24408E; }
     .purple { background: #732982; }
     .heart-icon {
-      font-size: 70px;
-      margin-top: 25px;
+      font-size: 60px;
+      margin-top: 15px;
+    }
+    .venue-name {
+      font-size: 32px;
+      font-weight: 900;
+      color: #732982;
+      text-shadow: 0 2px 4px rgba(115, 41, 130, 0.3);
+      margin: 8px 0;
+      letter-spacing: 1px;
     }
     .title-section { text-align: center; }
     .title-eng {
-      font-size: 42px;
+      font-size: 38px;
       font-weight: 900;
       background: linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982);
       -webkit-background-clip: text;
@@ -2973,12 +3016,12 @@ export default function StickerGeneratorPage() {
       text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
     .qr-box {
-      padding: 10px;
+      padding: 12px;
       background: white;
       border-radius: 12px;
       border: 3px solid #22c55e;
     }
-    .qr-box img { display: block; width: 110px; height: 110px; }
+    .qr-box img { display: block; width: 140px; height: 140px; }
     .brand {
       font-size: 26px;
       font-weight: 900;
@@ -3010,6 +3053,7 @@ export default function StickerGeneratorPage() {
       <div class="stripe purple"></div>
     </div>
     <div class="heart-icon">❤️</div>
+    ${venueName ? `<div class="venue-name">📍 ${venueName}</div>` : ''}
     <div class="title-section">
       <div class="title-eng">LOVE IS LOVE</div>
       <div class="pride-badge"><span>🏳️‍🌈 PRIDE EDITION 🏳️‍🌈</span></div>
@@ -3382,6 +3426,500 @@ export default function StickerGeneratorPage() {
     return language === 'hebrew' ? hebrewHTML : englishHTML
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // 🆕 NEW MARKETING TEMPLATES - Clean, Spark, FOMO, Minimal
+  // With venue name support!
+  // ═══════════════════════════════════════════════════════════════
+  
+  const generateMarketingHTML = (style: 'clean' | 'spark' | 'fomo' | 'minimal') => {
+    const isDark = marketingBg === 'dark'
+    const isHebrew = language === 'hebrew'
+    const dir = isHebrew ? 'rtl' : 'ltr'
+    const qrBgColor = isDark ? 'ffffff' : '0d2920'
+    const qrFgColor = isDark ? '0d2920' : 'ffffff'
+    const qrUrl = `${QR_API}?size=300x300&data=${encodeURIComponent(DOWNLOAD_URL)}&color=${qrFgColor}&bgcolor=${qrBgColor}`
+    
+    // Get venue name if selected
+    const selectedVenueData = venues.find(v => v.id === selectedVenue)
+    const venueName = selectedVenueData?.displayName || selectedVenueData?.name || ''
+    
+    // Colors based on background
+    const colors = isDark ? {
+      bg: 'linear-gradient(135deg, #0a1f1a 0%, #0d2920 50%, #134e3a 100%)',
+      text: '#ffffff',
+      textMuted: 'rgba(255,255,255,0.7)',
+      accent: '#4ade80',
+      border: 'rgba(74, 222, 128, 0.3)',
+      qrBg: '#ffffff',
+      qrBorder: '#e5e5e5',
+      badgeBg: 'linear-gradient(135deg, #4ade80, #22c55e)',
+      badgeText: '#0d2920'
+    } : {
+      bg: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+      text: '#1a1a1a',
+      textMuted: 'rgba(0,0,0,0.6)',
+      accent: '#16a34a',
+      border: 'rgba(22, 163, 74, 0.3)',
+      qrBg: '#0d2920',
+      qrBorder: '#22c55e',
+      badgeBg: 'linear-gradient(135deg, #16a34a, #22c55e)',
+      badgeText: '#ffffff'
+    }
+    
+    // Venue badge HTML - shows only if venue is selected
+    const venueBadge = venueName ? `
+      <div style="background:${colors.badgeBg};color:${colors.badgeText};padding:8px 20px;border-radius:30px;font-weight:800;font-size:14px;margin-bottom:12px;box-shadow:0 4px 15px rgba(74,222,128,0.3);">
+        📍 ${venueName}
+      </div>
+    ` : ''
+    
+    // Text based on language
+    const texts = {
+      clean: isHebrew 
+        ? { subtitle: 'המקום מחובר ל־', tagline: 'דייטינג בזמן אמת', cta: '⬇️ התחברו כאן' }
+        : { subtitle: 'This venue is connected to', tagline: 'Real-Time Dating', cta: '⬇️ Connect Here' },
+      spark: isHebrew
+        ? { headline: 'כאן זה קורה. בלייב.', subtitle: 'המקום מחובר לאפליקציה', cta: 'סרקו והתחברו ←' }
+        : { headline: 'It happens here. Live.', subtitle: 'Venue connected to the app', cta: 'Scan & Connect →' },
+      fomo: isHebrew
+        ? { badge: '✓ CONNECTED', headline: venueName ? `${venueName}<br/>כבר מחובר!` : 'הבר הזה<br/>כבר מחובר.', subtitle: 'אתם הבאים? 👀' }
+        : { badge: '✓ CONNECTED', headline: venueName ? `${venueName}<br/>is connected!` : 'This bar is<br/>already connected.', subtitle: "You're next? 👀" },
+      minimal: { status: 'CONNECTED' }
+    }
+    
+    const t = texts[style]
+    
+    // Footer - luxury bronze
+    const footer = '<div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:11px;color:#8B7355;font-weight:500;letter-spacing:1px;">Real-Time Dating • www.i4iguana.com</div>'
+    
+    // Templates
+    const templates: Record<string, string> = {
+      clean: `
+        <div style="width:400px;height:400px;background:${colors.bg};border-radius:24px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border:2px solid ${colors.border};box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;width:80px;height:80px;background:linear-gradient(135deg,${colors.accent}22,transparent);border-radius:24px 0 0 0;"></div>
+          <div style="position:absolute;bottom:0;right:0;width:80px;height:80px;background:linear-gradient(315deg,${colors.accent}22,transparent);border-radius:0 0 24px 0;"></div>
+          <div style="text-align:center;z-index:1;padding-bottom:30px;">
+            ${venueBadge}
+            <div style="font-size:36px;margin-bottom:6px;">🦎</div>
+            <p style="color:${colors.accent};font-size:14px;font-weight:500;margin-bottom:4px;">${(t as any).subtitle}</p>
+            <h3 style="color:${colors.text};font-size:28px;font-weight:900;margin-bottom:6px;text-shadow:0 0 20px ${colors.accent}44;">I4IGUANA</h3>
+            <p style="color:${colors.textMuted};font-size:14px;margin-bottom:16px;">${(t as any).tagline}</p>
+            <div style="background:${colors.qrBg};padding:10px;border-radius:14px;display:inline-block;border:2px solid ${colors.qrBorder};">
+              <img src="${qrUrl}" style="width:90px;height:90px;border-radius:8px;" />
+            </div>
+          </div>
+          ${footer}
+        </div>`,
+      
+      spark: `
+        <div style="width:400px;height:400px;background:${isDark ? 'linear-gradient(180deg,#0d2920 0%,#0a1f1a 100%)' : colors.bg};border-radius:24px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border:2px solid ${colors.border};box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:280px;height:280px;border:1px solid ${colors.accent}22;border-radius:50%;"></div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:1px solid ${colors.accent}33;border-radius:50%;"></div>
+          <div style="text-align:center;z-index:1;">
+            ${venueBadge}
+            <div style="background:linear-gradient(90deg,${colors.accent},#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:18px;font-weight:900;margin-bottom:6px;">${(t as any).headline}</div>
+            <div style="width:50px;height:2px;background:linear-gradient(90deg,transparent,${colors.accent},transparent);margin:0 auto 10px;"></div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:28px;">🦎</span>
+              <span style="color:${colors.text};font-size:24px;font-weight:900;">I4IGUANA</span>
+            </div>
+            <p style="color:${colors.textMuted};font-size:12px;margin-bottom:14px;">${(t as any).subtitle}</p>
+            <div style="background:${colors.qrBg};padding:10px;border-radius:14px;display:inline-block;border:2px solid ${colors.qrBorder};">
+              <img src="${qrUrl}" style="width:90px;height:90px;border-radius:8px;" />
+            </div>
+            <p style="color:${colors.accent};font-size:12px;font-weight:700;margin-top:10px;">${(t as any).cta}</p>
+          </div>
+          ${footer}
+        </div>`,
+      
+      fomo: `
+        <div style="width:400px;height:400px;background:${isDark ? 'linear-gradient(135deg,#0a1f1a 0%,#1a3d2e 100%)' : colors.bg};border-radius:24px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border:2px solid ${colors.border};box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+          <div style="position:absolute;top:0;right:0;width:100px;height:100px;background:linear-gradient(225deg,${colors.accent}15,transparent);"></div>
+          <div style="text-align:center;z-index:1;">
+            <div style="background:${colors.accent};color:${isDark ? '#0d2920' : '#ffffff'};font-size:11px;font-weight:900;padding:6px 16px;border-radius:20px;margin-bottom:14px;">${(t as any).badge}</div>
+            <h3 style="color:${colors.text};font-size:22px;font-weight:900;margin-bottom:8px;line-height:1.3;">${(t as any).headline}</h3>
+            <p style="color:${colors.accent};font-size:16px;font-weight:700;margin-bottom:14px;">${(t as any).subtitle}</p>
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;">
+              <span style="font-size:28px;">🦎</span>
+              <span style="color:${colors.text};font-size:20px;font-weight:900;">I4IGUANA</span>
+            </div>
+            <div style="background:${colors.qrBg};padding:10px;border-radius:14px;display:inline-block;border:2px solid ${colors.qrBorder};">
+              <img src="${qrUrl}" style="width:90px;height:90px;border-radius:8px;" />
+            </div>
+          </div>
+          ${footer}
+        </div>`,
+      
+      minimal: `
+        <div style="width:400px;height:400px;background:${isDark ? '#000000' : '#ffffff'};border-radius:24px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border:2px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,${colors.accent}08,transparent);border-radius:24px;"></div>
+          <div style="text-align:center;z-index:1;padding-bottom:30px;">
+            ${venueName ? `<div style="color:${colors.textMuted};font-size:12px;letter-spacing:2px;margin-bottom:8px;">${venueName.toUpperCase()}</div>` : ''}
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;">
+              <div style="width:8px;height:8px;background:${colors.accent};border-radius:50%;"></div>
+              <span style="color:${colors.accent};font-size:11px;font-weight:500;letter-spacing:3px;">${(t as any).status}</span>
+            </div>
+            <div style="font-size:44px;margin-bottom:8px;">🦎</div>
+            <h3 style="color:${colors.text};font-size:26px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">I4IGUANA</h3>
+            <p style="color:${isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'};font-size:10px;letter-spacing:3px;margin-bottom:16px;">REAL-TIME DATING</p>
+            <div style="background:${colors.qrBg};padding:10px;border-radius:14px;display:inline-block;border:2px solid ${colors.qrBorder};">
+              <img src="${qrUrl}" style="width:85px;height:85px;border-radius:8px;" />
+            </div>
+          </div>
+          ${footer}
+        </div>`
+    }
+    
+    return `<!DOCTYPE html>
+<html lang="${isHebrew ? 'he' : 'en'}" dir="${dir}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I4IGUANA Sticker${venueName ? ' - ' + venueName : ''}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Heebo', -apple-system, sans-serif; }
+    body { background: #e5e5e5; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    @media print { body { background: white; padding: 0; } }
+  </style>
+</head>
+<body>
+  ${templates[style]}
+</body>
+</html>`
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🆕 ZONE MARKETING STICKER 15x15cm - 4 Versions
+  // "באת לבד? תצא בזוג" / "Came alone? Leave together"
+  // Hollywood Edition for Entertainment Zones
+  // ═══════════════════════════════════════════════════════════════════════════
+  const generateZoneMarketingHTML = (theme: 'dark' | 'light', lang: 'he' | 'en') => {
+    const qrUrl = `${QR_API}?size=200x200&data=${encodeURIComponent(DOWNLOAD_URL)}&color=${theme === 'dark' ? '0d2920' : '0d2920'}&bgcolor=ffffff`
+    
+    const isHebrew = lang === 'he'
+    const isDark = theme === 'dark'
+    
+    // Translations
+    const t = isHebrew ? {
+      tagline: 'באת לבד? תצא בזוג',
+      timer: '10 דקות להחליט!',
+      matchMeaning: 'Match = מפגש אמיתי',
+      stat1: 'מרחק 0',
+      stat2: 'היא מחליטה',
+      stat3: '100% בטוח',
+      slogan: 'Not chat. Connection.',
+      cta: 'סרקו והתחברו →',
+    } : {
+      tagline: 'Came alone? Leave together',
+      timer: '10 min to decide!',
+      matchMeaning: 'Match = Real Meeting',
+      stat1: 'Distance 0',
+      stat2: 'She Decides',
+      stat3: '100% Safe',
+      slogan: 'Not chat. Connection.',
+      cta: 'Scan & Connect →',
+    }
+    
+    // Colors based on theme
+    const colors = isDark ? {
+      bg: 'linear-gradient(145deg, #0a1f18 0%, #0d2920 50%, #051410 100%)',
+      primary: '#4ade80',
+      secondary: '#22c55e',
+      text: '#ffffff',
+      textMuted: 'rgba(255,255,255,0.7)',
+      accent: '#ec4899',
+      border: 'rgba(74, 222, 128, 0.3)',
+      cardBg: 'rgba(13, 41, 32, 0.8)',
+    } : {
+      bg: 'linear-gradient(145deg, #ffffff 0%, #f0fdf4 50%, #dcfce7 100%)',
+      primary: '#166534',
+      secondary: '#15803d',
+      text: '#0f172a',
+      textMuted: 'rgba(15,23,42,0.7)',
+      accent: '#ec4899',
+      border: 'rgba(22, 163, 74, 0.3)',
+      cardBg: 'rgba(255, 255, 255, 0.9)',
+    }
+
+    return `<!DOCTYPE html>
+<html lang="${lang}" dir="${isHebrew ? 'rtl' : 'ltr'}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I4IGUANA - Zone Marketing Sticker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #e5e5e5; 
+      min-height: 100vh; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      padding: 20px;
+      font-family: 'Heebo', -apple-system, sans-serif;
+    }
+    @media print { 
+      body { background: white; padding: 0; } 
+      .sticker { box-shadow: none !important; }
+    }
+    
+    .sticker {
+      width: 15cm;
+      height: 15cm;
+      background: ${colors.bg};
+      border-radius: 16px;
+      border: 3px solid ${colors.border};
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2cm;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    /* Background Pattern */
+    .sticker::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(${colors.primary}15 1px, transparent 1px);
+      background-size: 20px 20px;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    
+    .tagline-box {
+      background: ${isDark 
+        ? 'linear-gradient(135deg, rgba(236,72,153,0.2) 0%, rgba(74,222,128,0.1) 100%)'
+        : 'linear-gradient(135deg, rgba(236,72,153,0.15) 0%, rgba(22,163,74,0.1) 100%)'};
+      border: 1px solid ${colors.accent}40;
+      padding: 12px 24px;
+      border-radius: 50px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .tagline {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: ${colors.text};
+    }
+    
+    .icons-flow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 2rem;
+      position: relative;
+      z-index: 1;
+      direction: ltr;
+    }
+    
+    .arrow {
+      color: ${colors.primary};
+      font-size: 1.2rem;
+    }
+    
+    .timer-section {
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .timer-icon {
+      font-size: 2.5rem;
+      margin-bottom: 4px;
+    }
+    
+    .timer-text {
+      font-size: 1.8rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, ${colors.accent} 0%, ${colors.primary} 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .match-meaning {
+      font-size: 1rem;
+      color: ${colors.textMuted};
+      margin-top: 4px;
+    }
+    
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-icon {
+      font-size: 1.5rem;
+      margin-bottom: 2px;
+    }
+    
+    .stat-text {
+      font-size: 0.85rem;
+      color: ${colors.text};
+      font-weight: 600;
+    }
+    
+    .slogan {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: ${colors.primary};
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+      direction: ltr;
+    }
+    
+    .heart-icon {
+      color: ${colors.accent};
+    }
+    
+    .qr-section {
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .qr-box {
+      background: white;
+      padding: 8px;
+      border-radius: 12px;
+      display: inline-block;
+      box-shadow: ${isDark 
+        ? '0 4px 20px rgba(74,222,128,0.2)'
+        : '0 4px 20px rgba(0,0,0,0.1)'};
+    }
+    
+    .qr-box img {
+      width: 80px;
+      height: 80px;
+    }
+    
+    .cta {
+      font-size: 0.75rem;
+      color: ${colors.textMuted};
+      margin-top: 6px;
+    }
+    
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .brand-icon {
+      font-size: 1.5rem;
+    }
+    
+    .brand-name {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: ${colors.primary};
+      letter-spacing: 1px;
+    }
+    
+    .website {
+      font-size: 0.7rem;
+      color: ${colors.textMuted};
+      letter-spacing: 1px;
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="sticker">
+    <!-- Tagline -->
+    <div class="tagline-box">
+      <span>💕</span>
+      <span class="tagline">${t.tagline}</span>
+      <span>💕</span>
+    </div>
+    
+    <!-- Icons Flow -->
+    <div class="icons-flow">
+      <span>🥂</span>
+      <span class="arrow">→</span>
+      <span>💕</span>
+      <span class="arrow">→</span>
+      <span>👟</span>
+      <span class="arrow">→</span>
+      <span>📅</span>
+    </div>
+    
+    <!-- Timer Section -->
+    <div class="timer-section">
+      <div class="timer-icon">⏱️</div>
+      <div class="timer-text">${t.timer}</div>
+      <div class="match-meaning">${t.matchMeaning}</div>
+    </div>
+    
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-icon">📍</div>
+        <div class="stat-text">${t.stat1}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-text">${t.stat2}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">🔒</div>
+        <div class="stat-text">${t.stat3}</div>
+      </div>
+    </div>
+    
+    <!-- Slogan -->
+    <div class="slogan">
+      <span class="heart-icon">💚</span>
+      ${t.slogan}
+    </div>
+    
+    <!-- QR Code -->
+    <div class="qr-section">
+      <div class="qr-box">
+        <img src="${qrUrl}" alt="QR Code" />
+      </div>
+      <div class="cta">${t.cta}</div>
+    </div>
+    
+    <!-- Brand -->
+    <div class="brand">
+      <span class="brand-icon">🦎</span>
+      <span class="brand-name">I4IGUANA</span>
+      <span class="brand-icon">🦎</span>
+    </div>
+    
+    <!-- Website -->
+    <div class="website">www.i4iguana.com</div>
+  </div>
+</body>
+</html>`
+  }
+
   // Get current HTML based on template selection
   const getCurrentHTML = () => {
     switch (template) {
@@ -3406,6 +3944,22 @@ export default function StickerGeneratorPage() {
         return generatePrideEditionHTML()
       case 'same-connection':
         return generateSameConnectionHTML()
+      case 'marketing-clean':
+        return generateMarketingHTML('clean')
+      case 'marketing-spark':
+        return generateMarketingHTML('spark')
+      case 'marketing-fomo':
+        return generateMarketingHTML('fomo')
+      case 'marketing-minimal':
+        return generateMarketingHTML('minimal')
+      case 'zone-marketing-dark-he':
+        return generateZoneMarketingHTML('dark', 'he')
+      case 'zone-marketing-dark-en':
+        return generateZoneMarketingHTML('dark', 'en')
+      case 'zone-marketing-light-he':
+        return generateZoneMarketingHTML('light', 'he')
+      case 'zone-marketing-light-en':
+        return generateZoneMarketingHTML('light', 'en')
       default:
         return generateDownloadOnlyHTML()
     }
@@ -3676,8 +4230,214 @@ export default function StickerGeneratorPage() {
                   </div>
                 </div>
               </button>
+              
+              {/* ═══ NEW MARKETING TEMPLATES ═══ */}
+              <div className="border-t border-white/10 pt-3 mt-3">
+                <p className="text-[#4ade80] text-xs font-bold mb-2">🆕 תבניות שיווק חדשות (15x15)</p>
+              </div>
+              
+              <button
+                onClick={() => setTemplate('marketing-clean')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'marketing-clean' 
+                    ? 'bg-[#4ade80] text-[#0d2920]' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">✨ נקי וחזק</div>
+                    <div className="text-xs opacity-70">המקום מחובר ל־</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setTemplate('marketing-spark')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'marketing-spark' 
+                    ? 'bg-[#4ade80] text-[#0d2920]' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">⚡ ניצוץ</div>
+                    <div className="text-xs opacity-70">כאן זה קורה. בלייב.</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setTemplate('marketing-fomo')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'marketing-fomo' 
+                    ? 'bg-[#4ade80] text-[#0d2920]' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">👀 FOMO</div>
+                    <div className="text-xs opacity-70">הבר כבר מחובר</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setTemplate('marketing-minimal')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'marketing-minimal' 
+                    ? 'bg-[#4ade80] text-[#0d2920]' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">🖤 מינימליסטי</div>
+                    <div className="text-xs opacity-70">אירופאי</div>
+                  </div>
+                </div>
+              </button>
+              
+              {/* ═══ ZONE MARKETING - 15x15 with full message ═══ */}
+              <div className="border-t border-white/10 pt-3 mt-3">
+                <p className="text-pink-400 text-xs font-bold mb-2">🎯 אזורי בילוי - 15×15 ס"מ</p>
+                <p className="text-white/50 text-xs mb-2">באת לבד? תצא בזוג • 4 גרסאות</p>
+              </div>
+              
+              {/* Dark Hebrew */}
+              <button
+                onClick={() => setTemplate('zone-marketing-dark-he')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'zone-marketing-dark-he' 
+                    ? 'bg-pink-500 text-white' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Moon className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">🌙 כהה + עברית</div>
+                    <div className="text-xs opacity-70">לברים ומועדונים</div>
+                  </div>
+                </div>
+              </button>
+              
+              {/* Dark English */}
+              <button
+                onClick={() => setTemplate('zone-marketing-dark-en')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'zone-marketing-dark-en' 
+                    ? 'bg-pink-500 text-white' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Moon className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">🌙 Dark + English</div>
+                    <div className="text-xs opacity-70">For bars & clubs</div>
+                  </div>
+                </div>
+              </button>
+              
+              {/* Light Hebrew */}
+              <button
+                onClick={() => setTemplate('zone-marketing-light-he')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'zone-marketing-light-he' 
+                    ? 'bg-pink-500 text-white' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sun className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">☀️ בהיר + עברית</div>
+                    <div className="text-xs opacity-70">לבתי קפה ומסעדות</div>
+                  </div>
+                </div>
+              </button>
+              
+              {/* Light English */}
+              <button
+                onClick={() => setTemplate('zone-marketing-light-en')}
+                className={`w-full text-right p-3 rounded-lg transition-all ${
+                  template === 'zone-marketing-light-en' 
+                    ? 'bg-pink-500 text-white' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sun className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">☀️ Light + English</div>
+                    <div className="text-xs opacity-70">For cafes & restaurants</div>
+                  </div>
+                </div>
+              </button>
+              
+              {/* ═══ ROLL-UP BANNER ═══ */}
+              <div className="border-t border-white/10 pt-3 mt-3">
+                <p className="text-[#4ade80] text-xs font-bold mb-2">📐 Roll-Up Banner (2m)</p>
+              </div>
+              
+              <a
+                href="/sticker-generator"
+                target="_blank"
+                className="w-full text-right p-3 rounded-lg transition-all bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/30 block"
+              >
+                <div className="flex items-center gap-3">
+                  <FileImage className="h-5 w-5 text-amber-400" />
+                  <div>
+                    <div className="font-semibold text-amber-400">🎬 Roll-Up 2 מטר</div>
+                    <div className="text-xs opacity-70">פרסום הוליוודי לפיילוט</div>
+                  </div>
+                </div>
+              </a>
             </div>
           </div>
+
+          {/* Marketing Background Selector - Show only for marketing templates */}
+          {(template === 'marketing-clean' || template === 'marketing-spark' || template === 'marketing-fomo' || template === 'marketing-minimal') && (
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                🎨 רקע מדבקה
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setMarketingBg('dark')}
+                  className={`flex-1 p-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    marketingBg === 'dark'
+                      ? 'bg-[#4ade80] text-[#0d2920]'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Moon className="h-4 w-4" />
+                  כהה
+                </button>
+                <button
+                  onClick={() => setMarketingBg('light')}
+                  className={`flex-1 p-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    marketingBg === 'light'
+                      ? 'bg-[#4ade80] text-[#0d2920]'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Sun className="h-4 w-4" />
+                  לבן
+                </button>
+              </div>
+              <p className="text-white/50 text-xs mt-3">
+                💡 כהה לברים ומועדונים | לבן לבתי קפה ומסעדות
+              </p>
+            </div>
+          )}
 
           {/* Venue Selection - ALWAYS VISIBLE */}
           <div className="bg-white/5 rounded-xl p-6 border border-white/10">

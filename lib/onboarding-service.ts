@@ -31,7 +31,8 @@ export interface OnboardingData {
 export const saveOnboardingData = async (
   uid: string,
   email: string,
-  data: OnboardingData
+  data: OnboardingData,
+  phoneNumber?: string  // ✅ v2.8.22: Add phone number parameter
 ) => {
   const userRef = doc(db, "users", uid)
   
@@ -46,6 +47,7 @@ export const saveOnboardingData = async (
   await setDoc(userRef, {
     uid,
     email,
+    phoneNumber: phoneNumber || '',  // ✅ v2.8.22: Save phone number for cross-login identification
     name: data.name,
     displayName: data.name,
     age: data.age,
@@ -113,9 +115,9 @@ export const saveOnboardingData = async (
     }
     
     if (shouldGivePass) {
-      // Normal case: Give 1 free pass
+      // Normal case: Give 4 free passes (✅ v2.8.15: Was 1, now 4)
       await setDoc(phoneRef, {
-        passesLeft: 1,
+        passesLeft: 4,
         lockedUntil: null,
         passesUsedToday: 0,
         matchesCountToday: 0,
@@ -125,7 +127,7 @@ export const saveOnboardingData = async (
         lastLogin: Timestamp.now()
       }, { merge: true })
       
-      console.log('🎁 FREE PASS: User got 1 free pass after onboarding!')
+      console.log('🎁 FREE PASSES: User got 4 free passes after onboarding!')
     } else {
       // Exploit prevention: Preserve timer, NO free pass
       await setDoc(phoneRef, {

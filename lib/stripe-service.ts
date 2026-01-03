@@ -136,7 +136,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       updates.isLocked = false
       updates.skipTimerPurchaseDate = Date.now()
       updates.skipTimerPaymentId = session.payment_intent
-      updates.passesLeft = 1
+      updates.passesLeft = 4  // ✅ v2.8.15: Was 1, now 4
       console.log(`⚡ Skip timer activated for user ${userId}`)
     } else {
       // Premium subscription

@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { ChevronLeft, User, Users } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface OnboardingGenderProps {
   onNext: (data: { gender: 'male' | 'female', lookingFor: 'male' | 'female' | 'both' }) => void
@@ -19,9 +20,22 @@ export default function OnboardingGender({
   initialGender = null,
   initialLookingFor = null 
 }: OnboardingGenderProps) {
+  const { t, isRTL } = useLanguage()
+  
   // ✅ FIX: Use initial values if provided (for back navigation)
   const [myGender, setMyGender] = useState<'male' | 'female' | null>(initialGender)
   const [lookingFor, setLookingFor] = useState<'male' | 'female' | 'both' | null>(initialLookingFor)
+
+  // ✅ NEW: Real viewport height for old Android/iOS
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  
+  useEffect(() => {
+    const updateViewportHeight = () => setViewportHeight(window.innerHeight)
+    updateViewportHeight()
+    window.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('orientationchange', () => setTimeout(updateViewportHeight, 100))
+    return () => window.removeEventListener('resize', updateViewportHeight)
+  }, [])
 
   const handleContinue = () => {
     if (myGender && lookingFor) {
@@ -47,7 +61,13 @@ export default function OnboardingGender({
   )
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-hidden">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto overflow-x-hidden"
+      style={{ 
+        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        paddingBottom: '100px'
+      }}
+    >
       <div className="absolute inset-0">
         {[...Array(20)].map((_, i) => (
           <motion.div
@@ -101,6 +121,7 @@ export default function OnboardingGender({
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="text-center mb-12"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             <motion.div
               animate={{ rotate: [0, -10, 10, -10, 0] }}
@@ -110,10 +131,10 @@ export default function OnboardingGender({
               🦎
             </motion.div>
             <h1 className="font-serif text-3xl font-bold text-white mb-2">
-              Tell us about you
+              {t('onboarding.gender.title')}
             </h1>
             <p className="text-[#a8d5ba] text-base">
-              This helps us find your perfect match
+              {t('onboarding.gender.subtitle')}
             </p>
           </motion.div>
 
@@ -122,8 +143,9 @@ export default function OnboardingGender({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
             className="mb-8"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
-            <h2 className="text-white font-bold text-lg mb-4">I am a...</h2>
+            <h2 className="text-white font-bold text-lg mb-4">{t('onboarding.gender.iAm')}</h2>
             <div className="grid grid-cols-2 gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -140,7 +162,7 @@ export default function OnboardingGender({
                 <div className="flex flex-col items-center justify-center h-full">
                   <MaleIcon selected={myGender === 'male'} />
                   <span className={`font-bold text-lg mt-2 ${myGender === 'male' ? 'text-[#0d2920]' : 'text-white'}`}>
-                    Male
+                    {t('onboarding.gender.male')}
                   </span>
                 </div>
               </motion.button>
@@ -160,7 +182,7 @@ export default function OnboardingGender({
                 <div className="flex flex-col items-center justify-center h-full">
                   <FemaleIcon selected={myGender === 'female'} />
                   <span className={`font-bold text-lg mt-2 ${myGender === 'female' ? 'text-[#0d2920]' : 'text-white'}`}>
-                    Female
+                    {t('onboarding.gender.female')}
                   </span>
                 </div>
               </motion.button>
@@ -172,8 +194,9 @@ export default function OnboardingGender({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
             className="mb-8"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
-            <h2 className="text-white font-bold text-lg mb-4">Looking for...</h2>
+            <h2 className="text-white font-bold text-lg mb-4">{t('onboarding.gender.lookingFor')}</h2>
             <div className="grid grid-cols-1 gap-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -194,8 +217,8 @@ export default function OnboardingGender({
                     <path d="M15 5h4v4"/>
                   </svg>
                 </div>
-                <span className={`font-bold text-base ml-3 ${lookingFor === 'male' ? 'text-[#0d2920]' : 'text-white'}`}>
-                  Men
+                <span className={`font-bold text-base ${isRTL ? 'mr-3' : 'ml-3'} ${lookingFor === 'male' ? 'text-[#0d2920]' : 'text-white'}`}>
+                  {t('onboarding.gender.men')}
                 </span>
               </motion.button>
 
@@ -218,8 +241,8 @@ export default function OnboardingGender({
                     <path d="M9 18h6"/>
                   </svg>
                 </div>
-                <span className={`font-bold text-base ml-3 ${lookingFor === 'female' ? 'text-[#0d2920]' : 'text-white'}`}>
-                  Women
+                <span className={`font-bold text-base ${isRTL ? 'mr-3' : 'ml-3'} ${lookingFor === 'female' ? 'text-[#0d2920]' : 'text-white'}`}>
+                  {t('onboarding.gender.women')}
                 </span>
               </motion.button>
 
@@ -236,8 +259,8 @@ export default function OnboardingGender({
                 `}
               >
                 <Users className={`w-7 h-7 ${lookingFor === 'both' ? 'text-[#0d2920]' : 'text-white/70'}`} />
-                <span className={`font-bold text-base ml-4 ${lookingFor === 'both' ? 'text-[#0d2920]' : 'text-white'}`}>
-                  Everyone
+                <span className={`font-bold text-base ${isRTL ? 'mr-4' : 'ml-4'} ${lookingFor === 'both' ? 'text-[#0d2920]' : 'text-white'}`}>
+                  {t('onboarding.gender.everyone')}
                 </span>
               </motion.button>
             </div>
@@ -253,7 +276,7 @@ export default function OnboardingGender({
               disabled={!myGender || !lookingFor}
               className="w-full h-14 rounded-full bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Continue
+              {t('common.continue')}
             </Button>
           </motion.div>
         </div>

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface OnboardingHobbiesProps {
   onNext: (data: { hobbies: string[] }) => void
@@ -26,8 +27,21 @@ export default function OnboardingHobbies({
   onBack,
   initialHobbies = []  // ✅ FIX: Default to empty array, use initial if provided
 }: OnboardingHobbiesProps) {
+  const { t, isRTL } = useLanguage()
+  
   // ✅ FIX: Use initialHobbies to preserve selections on back navigation
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>(initialHobbies)
+
+  // ✅ NEW: Real viewport height for old Android/iOS
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  
+  useEffect(() => {
+    const updateViewportHeight = () => setViewportHeight(window.innerHeight)
+    updateViewportHeight()
+    window.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('orientationchange', () => setTimeout(updateViewportHeight, 100))
+    return () => window.removeEventListener('resize', updateViewportHeight)
+  }, [])
 
   const toggleHobby = (hobby: string) => {
     if (selectedHobbies.includes(hobby)) {
@@ -44,7 +58,13 @@ export default function OnboardingHobbies({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-hidden">
+    <div 
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto overflow-x-hidden"
+      style={{ 
+        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        paddingBottom: '100px'
+      }}
+    >
       <div className="absolute inset-0">
         {[...Array(20)].map((_, i) => (
           <motion.div
@@ -84,6 +104,7 @@ export default function OnboardingHobbies({
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="text-center mb-8"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             <motion.div
               animate={{ rotate: [0, -10, 10, -10, 0] }}
@@ -93,13 +114,13 @@ export default function OnboardingHobbies({
               🎯
             </motion.div>
             <h1 className="font-serif text-3xl font-bold text-white mb-2">
-              Your Interests
+              {t('onboarding.hobbies.title')}
             </h1>
             <p className="text-[#a8d5ba] text-base mb-2">
-              Choose at least 3, up to 8
+              {t('onboarding.hobbies.subtitle')}
             </p>
             <div className="text-[#4ade80] text-xl font-bold">
-              {selectedHobbies.length}/8 selected
+              {t('onboarding.hobbies.selected', { count: selectedHobbies.length })}
             </div>
           </motion.div>
 
@@ -140,14 +161,14 @@ export default function OnboardingHobbies({
               variant="outline"
               className="flex-1 h-14 rounded-full bg-transparent border-2 border-white/30 text-white hover:bg-white/10"
             >
-              Back
+              {t('onboarding.back')}
             </Button>
             <Button
               onClick={handleContinue}
               disabled={selectedHobbies.length < 3}
               className="flex-1 h-14 rounded-full bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold disabled:opacity-50"
             >
-              Continue
+              {t('common.continue')}
             </Button>
           </div>
         </div>

@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { X, Heart, MapPin, User as UserIcon, MessageCircle, ChevronLeft, ChevronRight, Crown, Check, Sparkles, Bell, Home, Clock, XCircle } from "lucide-react"
 import { auth, db } from "@/lib/firebase"
-import { doc, getDoc, onSnapshot } from "firebase/firestore"
+import { doc, getDoc, onSnapshot, collection } from "firebase/firestore"
 import { chatHasMessages, clearChatMessages } from "@/lib/chat-system"
 import UserProfileModal from "./user-profile-modal"
 import WeAreMeetingModal from "./we-are-meeting-modal"
+import DebugPanel from "./debug-panel"  // ✅ v2.8.18: Debug panel for match screen
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface MatchScreenProps {
   user: any
@@ -19,6 +21,7 @@ interface MatchScreenProps {
   passesLeft: number
   onPass: () => void
   onNotInterested?: () => void  // ✅ NEW: Exit match without using pass (when no passes left)
+  onOpenChat?: () => void       // ✅ v2.8.16: Open chat WITHOUT locking phone
   isPremium?: boolean
   timeRemaining: number
   onSkipTimer?: () => void
@@ -29,6 +32,15 @@ interface MatchScreenProps {
   isNewMatch?: boolean
   currentUserGender?: 'male' | 'female'  // ✅ "She Decides" - Only women can click "We're Meeting!"
   matchedUserGender?: 'male' | 'female'  // ✅ NEW: For same-sex matching logic
+  isMatchLocked?: boolean  // ✅ NEW: Whether this match is locked (second match for free users)
+  onUnlockMatch?: () => void  // ✅ NEW: Callback to show premium paywall
+  hasBidirectionalChat?: boolean  // ✅ NEW: Both users must send at least 1 message before meeting
+  isInEnjoyModeSession?: boolean  // ✅ NEW: Are we viewing profile during enjoy mode?
+  onBackToEnjoyMode?: () => void  // ✅ NEW: Go back to enjoy mode screen
+  isPartnerReadyToMeet?: boolean  // ✅ NEW: Partner already clicked "We're Meeting"
+  isReadOnlyProfile?: boolean     // ✅ NEW: Just viewing profile from expired chat
+  onBackToChat?: () => void       // ✅ NEW: Go back to chat (for read-only profile view)
+  matchCreatedAt?: Date | null    // ✅ v2.8.4: When match was created (for filtering messages)
 }
 
 interface UserProfile {
@@ -39,12 +51,16 @@ interface UserProfile {
   bio?: string
   age?: number
   hobbies?: string[]
+  city?: string           // ✅ NEW: City
+  occupation?: string     // ✅ NEW: Occupation
+  languages?: string[]    // ✅ NEW: Languages
 }
 
 export default function MatchScreen({
   user,
   onContinue,
   onMeetNow,
+  onOpenChat,              // ✅ v2.8.16: Open chat WITHOUT locking phone
   onMarkMatchSuccessful,  // ✅ "She Decides" - Only women click this
   onWeAreMeetingModalClose,  // ✅ NEW: Close modal → return to home
   passesLeft,
@@ -59,8 +75,19 @@ export default function MatchScreen({
   passResetTime,
   isNewMatch = false,
   currentUserGender = 'male',  // ✅ "She Decides" - Default to male (button disabled)
-  matchedUserGender  // ✅ NEW: For same-sex matching logic
+  matchedUserGender,  // ✅ NEW: For same-sex matching logic
+  isMatchLocked = false,  // ✅ NEW: Whether this match is locked
+  onUnlockMatch,  // ✅ NEW: Callback to show premium paywall
+  hasBidirectionalChat = false,  // ✅ NEW: Must chat before meeting!
+  isInEnjoyModeSession = false,  // ✅ NEW: Are we viewing profile during enjoy mode?
+  onBackToEnjoyMode,  // ✅ NEW: Go back to enjoy mode screen
+  isPartnerReadyToMeet = false,  // ✅ NEW: Partner already clicked "We're Meeting"
+  isReadOnlyProfile = false,     // ✅ NEW: Just viewing profile from expired chat
+  onBackToChat,                  // ✅ NEW: Go back to chat
+  matchCreatedAt                 // ✅ v2.8.4: When match was created
 }: MatchScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [showPremiumOffer, setShowPremiumOffer] = useState(false)
   const [premiumOfferShownAt, setPremiumOfferShownAt] = useState<number | null>(null)
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
@@ -70,13 +97,90 @@ export default function MatchScreen({
   const [loadedMatchedUserId, setLoadedMatchedUserId] = useState<string | null>(null)
   const [hasActiveChat, setHasActiveChat] = useState(false)
   const [showWeAreMeetingModal, setShowWeAreMeetingModal] = useState(false)
+  const [showDebugPanel, setShowDebugPanel] = useState(false)  // ✅ v2.8.18: Debug panel
+  
+  // ✅ v2.8.18: Long press for debug panel
+  const isLongPressingRef = useRef(false)
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const handleLongPressStart = () => {
+    isLongPressingRef.current = true
+    longPressTimerRef.current = setTimeout(() => {
+      if (isLongPressingRef.current) {
+        console.log('🐛 Debug Panel activated in Match Screen!')
+        setShowDebugPanel(true)
+        if (navigator.vibrate) navigator.vibrate(100)
+      }
+    }, 3000)
+  }
+  
+  const handleLongPressEnd = () => {
+    isLongPressingRef.current = false
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+  
+  // ✅ NEW: Real-time lock state from Firestore (more reliable than React state)
+  const [isLockedFromFirestore, setIsLockedFromFirestore] = useState<boolean | null>(null)  // null = loading
+  const effectiveIsLocked = isLockedFromFirestore !== null ? isLockedFromFirestore : isMatchLocked
+  
+  // ✅ NEW: Listen to activeMatch for real-time lock updates
+  useEffect(() => {
+    const currentUserId = auth.currentUser?.uid
+    const matchedUserId = user?.uid
+    
+    if (!currentUserId || !matchedUserId) {
+      console.log('🔒 No user IDs for lock check')
+      setIsLockedFromFirestore(isMatchLocked)  // Fall back to prop
+      return
+    }
+    
+    // Create match ID (same as used elsewhere)
+    const matchId = [currentUserId, matchedUserId].sort().join('_')
+    console.log('🔒 Setting up real-time lock listener for match:', matchId)
+    
+    // Listen to activeMatch document for real-time updates
+    const unsubscribe = onSnapshot(
+      doc(db, 'activeMatches', matchId),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          const lockedForUsers = data.lockedForUsers || []
+          const userIsLocked = lockedForUsers.includes(currentUserId)
+          console.log(`🔒 Real-time lock check: userIsLocked=${userIsLocked}, lockedForUsers=`, lockedForUsers)
+          setIsLockedFromFirestore(userIsLocked)
+        } else {
+          console.log('🔒 No active match document found')
+          setIsLockedFromFirestore(false)
+        }
+      },
+      (error) => {
+        console.error('🔒 Error listening to lock status:', error)
+        setIsLockedFromFirestore(isMatchLocked)  // Fall back to prop on error
+      }
+    )
+    
+    return () => unsubscribe()
+  }, [user?.uid, isMatchLocked])
   
   // ✅ "She Decides" - BUT also support same-sex couples!
   // Logic:
   // - Hetero couples (male + female): Only the woman can click
   // - Same-sex couples (male + male OR female + female): BOTH can click
-  const isSameSexCouple = currentUserGender === matchedUserGender
-  const canInitiateMeeting = isSameSexCouple || currentUserGender === 'female'
+  // ✅ v2.8.18 FIX: Handle undefined genders properly!
+  const hasValidGenders = currentUserGender && matchedUserGender
+  const isSameSexCouple = hasValidGenders && currentUserGender === matchedUserGender
+  
+  // ✅ v2.8.18: Only allow meeting button if:
+  // 1. User is female (She Decides)
+  // 2. OR both are same gender AND genders are known
+  const genderAllowsMeeting = currentUserGender === 'female' || (isSameSexCouple && hasValidGenders)
+  
+  // ✅ NEW: Must have bidirectional chat before meeting!
+  // Both users must send at least one message
+  const canInitiateMeeting = genderAllowsMeeting && hasBidirectionalChat && !isPartnerReadyToMeet
   
   // ✅ NEW: Track time until next pass
   const [timeUntilNextPass, setTimeUntilNextPass] = useState<number>(0)
@@ -292,49 +396,12 @@ export default function MatchScreen({
     }
   }, [user?.uid, user?.id, loadedMatchedUserId])
 
-// Check if there are existing messages
+// Check if there are existing messages (only from CURRENT match)
 useEffect(() => {
   // ✅ FIX: Reset hasActiveChat when user changes
   setHasActiveChat(false)
   
-  // ✅ CRITICAL FIX: If this is a NEW match, always show "Send Message" not "Continue Chatting"
-  // This ensures fresh start for new matches even if there was previous chat history
-  // ⚠️ BUT: Only clear messages if this is TRULY a new match (no existing messages)
-  if (isNewMatch) {
-    console.log('🆕 New match detected - checking if should clear chat...')
-    
-    const checkAndMaybeClearChat = async () => {
-      const currentUserId = auth.currentUser?.uid
-      const matchedUserId = user?.uid || user?.id
-      
-      if (currentUserId && matchedUserId) {
-        const matchId = [currentUserId, matchedUserId].sort().join('_')
-        
-        // ✅ SAFETY CHECK: Only clear if there are NO messages (truly new match)
-        try {
-          const hasMessages = await chatHasMessages(matchId)
-          
-          if (hasMessages) {
-            console.log('⚠️ Chat has existing messages - NOT clearing (this is a restored match)')
-            setHasActiveChat(true)  // Show "Continue Chatting" button
-            return  // Don't clear!
-          }
-          
-          // No messages - safe to clear (truly new match)
-          await clearChatMessages(matchId)
-          console.log('🧹 Old chat messages cleared for new match')
-          setHasActiveChat(false)
-        } catch (error) {
-          console.error('⚠️ Error checking/clearing old messages:', error)
-          // Don't fail - just continue
-        }
-      }
-    }
-    
-    checkAndMaybeClearChat()
-    return
-  }
-  
+  // ✅ v2.8.4: Check for messages only from CURRENT match (after matchCreatedAt)
   const checkMessages = async () => {
     const currentUserId = auth.currentUser?.uid
     const matchedUserId = user?.uid || user?.id
@@ -346,11 +413,38 @@ useEffect(() => {
     
     const matchId = [currentUserId, matchedUserId].sort().join('_')
     console.log(`🔍 Checking messages for matchId: ${matchId}`)
+    if (matchCreatedAt) {
+      console.log(`   Only counting messages after: ${matchCreatedAt.toLocaleString()}`)
+    }
     
     try {
-      const hasMessages = await chatHasMessages(matchId)
-      setHasActiveChat(hasMessages)
-      console.log(`💬 Chat has messages: ${hasMessages}`)
+      // ✅ v2.8.4: Count only messages AFTER matchCreatedAt
+      if (matchCreatedAt) {
+        // ✅ v2.8.5 FIX: Messages are stored in 'matches' collection, not 'chats'!
+        const messagesRef = collection(db, 'matches', matchId, 'messages')
+        const { getDocs } = await import('firebase/firestore')
+        const messagesSnap = await getDocs(messagesRef)
+        
+        let relevantMessageCount = 0
+        messagesSnap.docs.forEach(doc => {
+          const data = doc.data()
+          const messageTime = data.timestamp?.toDate ? data.timestamp.toDate() : 
+                              data.createdAt?.toDate ? data.createdAt.toDate() : null
+          
+          if (messageTime && messageTime >= matchCreatedAt) {
+            relevantMessageCount++
+          }
+        })
+        
+        const hasRelevantMessages = relevantMessageCount > 0
+        setHasActiveChat(hasRelevantMessages)
+        console.log(`💬 Relevant messages (this match): ${relevantMessageCount} → ${hasRelevantMessages ? 'Continue Chatting' : 'Send Message'}`)
+      } else {
+        // Fallback to old behavior if no matchCreatedAt
+        const hasMessages = await chatHasMessages(matchId)
+        setHasActiveChat(hasMessages)
+        console.log(`💬 Chat has messages: ${hasMessages}`)
+      }
     } catch (error) {
       console.error('❌ Error checking messages:', error)
       setHasActiveChat(false)
@@ -358,7 +452,7 @@ useEffect(() => {
   }
   
   checkMessages()
-}, [user?.uid, user?.id, isNewMatch])  // ✅ Added isNewMatch dependency
+}, [user?.uid, user?.id, isNewMatch, matchCreatedAt])  // ✅ Added matchCreatedAt dependency
 
   // ✅ NEW: Countdown timer for next pass (runs in background)
   useEffect(() => {
@@ -387,10 +481,17 @@ useEffect(() => {
     setShowSendMessageConfirm(true)
   }, [])
 
+  // ✅ v2.8.16: Open chat WITHOUT locking phone (separate from "We're Meeting!")
   const confirmSendMessage = useCallback(() => {
     setShowSendMessageConfirm(false)
-    onMeetNow()
-  }, [onMeetNow])
+    // ✅ FIX: Use onOpenChat (just opens chat) NOT onMeetNow (locks phone!)
+    if (onOpenChat) {
+      onOpenChat()
+    } else {
+      // Fallback to old behavior if onOpenChat not provided
+      onMeetNow()
+    }
+  }, [onOpenChat, onMeetNow])
 
   const handlePassClick = () => {
     if (passesLeft > 0 || isPremium) {
@@ -477,7 +578,51 @@ useEffect(() => {
   const closeProfile = () => setShowProfile('none')
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto flex flex-col pb-24">
+    <div 
+      className="bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto flex flex-col"
+      style={{ 
+        height: 'var(--app-height, 100dvh)',
+        minHeight: 'var(--app-height, 100dvh)',
+        maxHeight: 'var(--app-height, 100dvh)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 96px)'
+      }}
+    >
+      {/* ✅ HERMETIC: Back to Enjoy Mode header when viewing profile during meeting */}
+      {isInEnjoyModeSession && onBackToEnjoyMode && (
+        <div className="sticky top-0 z-50 bg-gradient-to-b from-[#0d2920] to-transparent pt-4 pb-8 px-4">
+          <button
+            onClick={onBackToEnjoyMode}
+            className="flex items-center gap-2 text-[#4ade80] hover:text-white transition-colors"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span className="font-bold">Back to Meeting</span>
+          </button>
+        </div>
+      )}
+      
+      {/* ✅ NEW: Back to Chat header when viewing profile from expired chat */}
+      {isReadOnlyProfile && onBackToChat && (
+        <div className="sticky top-0 z-50 bg-gradient-to-b from-[#0d2920] to-transparent pt-4 pb-8 px-4">
+          <button
+            onClick={onBackToChat}
+            className="flex items-center gap-2 text-[#4ade80] hover:text-white transition-colors"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span className="font-bold">Back to Chat</span>
+          </button>
+        </div>
+      )}
+      
       {/* 🔊 Match Celebration Sound - Hidden */}
       <audio
         ref={matchSoundRef}
@@ -523,22 +668,65 @@ useEffect(() => {
           transition={{ type: "spring", damping: 15 }}
           className="text-center mb-4"
         >
-          <motion.h1
-            animate={{ 
-              scale: [1, 1.05, 1],
-            }}
-            transition={{ 
-              duration: 2, 
-              repeat: Infinity,
-              ease: "easeInOut" 
-            }}
-            className="text-4xl font-serif font-bold text-white mb-1 drop-shadow-2xl"
-          >
-            It's a Match! 🎉
-          </motion.h1>
-          <p className="text-[#a8d5ba] text-base font-medium">
-            You both liked each other
-          </p>
+          {isInEnjoyModeSession ? (
+            // ✅ During enjoy mode - show profile view header
+            <>
+              <motion.h1
+                className="text-3xl font-serif font-bold text-white mb-1 drop-shadow-2xl"
+                style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+              >
+                {t('match.yourDatesProfile')}
+              </motion.h1>
+              <p className="text-pink-300 text-base font-medium" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('match.currentlyMeeting')}
+              </p>
+            </>
+          ) : (
+            // ✅ Normal match view
+            <>
+              <motion.h1
+                animate={{ 
+                  scale: [1, 1.05, 1],
+                }}
+                transition={{ 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut" 
+                }}
+                className="text-4xl font-serif font-bold text-white mb-1 drop-shadow-2xl"
+                style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+                onTouchStart={handleLongPressStart}
+                onTouchEnd={handleLongPressEnd}
+                onTouchCancel={handleLongPressEnd}
+                onMouseDown={handleLongPressStart}
+                onMouseUp={handleLongPressEnd}
+                onMouseLeave={handleLongPressEnd}
+              >
+                {t('match.title')}
+              </motion.h1>
+              <p className="text-[#a8d5ba] text-base font-medium" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {t('match.subtitle')}
+              </p>
+              
+              {/* ✅ NEW: Proximity excitement banner */}
+              {user?.distance && user.distance <= 500 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-3 bg-[#4ade80]/20 border border-[#4ade80]/40 rounded-xl px-4 py-2"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+                >
+                  <p className="text-[#4ade80] text-sm font-semibold">
+                    📍 {t('match.isOnlyAway', { name: matchedUserName, distance: formatDistance(user.distance) })}
+                  </p>
+                  <p className="text-[#4ade80]/80 text-xs">
+                    {t('match.minWalk', { minutes: Math.max(1, Math.round(user.distance / 80)) })}
+                  </p>
+                </motion.div>
+              )}
+            </>
+          )}
         </motion.div>
 
         <motion.div
@@ -561,7 +749,7 @@ useEffect(() => {
                 />
               </div>
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#0d2920] px-3 py-1 rounded-full border-2 border-[#4ade80]">
-                <span className="text-white font-semibold text-sm">You</span>
+                <span className="text-white font-semibold text-sm">{t('match.you')}</span>
               </div>
             </div>
           </motion.div>
@@ -593,8 +781,14 @@ useEffect(() => {
                 <img 
                   src={matchedUserPhoto || '/placeholder.svg'} 
                   alt={matchedUserName}
-                  className="h-full w-full object-cover"
+                  className={`h-full w-full object-cover transition-all ${effectiveIsLocked ? 'blur-lg' : ''}`}
                 />
+                {/* 🔒 Lock overlay when match is locked */}
+                {effectiveIsLocked && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span className="text-2xl">🔒</span>
+                  </div>
+                )}
               </div>
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#0d2920] px-3 py-1 rounded-full border-2 border-pink-400">
                 <span className="text-white font-semibold text-sm">{matchedUserName}</span>
@@ -613,28 +807,62 @@ useEffect(() => {
             <h2 className="text-white text-xl font-bold mb-0.5">
               {matchedUserName}, {matchedUserAge}
             </h2>
-            <div className="flex items-center justify-center gap-2 text-[#a8d5ba] text-xs">
-              <MapPin className="h-3 w-3" />
-              <span>{formatDistance(user?.distance)} away</span>
+            <div className="flex items-center justify-center gap-2 text-[#4ade80] text-sm font-medium">
+              <MapPin className="h-3.5 w-3.5" />
+              <span>
+                {formatDistance(user?.distance)} away
+                {user?.venueName && ` (${user.venueName})`}
+              </span>
+            </div>
+            {/* ✅ NEW: Walking time estimate */}
+            {user?.distance && user.distance <= 500 && (
+              <p className="text-white/60 text-xs mt-1">
+                🚶 ~{Math.max(1, Math.round(user.distance / 80))} min walk
+              </p>
+            )}
+            
+            {/* ✅ NEW: Additional Profile Details */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              {/* City */}
+              {(matchedUserProfile?.city || user?.city) && (
+                <span className="text-white/70 text-xs bg-white/10 px-2 py-0.5 rounded-full">
+                  📍 {(matchedUserProfile?.city || user?.city)?.split(' - ')[0]}
+                </span>
+              )}
+              {/* Occupation */}
+              {(matchedUserProfile?.occupation || user?.occupation) && (
+                <span className="text-white/70 text-xs bg-white/10 px-2 py-0.5 rounded-full">
+                  💼 {matchedUserProfile?.occupation || user?.occupation}
+                </span>
+              )}
+              {/* Languages */}
+              {(matchedUserProfile?.languages || user?.languages) && (matchedUserProfile?.languages || user?.languages)!.length > 0 && (
+                <span className="text-white/70 text-xs bg-white/10 px-2 py-0.5 rounded-full">
+                  🌍 {(matchedUserProfile?.languages || user?.languages)!.slice(0, 2).join(', ')}
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="bg-[#0d2920]/50 rounded-xl p-2 mb-2 border border-[#4ade80]/20">
-            <div className="text-center mb-1">
-              <p className="text-white/60 text-xs mb-0.5">Decide in:</p>
-              <div className={`text-4xl font-bold font-mono ${getTimerColor()}`}>
-                {formatTime(timeRemaining)}
+          {/* ✅ Only show timer when NOT in enjoy mode session and NOT in read-only profile */}
+          {!isInEnjoyModeSession && !isReadOnlyProfile && (
+            <div className="bg-[#0d2920]/50 rounded-xl p-2 mb-2 border border-[#4ade80]/20">
+              <div className="text-center mb-1">
+                <p className="text-white/60 text-xs mb-0.5">Decide in:</p>
+                <div className={`text-4xl font-bold font-mono ${getTimerColor()}`}>
+                  {formatTime(timeRemaining)}
+                </div>
+                {timeRemaining <= 60 && (
+                  <p className="text-red-400 text-[10px] mt-0.5 font-semibold animate-pulse">
+                    ⏱️ Less than a minute!
+                  </p>
+                )}
               </div>
-              {timeRemaining <= 60 && (
-                <p className="text-red-400 text-[10px] mt-0.5 font-semibold animate-pulse">
-                  ⏱️ Less than a minute!
-                </p>
-              )}
+              <p className="text-white/50 text-xs text-center font-semibold">
+                🔒 Can't swipe until you decide
+              </p>
             </div>
-            <p className="text-white/50 text-xs text-center font-semibold">
-              🔒 Can't swipe until you decide
-            </p>
-          </div>
+          )}
         </motion.div>
 
         <motion.div
@@ -643,76 +871,215 @@ useEffect(() => {
           transition={{ delay: 0.6 }}
           className="w-full max-w-sm space-y-2"
         >
-          {/* ✅ Send Message Button */}
-          <Button
-            onClick={handleSendMessageClick}
-            disabled={timeRemaining <= 0}
-            className={`w-full h-11 rounded-xl font-bold text-sm shadow-lg transition-all ${
-              timeRemaining <= 0
-                ? 'bg-gray-500/50 cursor-not-allowed text-gray-300'
-                : 'bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920]'
-            }`}
-          >
-            <Heart className="mr-2 h-5 w-5" fill={timeRemaining > 0 ? "currentColor" : "none"} />
-            {timeRemaining <= 0 
-              ? '⏰ Time Expired'
-              : (hasActiveChat ? 'Continue Chatting' : 'Send Message')
-            }
-          </Button>
-
-          {/* ✅ "She Decides" - Only women can click "We're Meeting!" */}
-          {timeRemaining > 0 && onMarkMatchSuccessful && (
-            canInitiateMeeting ? (
-              // ✅ WOMAN - Active button, she decides!
-              <Button
-                onClick={async () => {
-                  // ✅ CRITICAL: Mark match as successful IMMEDIATELY (sends notification to him!)
-                  // This way HE gets the notification RIGHT NOW, not after she clicks OK
-                  console.log('💕 She clicked We\'re Meeting! Sending notification immediately...')
-                  onMarkMatchSuccessful()  // ← Sends notification to HIM right now!
-                  
-                  // 🔊 Play "We're Meeting" celebration sound!
-                  try {
-                    if (meetingSoundRef.current) {
-                      meetingSoundRef.current.currentTime = 0
-                      meetingSoundRef.current.volume = 0.8
-                      await meetingSoundRef.current.play()
-                      console.log('🔊 Meeting celebration sound played!')
-                    } else {
-                      // Fallback: create new audio
-                      const audio = new Audio('/sounds/meeting-celebration.wav')
-                      audio.volume = 0.8
-                      await audio.play()
-                      console.log('🔊 Meeting sound played (fallback)!')
-                    }
-                  } catch (err) {
-                    console.warn('Could not play meeting sound:', err)
-                  }
-                  
-                  // Show celebration modal for HER
-                  setShowWeAreMeetingModal(true)
-                }}
-                className="w-full h-12 rounded-xl font-bold text-base shadow-lg transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white animate-pulse hover:animate-none"
-              >
-                <Heart className="mr-2 h-5 w-5" />
-                💕 We're Meeting!
-              </Button>
-            ) : (
-              // ✅ MAN - Disabled button with explanation
-              <div className="w-full space-y-1">
-                <Button
-                  disabled
-                  className="w-full h-11 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-gray-600 to-gray-700 text-gray-400 cursor-not-allowed opacity-70"
-                >
-                  <Heart className="mr-2 h-5 w-5" />
-                  💚 We're Meeting
-                </Button>
-                <p className="text-center text-xs text-white/60 px-4">
-                  ✨ <span className="text-pink-400">She decides</span> when you meet!
+          {/* ✅ HERMETIC: During enjoy mode session, show simple back button */}
+          {isInEnjoyModeSession && onBackToEnjoyMode ? (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-pink-500/20 to-rose-500/20 rounded-xl p-4 border border-pink-500/40 text-center">
+                <span className="text-3xl block mb-2">💕</span>
+                <h3 className="text-white font-bold text-lg mb-1">You're Meeting!</h3>
+                <p className="text-pink-200/80 text-sm">
+                  Enjoy your time together. This is your match's profile.
                 </p>
               </div>
-            )
-          )}
+              
+              <Button
+                onClick={onBackToEnjoyMode}
+                className="w-full h-12 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
+              >
+                <Heart className="mr-2 h-5 w-5" />
+                ← Back to Meeting
+              </Button>
+            </div>
+          ) : isReadOnlyProfile && onBackToChat ? (
+            /* ✅ NEW: Read-only profile view from expired chat */
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/40 text-center">
+                <span className="text-3xl block mb-2">👤</span>
+                <h3 className="text-white font-bold text-lg mb-1">Profile View</h3>
+                <p className="text-blue-200/80 text-sm">
+                  Viewing {matchedUserName}'s profile
+                </p>
+              </div>
+              
+              <Button
+                onClick={onBackToChat}
+                className="w-full h-12 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+              >
+                <MessageCircle className="mr-2 h-5 w-5" />
+                ← Back to Chat
+              </Button>
+            </div>
+          ) : effectiveIsLocked ? (
+            <div className="space-y-3">
+              {/* Lock Message */}
+              <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-xl p-4 border border-amber-500/40 text-center">
+                <span className="text-3xl block mb-2">🔒</span>
+                <h3 className="text-white font-bold text-lg mb-1">Match Locked!</h3>
+                <p className="text-amber-200/80 text-sm">
+                  Upgrade to Premium to unlock this match and start chatting
+                </p>
+              </div>
+              
+              {/* Unlock Button 1 - Premium */}
+              <Button
+                onClick={onUnlockMatch}
+                className="w-full h-12 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-500 hover:via-yellow-500 hover:to-amber-600 text-gray-900"
+              >
+                <Crown className="mr-2 h-5 w-5" />
+                👑 Unlock with Premium
+              </Button>
+              
+              {/* Unlock Button 2 - Single Pass */}
+              <Button
+                onClick={onUnlockMatch}
+                className="w-full h-11 rounded-xl font-bold text-sm shadow-lg bg-gradient-to-r from-[#4ade80]/20 to-[#22c55e]/20 hover:from-[#4ade80]/30 hover:to-[#22c55e]/30 border-2 border-[#4ade80] text-[#4ade80]"
+              >
+                🎫 Get 1 Pass - $2.90
+              </Button>
+              
+              {/* View Profile (allowed even when locked) */}
+              <p className="text-center text-white/50 text-xs">
+                You can still view profile details (except photos)
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* ✅ Send Message Button - UNLOCKED */}
+              <Button
+                onClick={handleSendMessageClick}
+                disabled={timeRemaining <= 0}
+                className={`w-full h-11 rounded-xl font-bold text-sm shadow-lg transition-all ${
+                  timeRemaining <= 0
+                    ? 'bg-gray-500/50 cursor-not-allowed text-gray-300'
+                    : 'bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920]'
+                }`}
+              >
+                <Heart className="mr-2 h-5 w-5" fill={timeRemaining > 0 ? "currentColor" : "none"} />
+                {timeRemaining <= 0 
+                  ? '⏰ Time Expired'
+                  : (hasActiveChat ? 'Continue Chatting' : 'Send Message')
+                }
+              </Button>
+
+              {/* ✅ "She Decides" + "Chat First" - Meeting button logic */}
+              {timeRemaining > 0 && onMarkMatchSuccessful && (
+                canInitiateMeeting ? (
+                  // ✅ ENABLED: Gender allows + has bidirectional chat
+                  // ✅ v2.8.20: Fixed for iOS - use onTouchStart!
+                  <button
+                    type="button"
+                    onTouchStart={async (e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log('💕 [iOS] We\'re Meeting button TOUCHED!')
+                      
+                      // ✅ CRITICAL: Mark match as successful IMMEDIATELY (sends notification to him!)
+                      console.log('💕 Sending notification immediately...')
+                      onMarkMatchSuccessful()  // ← Sends notification RIGHT NOW!
+                      
+                      // ✅ v2.8.22 FIX: Show modal IMMEDIATELY - before audio!
+                      // On iOS, audio.play() can block/hang on first touch
+                      console.log('💕 Opening WeAreMeetingModal IMMEDIATELY...')
+                      setShowWeAreMeetingModal(true)
+                      
+                      // 🔊 Play "We're Meeting" celebration sound (non-blocking)
+                      try {
+                        if (meetingSoundRef.current) {
+                          meetingSoundRef.current.currentTime = 0
+                          meetingSoundRef.current.volume = 0.8
+                          meetingSoundRef.current.play().catch(() => {})  // Fire and forget
+                          console.log('🔊 Meeting celebration sound played!')
+                        } else {
+                          const audio = new Audio('/sounds/meeting-celebration.wav')
+                          audio.volume = 0.8
+                          audio.play().catch(() => {})  // Fire and forget
+                          console.log('🔊 Meeting sound played (fallback)!')
+                        }
+                      } catch (err) {
+                        console.warn('Could not play meeting sound:', err)
+                      }
+                    }}
+                    onClick={async (e) => {
+                      // Desktop fallback
+                      e.preventDefault()
+                      console.log('💕 [Desktop] We\'re Meeting button CLICKED!')
+                      
+                      onMarkMatchSuccessful()
+                      
+                      // ✅ v2.8.22 FIX: Show modal IMMEDIATELY - before audio!
+                      setShowWeAreMeetingModal(true)
+                      
+                      // Play sound (non-blocking)
+                      try {
+                        if (meetingSoundRef.current) {
+                          meetingSoundRef.current.currentTime = 0
+                          meetingSoundRef.current.volume = 0.8
+                          meetingSoundRef.current.play().catch(() => {})
+                        } else {
+                          const audio = new Audio('/sounds/meeting-celebration.wav')
+                          audio.volume = 0.8
+                          audio.play().catch(() => {})
+                        }
+                      } catch (err) {
+                        console.warn('Could not play meeting sound:', err)
+                      }
+                    }}
+                    className="w-full h-12 rounded-xl font-bold text-base shadow-lg transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white animate-pulse hover:animate-none flex items-center justify-center"
+                    style={{ 
+                      touchAction: 'manipulation', 
+                      WebkitTapHighlightColor: 'transparent',
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <Heart className={`${isRTL ? 'ml-2' : 'mr-2'} h-5 w-5`} />
+                    💕 {t('match.wereDeepMeeting')}
+                  </button>
+                ) : (
+                  // ✅ DISABLED: Show button with appropriate message
+                  <div className="w-full space-y-2">
+                    <Button
+                      disabled
+                      className="w-full h-12 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-pink-500/30 to-rose-500/30 text-pink-200/70 cursor-not-allowed border border-pink-500/20"
+                    >
+                      <Heart className={`${isRTL ? 'ml-2' : 'mr-2'} h-5 w-5`} />
+                      💕 {t('match.wereDeepMeeting')}
+                    </Button>
+                    {/* ✅ Different messages based on state */}
+                    {isPartnerReadyToMeet ? (
+                      // ✅ Partner already clicked "We're Meeting"!
+                      <div className="bg-gradient-to-r from-pink-500/20 to-rose-500/20 rounded-xl p-3 border border-pink-500/30 animate-pulse">
+                        <p className="text-center text-sm text-pink-200" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('match.yourDateClicked')}
+                        </p>
+                        <p className="text-center text-xs text-white/70 mt-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('match.lookForPopup')}
+                        </p>
+                      </div>
+                    ) : genderAllowsMeeting ? (
+                      // ✅ v2.8.4 WOMAN: Wait for him to message first!
+                      <div className="bg-pink-500/10 rounded-xl p-3 border border-pink-500/20">
+                        <p className="text-center text-sm text-pink-200" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('match.youreInControl')}
+                        </p>
+                        <p className="text-center text-xs text-white/60 mt-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('match.whenHeMessages')}
+                        </p>
+                      </div>
+                    ) : (
+                      // ✅ v2.8.4 MAN: She decides - Send her a message first!
+                      <div className="bg-[#1a4d3e]/30 rounded-xl p-3 border border-[#4ade80]/20">
+                        <p className="text-center text-sm text-white/80" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('match.sheDecidesWhen')}
+                        </p>
+                        <p className="text-center text-xs text-white/50 mt-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          {t('match.sendHerMessage')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
           
           {/* ✅ Pass/Not Interested Button */}
           {isPremium || passesLeft > 0 ? (
@@ -775,6 +1142,8 @@ useEffect(() => {
           <p className="text-center text-white/40 text-xs mt-4">
             Choose wisely - this match expires in {formatTime(timeRemaining)}!
           </p>
+            </>
+          )}
         </motion.div>
       </div>
 
@@ -986,6 +1355,7 @@ useEffect(() => {
           name: matchedUserName
         }}
         isCurrentUser={false}
+        blurPhotos={effectiveIsLocked}
       />
 
       {/* ✅ FIXED: Bottom Navigation - Back to Swiping DISABLED during active match */}
@@ -1010,7 +1380,7 @@ useEffect(() => {
           >
             <Home className="h-6 w-6" />
             <span className="text-xs font-semibold">
-              {timeRemaining > 0 ? '🔒 Locked' : 'Back to Swiping'}
+              {timeRemaining > 0 ? t('nav.locked') : t('nav.backToSwiping')}
             </span>
           </motion.button>
 
@@ -1023,7 +1393,7 @@ useEffect(() => {
                 className="flex flex-col items-center gap-1 text-white/60 hover:text-[#4ade80] transition-colors"
               >
                 <Bell className="h-6 w-6" />
-                <span className="text-xs">Notifications</span>
+                <span className="text-xs">{t('nav.notifications')}</span>
               </motion.button>
               
               <motion.button
@@ -1033,7 +1403,7 @@ useEffect(() => {
                 className="flex flex-col items-center gap-1 text-white/60 hover:text-[#4ade80] transition-colors"
               >
                 <UserIcon className="h-6 w-6" />
-                <span className="text-xs">Profile</span>
+                <span className="text-xs">{t('nav.profile')}</span>
               </motion.button>
             </>
           )}
@@ -1052,6 +1422,12 @@ useEffect(() => {
         }}
         partnerName={matchedUserName}
         partnerPhoto={matchedUserPhoto}
+      />
+      
+      {/* ✅ v2.8.18: Debug Panel - Long press on "It's a Match!" to open */}
+      <DebugPanel
+        isOpen={showDebugPanel}
+        onClose={() => setShowDebugPanel(false)}
       />
     </div>
   )

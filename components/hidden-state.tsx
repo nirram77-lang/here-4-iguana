@@ -2,12 +2,15 @@
 
 import { motion } from "framer-motion"
 import { EyeOff, Shield, Zap } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface HiddenStateProps {
   onBecomeAvailable: () => void
 }
 
 export default function HiddenState({ onBecomeAvailable }: HiddenStateProps) {
+  const { t, isRTL } = useLanguage()
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 py-12">
       {/* Animated Icon */}
@@ -50,8 +53,9 @@ export default function HiddenState({ onBecomeAvailable }: HiddenStateProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         className="text-3xl font-bold text-gray-200 mb-4 text-center"
+        style={{ direction: isRTL ? 'rtl' : 'ltr' }}
       >
-        You're Hidden
+        {t('hiddenState.title')}
       </motion.h2>
 
       {/* Description */}
@@ -61,18 +65,18 @@ export default function HiddenState({ onBecomeAvailable }: HiddenStateProps) {
         transition={{ delay: 0.4 }}
         className="space-y-3 mb-8 text-center max-w-md"
       >
-        <p className="text-gray-400 text-base">
-          Your privacy is protected. You're not visible to anyone right now.
+        <p className="text-gray-400 text-base" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          {t('hiddenState.description')}
         </p>
         
-        <div className="flex items-center justify-center gap-6 pt-4">
-          <div className="flex items-center gap-2">
+        <div className={`flex items-center justify-center gap-6 pt-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Shield className="w-5 h-5 text-green-500" />
-            <span className="text-sm text-gray-400">Private</span>
+            <span className="text-sm text-gray-400">{t('hiddenState.private')}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Zap className="w-5 h-5 text-yellow-500" />
-            <span className="text-sm text-gray-400">Safe</span>
+            <span className="text-sm text-gray-400">{t('hiddenState.safe')}</span>
           </div>
         </div>
       </motion.div>
@@ -86,6 +90,7 @@ export default function HiddenState({ onBecomeAvailable }: HiddenStateProps) {
         whileTap={{ scale: 0.95 }}
         onClick={onBecomeAvailable}
         className="relative overflow-hidden px-8 py-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg shadow-2xl shadow-green-500/50"
+        style={{ direction: isRTL ? 'rtl' : 'ltr' }}
       >
         {/* Animated Background */}
         <motion.div
@@ -100,13 +105,13 @@ export default function HiddenState({ onBecomeAvailable }: HiddenStateProps) {
           }}
         />
         
-        <span className="relative z-10 flex items-center gap-2">
-          Become Available
+        <span className={`relative z-10 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          {t('hiddenState.becomeAvailable')}
           <motion.span
-            animate={{ x: [0, 5, 0] }}
+            animate={{ x: isRTL ? [0, -5, 0] : [0, 5, 0] }}
             transition={{ duration: 1, repeat: Infinity }}
           >
-            →
+            {isRTL ? '←' : '→'}
           </motion.span>
         </span>
       </motion.button>
@@ -117,8 +122,9 @@ export default function HiddenState({ onBecomeAvailable }: HiddenStateProps) {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
         className="text-gray-500 text-sm mt-6 text-center max-w-sm"
+        style={{ direction: isRTL ? 'rtl' : 'ltr' }}
       >
-        Tap to start seeing nearby matches and become visible to others
+        {t('hiddenState.tapToStart')}
       </motion.p>
 
       {/* Floating Particles */}

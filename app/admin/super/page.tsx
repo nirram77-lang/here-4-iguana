@@ -1,571 +1,420 @@
 "use client"
 
+/**
+ * 🦎 I4IGUANA - Super Admin Dashboard
+ * 
+ * Main admin panel with quick access to all management tools
+ * 
+ * FEATURES:
+ * - Quick stats overview
+ * - Navigation to all admin sections
+ * - Live Activity monitoring
+ * - 💔 FunnyDates Quotes Manager (NEW!)
+ * 
+ * v2.8.7 - Added FunnyDates Quotes Manager
+ */
+
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { 
-  Plus, 
-  MapPin, 
-  Users, 
-  TrendingUp, 
-  Download,
-  Edit,
-  Trash2,
-  LogOut,
-  Bell,
-  RefreshCw,
-  FileText,
-  Flag
+  Users,
+  Heart,
+  MapPin,
+  Building2,
+  Activity,
+  Settings,
+  ChevronRight,
+  Zap,
+  Image,
+  TestTube,
+  Home,
+  BarChart3,
+  Flame,
+  UserPlus,
+  Globe,
+  Sparkles,
+  BookOpen,
+  Quote,
+  ExternalLink
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { 
-  getAllVenues, 
-  deleteVenue, 
-  Venue 
-} from '@/lib/venue-service'
-import { getAdminData, adminLogout } from '@/lib/admin-auth'
-import { auth, db } from '@/lib/firebase'
-import { collection, onSnapshot, doc, getDoc, updateDoc, arrayRemove, query, where } from 'firebase/firestore'
-import AddVenueModal from '@/components/add-venue-modal'
+import { db } from '@/lib/firebase'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import { ENTERTAINMENT_ZONES, CITIES } from '@/lib/entertainment-zones'
 
-// ✅ NEW: Auto-cleanup expired check-ins
-async function cleanupExpiredCheckIns(venues: Venue[]) {
-  console.log('🧹 Starting cleanup of expired check-ins...')
-  
-  for (const venue of venues) {
-    if (!venue.checkedInUsers || venue.checkedInUsers.length === 0) continue
-    
-    const expiredUsers: string[] = []
-    
-    for (const userId of venue.checkedInUsers) {
-      try {
-        const userDoc = await getDoc(doc(db, 'users', userId))
-        
-        if (!userDoc.exists()) {
-          // User doesn't exist - remove from venue
-          console.log(`🗑️ User ${userId} doesn't exist - removing from ${venue.name}`)
-          expiredUsers.push(userId)
-          continue
-        }
-        
-        const userData = userDoc.data()
-        
-        // Check if user is still checked into THIS venue
-        if (userData.checkedInVenue !== venue.id) {
-          console.log(`🗑️ User ${userId} not checked into ${venue.name} anymore - removing`)
-          expiredUsers.push(userId)
-          continue
-        }
-        
-        // Check if check-in expired
-        if (userData.checkInData?.expiresAt) {
-          const now = Date.now()
-          let expiresAt: number
-          
-          const expiry = userData.checkInData.expiresAt
-          if (typeof expiry.toMillis === 'function') {
-            expiresAt = expiry.toMillis()
-          } else if (typeof expiry === 'number') {
-            expiresAt = expiry
-          } else {
-            continue
-          }
-          
-          if (now > expiresAt) {
-            console.log(`⏰ User ${userId} check-in expired - removing from ${venue.name}`)
-            expiredUsers.push(userId)
-          }
-        }
-      } catch (error) {
-        console.error(`Error checking user ${userId}:`, error)
-      }
-    }
-    
-    // Remove expired users from venue
-    if (expiredUsers.length > 0) {
-      try {
-        const venueRef = doc(db, 'venues', venue.id)
-        for (const userId of expiredUsers) {
-          await updateDoc(venueRef, {
-            checkedInUsers: arrayRemove(userId)
-          })
-        }
-        console.log(`✅ Removed ${expiredUsers.length} expired users from ${venue.name}`)
-      } catch (error) {
-        console.error(`Error removing users from ${venue.name}:`, error)
-      }
-    }
-  }
-  
-  console.log('🧹 Cleanup complete!')
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
-export default function SuperAdminPanel() {
+export default function SuperAdminPage() {
   const router = useRouter()
-  const [venues, setVenues] = useState<Venue[]>([])
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    onlineUsers: 0,
+    totalDummies: 0,
+    totalMatches: 0,
+    activeZones: 0,
+    activeVenues: 0
+  })
   const [loading, setLoading] = useState(true)
-  const [adminEmail, setAdminEmail] = useState('')
-  const [showAddVenue, setShowAddVenue] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [cleaning, setCleaning] = useState(false)
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
-  const [pendingReportsCount, setPendingReportsCount] = useState(0)
-  
-  // Listen for pending venue requests
-  useEffect(() => {
-    const q = query(
-      collection(db, 'venueRequests'),
-      where('status', '==', 'pending')
-    )
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPendingRequestsCount(snapshot.size)
-    })
-    
-    return () => unsubscribe()
-  }, [])
 
-  // Listen for pending reports
-  useEffect(() => {
-    const q = query(
-      collection(db, 'reports'),
-      where('status', '==', 'pending')
-    )
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPendingReportsCount(snapshot.size)
-    })
-    
-    return () => unsubscribe()
-  }, [])
-  
-  // Manual cleanup handler
-  const handleCleanup = async () => {
-    setCleaning(true)
-    try {
-      await cleanupExpiredCheckIns(venues)
-      // Reload venues after cleanup
-      const venuesData = await getAllVenues()
-      setVenues(venuesData)
-    } catch (error) {
-      console.error('❌ Cleanup error:', error)
-    } finally {
-      setCleaning(false)
-    }
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOAD STATS
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // Load admin and venues
   useEffect(() => {
-    const loadData = async () => {
+    const loadStats = async () => {
       try {
-        const user = auth.currentUser
-        if (!user) {
-          router.push('/admin/login')
-          return
-        }
-
-        // Verify super admin
-        const adminData = await getAdminData(user.uid)
-        if (!adminData || adminData.role !== 'super') {
-          console.error('❌ Not a super admin')
-          router.push('/admin/login')
-          return
-        }
-
-        setAdminEmail(adminData.email)
-
-        // Load venues (initial load)
-        const venuesData = await getAllVenues()
-        setVenues(venuesData)
-        console.log(`✅ Loaded ${venuesData.length} venues`)
+        // Users
+        const usersSnapshot = await getDocs(collection(db, 'users'))
+        const users = usersSnapshot.docs.map(d => d.data())
+        const realUsers = users.filter(u => !u.isDummy)
+        const dummies = users.filter(u => u.isDummy)
         
-        // ✅ NEW: Auto-cleanup expired check-ins
-        await cleanupExpiredCheckIns(venuesData)
+        // Matches
+        const matchesSnapshot = await getDocs(collection(db, 'matches'))
         
-      } catch (error) {
-        console.error('❌ Error loading data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [router])
-
-  // ✅ NEW: Real-time listener for ALL venues updates (check-ins/check-outs)
-  // Only start listener AFTER admin is verified
-  useEffect(() => {
-    // ✅ FIX: Wait for admin to be verified before starting listener
-    if (!adminEmail) {
-      console.log('⏳ Waiting for admin verification before starting listener...')
-      return
-    }
-    
-    console.log('👁️ Setting up real-time listener for all venues')
-    
-    const unsubscribe = onSnapshot(
-      collection(db, 'venues'),
-      (snapshot) => {
-        const updatedVenues: Venue[] = []
-        snapshot.forEach((docSnap) => {
-          // Include document ID in venue data
-          updatedVenues.push({ ...docSnap.data(), id: docSnap.id } as Venue)
+        // Active zones (zones with at least one user)
+        const zonesWithUsers = new Set<string>()
+        const venuesWithUsers = new Set<string>()
+        
+        users.forEach(user => {
+          if (user.dummyZone) zonesWithUsers.add(user.dummyZone)
+          if (user.currentZone) zonesWithUsers.add(user.currentZone)
+          if (user.checkedInVenue) venuesWithUsers.add(user.checkedInVenue)
         })
-        setVenues(updatedVenues)
-        
-        // Calculate total active users
-        const totalActive = updatedVenues.reduce((sum, v) => sum + (v.checkedInUsers?.length || 0), 0)
-        console.log(`🔄 Venues updated - Total active users: ${totalActive}`)
-      },
-      (error) => {
-        console.error('❌ Error listening to venues:', error)
+
+        setStats({
+          totalUsers: realUsers.length,
+          onlineUsers: realUsers.filter(u => u.isOnline || u.lastSeen?.toDate() > new Date(Date.now() - 30 * 60 * 1000)).length,
+          totalDummies: dummies.length,
+          totalMatches: matchesSnapshot.size,
+          activeZones: zonesWithUsers.size,
+          activeVenues: venuesWithUsers.size
+        })
+      } catch (error) {
+        console.error('Error loading stats:', error)
       }
-    )
-
-    return () => {
-      console.log('👋 Cleaning up venues listener')
-      unsubscribe()
-    }
-  }, [adminEmail])  // ✅ FIX: Only run after adminEmail is set
-
-  const handleLogout = async () => {
-    try {
-      await adminLogout()
-      router.push('/admin/login')
-    } catch (error) {
-      console.error('❌ Logout error:', error)
-    }
-  }
-
-  const handleDeleteVenue = async (venueId: string, venueName: string) => {
-    if (!confirm(`Are you sure you want to delete "${venueName}"? This cannot be undone.`)) {
-      return
+      setLoading(false)
     }
 
-    try {
-      await deleteVenue(venueId)
-      setVenues(venues.filter(v => v.id !== venueId))
-      console.log('✅ Venue deleted')
-    } catch (error) {
-      console.error('❌ Error deleting venue:', error)
-      alert('Failed to delete venue')
+    loadStats()
+  }, [])
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ADMIN SECTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const adminSections = [
+    {
+      id: 'analytics',
+      title: 'Analytics Dashboard',
+      description: 'נתונים ומטריקות עסקיות',
+      icon: BarChart3,
+      color: 'from-purple-500 to-pink-600',
+      badge: 'NEW',
+      badgeColor: 'bg-purple-500',
+      path: '/admin/super/analytics'
+    },
+    {
+      id: 'live',
+      title: 'Live Activity',
+      description: 'מעקב בזמן אמת אחרי פעילות',
+      icon: Activity,
+      color: 'from-green-500 to-emerald-600',
+      badge: 'LIVE',
+      badgeColor: 'bg-green-500',
+      path: '/admin/super/live'
+    },
+    {
+      id: 'ticker',
+      title: 'Global Ticker',
+      description: 'הודעות לאתר הגלובלי באנגלית',
+      icon: Globe,
+      color: 'from-cyan-500 to-blue-600',
+      badge: 'NEW',
+      badgeColor: 'bg-cyan-500',
+      path: '/admin/super/ticker'
+    },
+    {
+      id: 'funnydates',
+      title: 'FunnyDates Quotes',
+      description: 'ניהול ציטוטים לאתר הספר',
+      icon: BookOpen,
+      color: 'from-red-500 to-rose-600',
+      badge: 'NEW',
+      badgeColor: 'bg-red-500',
+      path: '/admin/super/funnydates'
+    },
+    {
+      id: 'dummies',
+      title: 'Dummy Control',
+      description: 'ניהול משתמשי דמה לפיילוטים',
+      icon: UserPlus,
+      color: 'from-purple-500 to-violet-600',
+      path: '/admin/super/dummies'
+    },
+    {
+      id: 'venues',
+      title: 'Venue Management',
+      description: 'ניהול מועדונים ומקומות',
+      icon: Building2,
+      color: 'from-blue-500 to-cyan-600',
+      path: '/admin/super/venues'
+    },
+    {
+      id: 'stickers',
+      title: 'Sticker Generator',
+      description: 'יצירת סטיקרים ורול-אפים',
+      icon: Image,
+      color: 'from-orange-500 to-amber-600',
+      path: '/admin/super/stickers'
+    },
+    {
+      id: 'simulator',
+      title: 'Match Simulator',
+      description: 'בדיקות מאצ\'ים ותסריטים',
+      icon: TestTube,
+      color: 'from-pink-500 to-rose-600',
+      path: '/admin/super/simulator'
     }
-  }
+  ]
 
-  const handleDownloadQR = (venue: Venue) => {
-    // Create download link
-    const link = document.createElement('a')
-    link.href = venue.qrCode
-    link.download = `${venue.name}-QR-Code.png`
-    link.click()
-    
-    console.log('📥 QR code downloaded:', venue.name)
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXTERNAL LINKS
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // Filter venues
-  const filteredVenues = venues.filter(venue =>
-    venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    venue.location.address.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const externalLinks = [
+    {
+      title: 'I4IGUANA App',
+      url: 'https://i4iguana.com',
+      icon: '🦎',
+      color: 'from-green-500 to-emerald-500'
+    },
+    {
+      title: 'FunnyDates HE',
+      url: 'https://funnydates101.co.il',
+      icon: '📚',
+      color: 'from-red-500 to-rose-500'
+    },
+    {
+      title: 'FunnyDates EN',
+      url: 'https://funnydates101.com',
+      icon: '📖',
+      color: 'from-blue-500 to-indigo-500'
+    }
+  ]
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#1a4d3e] to-[#0d2920]">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="text-8xl"
-        >
-          🦎
-        </motion.div>
-      </div>
-    )
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-[#0d2920] to-[#0d2920]/80 border-b border-[#4ade80]/30 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-5xl">🦎</div>
-              <div>
-                <h1 className="text-3xl font-black text-white">
-                  Super Admin Panel
-                </h1>
-                <p className="text-[#4ade80] text-sm font-semibold">
-                  {adminEmail}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Reports Button with Badge */}
-              <Button
-                onClick={() => router.push('/admin/super/reports')}
-                variant="outline"
-                className="border-red-500/50 text-red-400 hover:bg-red-500/20 relative"
-              >
-                <Flag className="mr-2 h-5 w-5" />
-                Reports
-                {pendingReportsCount > 0 && (
-                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
-                    {pendingReportsCount}
-                  </span>
-                )}
-              </Button>
-              {/* Venue Requests Button with Badge */}
-              <Button
-                onClick={() => router.push('/admin/super/requests')}
-                variant="outline"
-                className="border-orange-500/50 text-orange-400 hover:bg-orange-500/20 relative"
-              >
-                <FileText className="mr-2 h-5 w-5" />
-                Requests
-                {pendingRequestsCount > 0 && (
-                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
-                    {pendingRequestsCount}
-                  </span>
-                )}
-              </Button>
-              <Button
-                onClick={() => router.push('/admin/super/db')}
-                variant="outline"
-                className="border-[#4ade80]/50 text-[#4ade80] hover:bg-[#4ade80]/20"
-              >
-                <Users className="mr-2 h-5 w-5" />
-                DB Manager
-              </Button>
-              <Button
-                onClick={() => router.push('/admin/super/tests')}
-                variant="outline"
-                className="border-purple-500/50 text-purple-400 hover:bg-purple-500/20"
-              >
-                <TrendingUp className="mr-2 h-5 w-5" />
-                Tests Dashboard
-              </Button>
-              <Button
-                onClick={() => router.push('/admin/super/stickers')}
-                variant="outline"
-                className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/20"
-              >
-                🎨 Stickers
-              </Button>
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                className="text-white hover:bg-white/10"
-              >
-                <LogOut className="mr-2 h-5 w-5" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {/* Background Effects */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-green-500/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px]" />
       </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="bg-gradient-to-br from-[#1a4d3e]/60 to-[#0d2920]/80 backdrop-blur-md border-2 border-[#4ade80]/30 rounded-2xl p-6"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#4ade80]/20 rounded-xl">
-                <MapPin className="h-8 w-8 text-[#4ade80]" />
-              </div>
+      {/* Header */}
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="sticky top-0 z-50 backdrop-blur-xl bg-[#0a0a0a]/80 border-b border-green-500/20"
+      >
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <motion.div 
+                className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/30"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <span className="text-2xl">🦎</span>
+              </motion.div>
               <div>
-                <p className="text-white/60 text-sm font-medium">Total Venues</p>
-                <h3 className="text-3xl font-black text-white">
-                  {venues.length}
-                </h3>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                  Super Admin
+                </h1>
+                <p className="text-xs text-gray-400">I4IGUANA Control Center</p>
               </div>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-[#1a4d3e]/60 to-[#0d2920]/80 backdrop-blur-md border-2 border-[#4ade80]/30 rounded-2xl p-6"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#4ade80]/20 rounded-xl">
-                <Users className="h-8 w-8 text-[#4ade80]" />
-              </div>
-              <div>
-                <p className="text-white/60 text-sm font-medium">Active Now</p>
-                <h3 className="text-3xl font-black text-white">
-                  {venues.reduce((sum, v) => sum + (v.checkedInUsers?.length || 0), 0)}
-                </h3>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-[#1a4d3e]/60 to-[#0d2920]/80 backdrop-blur-md border-2 border-[#4ade80]/30 rounded-2xl p-6"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#4ade80]/20 rounded-xl">
-                <TrendingUp className="h-8 w-8 text-[#4ade80]" />
-              </div>
-              <div>
-                <p className="text-white/60 text-sm font-medium">Total Check-ins</p>
-                <h3 className="text-3xl font-black text-white">
-                  {venues.reduce((sum, v) => sum + (v.stats?.totalCheckIns || 0), 0)}
-                </h3>
-              </div>
-            </div>
-          </motion.div>
+            
+            <Button
+              variant="outline"
+              onClick={() => router.push('/')}
+              className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+            >
+              <Home className="w-4 h-4 ml-2" />
+              חזרה לאפליקציה
+            </Button>
+          </div>
         </div>
+      </motion.header>
 
-        {/* Actions Bar */}
-        <div className="flex items-center gap-4 mb-6">
-          <Input
-            placeholder="Search venues..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 h-12 bg-[#0d2920]/50 border-[#4ade80]/20 text-white placeholder:text-white/40"
-          />
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
+        {/* Stats Grid */}
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <h2 className="text-lg font-bold text-gray-300 mb-4 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-green-400" />
+            סטטיסטיקות מהירות
+          </h2>
           
-          {/* Cleanup Button */}
-          <Button
-            onClick={handleCleanup}
-            disabled={cleaning}
-            variant="outline"
-            className="h-12 px-4 border-[#4ade80]/50 text-[#4ade80] hover:bg-[#4ade80]/20"
-          >
-            <RefreshCw className={`mr-2 h-5 w-5 ${cleaning ? 'animate-spin' : ''}`} />
-            {cleaning ? 'Cleaning...' : 'Cleanup'}
-          </Button>
-          
-          <Button
-            onClick={() => setShowAddVenue(true)}
-            className="h-12 px-6 bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] font-bold"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Add Venue
-          </Button>
-        </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { icon: Users, label: 'משתמשים', value: stats.totalUsers, color: 'green' },
+              { icon: Zap, label: 'אונליין', value: stats.onlineUsers, color: 'yellow' },
+              { icon: UserPlus, label: 'דמויות', value: stats.totalDummies, color: 'purple' },
+              { icon: Heart, label: 'מאצ\'ים', value: stats.totalMatches, color: 'pink' },
+              { icon: MapPin, label: 'אזורים', value: stats.activeZones, color: 'blue' },
+              { icon: Building2, label: 'מועדונים', value: stats.activeVenues, color: 'orange' }
+            ].map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 + i * 0.05 }}
+                className="bg-[#111]/80 backdrop-blur-sm rounded-2xl border border-white/5 p-4 hover:border-green-500/30 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl bg-${stat.color}-500/20 flex items-center justify-center`}>
+                    <stat.icon className={`w-5 h-5 text-${stat.color}-400`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{loading ? '...' : stat.value}</div>
+                    <div className="text-xs text-gray-500">{stat.label}</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
 
-        {/* Venues List */}
-        <div className="space-y-4">
-          {filteredVenues.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">🦎</div>
-              <p className="text-white/60 text-lg">
-                {searchTerm ? 'No venues found' : 'No venues yet. Add your first venue!'}
-              </p>
-            </div>
-          ) : (
-            <AnimatePresence>
-              {filteredVenues.map((venue, index) => (
-                <motion.div
-                  key={venue.id}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group bg-gradient-to-br from-[#1a4d3e]/60 to-[#0d2920]/80 backdrop-blur-md border-2 border-[#4ade80]/30 hover:border-[#4ade80] rounded-2xl p-6 transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-2xl font-black text-white">
-                          {venue.displayName}
-                        </h3>
-                        {venue.active ? (
-                          <span className="px-3 py-1 bg-[#4ade80]/20 text-[#4ade80] text-xs font-bold rounded-full">
-                            ACTIVE
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded-full">
-                            INACTIVE
+        {/* Admin Sections */}
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <h2 className="text-lg font-bold text-gray-300 mb-4 flex items-center gap-2">
+            <Settings className="w-5 h-5 text-green-400" />
+            כלי ניהול
+          </h2>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {adminSections.map((section, i) => (
+              <motion.button
+                key={section.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.05 }}
+                onClick={() => router.push(section.path)}
+                className="bg-[#111]/80 backdrop-blur-sm rounded-2xl border border-white/5 p-5 hover:border-green-500/30 transition-all text-right group relative overflow-hidden"
+              >
+                {/* Hover glow */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${section.color} opacity-0 group-hover:opacity-5 transition-opacity`} />
+                
+                <div className="flex items-start justify-between relative z-10">
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${section.color} flex items-center justify-center shadow-lg`}>
+                      <section.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-white">{section.title}</h3>
+                        {section.badge && (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${section.badgeColor} text-white animate-pulse`}>
+                            {section.badge}
                           </span>
                         )}
                       </div>
-
-                      <div className="flex items-center gap-2 text-white/60 text-sm mb-4">
-                        <MapPin className="h-4 w-4" />
-                        {venue.location?.address || (venue as any).address || 'No address'}
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-white/40 text-xs mb-1">Admin</p>
-                          <p className="text-white text-sm font-medium">{venue.adminEmail}</p>
-                        </div>
-                        <div>
-                          <p className="text-white/40 text-xs mb-1">Active Now</p>
-                          <p className="text-[#4ade80] text-lg font-bold">
-                            {venue.checkedInUsers?.length || 0}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-white/40 text-xs mb-1">Total Check-ins</p>
-                          <p className="text-white text-lg font-bold">
-                            {venue.stats?.totalCheckIns || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2 ml-4">
-                      <Button
-                        onClick={() => handleDownloadQR(venue)}
-                        size="sm"
-                        variant="ghost"
-                        className="text-[#4ade80] hover:bg-[#4ade80]/20"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button
-                        onClick={() => router.push(`/admin/super/venue/${venue.id}`)}
-                        size="sm"
-                        variant="ghost"
-                        className="text-white hover:bg-white/10"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button
-                        onClick={() => handleDeleteVenue(venue.id, venue.name)}
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-400 hover:bg-red-500/20"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <p className="text-sm text-gray-500 mt-1">{section.description}</p>
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
-      </div>
+                  <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-green-400 transition-colors" />
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </motion.section>
 
-      {/* Add Venue Modal */}
-      {showAddVenue && (
-        <AddVenueModal
-          onClose={() => setShowAddVenue(false)}
-          onSuccess={async () => {
-            // Reload venues after successful creation
-            const venuesData = await getAllVenues()
-            setVenues(venuesData)
-          }}
-        />
-      )}
+        {/* External Links */}
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <h2 className="text-lg font-bold text-gray-300 mb-4 flex items-center gap-2">
+            <Globe className="w-5 h-5 text-green-400" />
+            קישורים חיצוניים
+          </h2>
+          
+          <div className="flex flex-wrap gap-3">
+            {externalLinks.map((link) => (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r ${link.color} text-white font-medium text-sm hover:scale-105 transition-transform shadow-lg`}
+              >
+                <span className="text-lg">{link.icon}</span>
+                {link.title}
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </a>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* Pilot Status */}
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-8 p-6 bg-[#111]/80 backdrop-blur-sm rounded-2xl border border-green-500/20"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-green-400" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white">סטטוס פיילוטים</h3>
+              <p className="text-xs text-gray-500">מעקב אחרי מקומות פעילים</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { name: 'Archie', status: 'active', color: 'green' },
+              { name: 'Jack', status: 'active', color: 'green' },
+              { name: 'Marina', status: 'active', color: 'green' },
+              { name: 'Trinity (31/01)', status: 'pending', color: 'yellow' }
+            ].map((pilot) => (
+              <div 
+                key={pilot.name}
+                className={`flex items-center gap-2 p-3 rounded-xl bg-${pilot.color}-500/10 border border-${pilot.color}-500/20`}
+              >
+                <div className={`w-2 h-2 rounded-full bg-${pilot.color}-500 ${pilot.status === 'active' ? 'animate-pulse' : ''}`} />
+                <span className="text-sm text-gray-300">{pilot.name}</span>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-6 text-center text-xs text-gray-600 border-t border-white/5">
+        <p>I4IGUANA Admin Panel • v2.8.30 • Made with 🦎 in Israel</p>
+      </footer>
     </div>
   )
 }

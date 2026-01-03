@@ -142,8 +142,8 @@ export default function AccessibilityStatementPage() {
                 <Phone className="w-6 h-6 text-[#4ade80]" />
                 <div>
                   <p className="text-white/60 text-sm">טלפון</p>
-                  <a href="tel:+972-50-000-0000" className="text-[#4ade80] hover:underline">
-                    050-000-0000
+                  <a href="tel:+972522653170" className="text-[#4ade80] hover:underline">
+                    052-265-3170
                   </a>
                 </div>
               </div>
@@ -164,7 +164,7 @@ export default function AccessibilityStatementPage() {
           <section className="border-t border-white/10 pt-6">
             <div className="flex items-center gap-2 text-white/60">
               <Calendar className="w-5 h-5" />
-              <span>הצהרת נגישות זו עודכנה לאחרונה בתאריך: דצמבר 2024</span>
+              <span>הצהרת נגישות זו עודכנה לאחרונה בתאריך: דצמבר 2025</span>
             </div>
           </section>
         </motion.div>

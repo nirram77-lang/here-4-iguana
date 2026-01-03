@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from "framer-motion"
 import { ChevronLeft, ChevronRight, MapPin, Briefcase, GraduationCap, Wine, Cigarette, Ruler, Heart, X } from "lucide-react"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface DatingCardProps {
   user: {
@@ -31,6 +32,8 @@ interface DatingCardProps {
 }
 
 export default function DatingCard({ user, onSwipe }: DatingCardProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [exitX, setExitX] = useState(0)
   const [exitRotation, setExitRotation] = useState(0)
@@ -111,31 +114,31 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
       setExitX(500)
       setExitRotation(30)
       setIsExiting(true)
-      setTimeout(() => onSwipe('right'), 200)
+      setTimeout(() => onSwipe('right'), 150)  // ✅ v2.8.6: Faster callback
     } else if (offset < -threshold || velocity < -500) {
       // Swipe LEFT - PASS! ❌
       setExitX(-500)
       setExitRotation(-30)
       setIsExiting(true)
-      setTimeout(() => onSwipe('left'), 200)
+      setTimeout(() => onSwipe('left'), 150)  // ✅ v2.8.6: Faster callback
     }
   }, [onSwipe])
   
   // ✅ Drinking/Smoking labels
   const getDrinkingLabel = () => {
     switch (user.drinking) {
-      case 'never': return 'Never drinks'
-      case 'social': return 'Social drinker'
-      case 'regular': return 'Drinks regularly'
+      case 'never': return t('datingCard.neverDrinks')
+      case 'social': return t('datingCard.socialDrinker')
+      case 'regular': return t('datingCard.drinksRegularly')
       default: return null
     }
   }
   
   const getSmokingLabel = () => {
     switch (user.smoking) {
-      case 'no': return "Doesn't smoke"
-      case 'social': return 'Social smoker'
-      case 'yes': return 'Smokes'
+      case 'no': return t('datingCard.doesntSmoke')
+      case 'social': return t('datingCard.socialSmoker')
+      case 'yes': return t('datingCard.smokes')
       default: return null
     }
   }
@@ -151,9 +154,9 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
         x: exitX, 
         rotate: exitRotation,
         opacity: 0,
-        transition: { duration: 0.3, ease: "easeOut" }
+        transition: { duration: 0.25, ease: "easeOut" }  // ✅ v2.8.6: Faster exit
       } : {}}
-      className="relative w-[340px] h-[520px] rounded-3xl overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing select-none"
+      className="relative w-[340px] max-w-[90vw] h-[480px] max-h-[60vh] rounded-3xl overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing select-none"
       whileTap={{ cursor: "grabbing" }}
     >
       {/* Photo */}
@@ -184,7 +187,7 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
       {/* ✅ LIKE Indicator - Hollywood Style Heart! */}
       <motion.div
         style={{ opacity: likeOpacity }}
-        className="absolute top-16 left-6 z-30 pointer-events-none"
+        className={`absolute top-16 ${isRTL ? 'right-6' : 'left-6'} z-30 pointer-events-none`}
       >
         <motion.div 
           className="relative"
@@ -194,9 +197,9 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
           {/* Glow effect */}
           <div className="absolute inset-0 blur-xl bg-[#4ade80]/50 rounded-full scale-150" />
           {/* Heart icon with border */}
-          <div className="relative border-[5px] border-[#4ade80] text-[#4ade80] px-5 py-3 rounded-2xl font-black text-3xl bg-black/30 backdrop-blur-sm flex items-center gap-2 rotate-[-15deg] shadow-[0_0_30px_rgba(74,222,128,0.5)]">
+          <div className={`relative border-[5px] border-[#4ade80] text-[#4ade80] px-5 py-3 rounded-2xl font-black text-3xl bg-black/30 backdrop-blur-sm flex items-center gap-2 ${isRTL ? 'rotate-[15deg]' : 'rotate-[-15deg]'} shadow-[0_0_30px_rgba(74,222,128,0.5)]`}>
             <Heart className="w-8 h-8 fill-[#4ade80]" />
-            <span>LIKE</span>
+            <span>{t('datingCard.like')}</span>
           </div>
         </motion.div>
       </motion.div>
@@ -204,15 +207,15 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
       {/* ✅ NOPE Indicator - Hollywood Style X! */}
       <motion.div
         style={{ opacity: nopeOpacity }}
-        className="absolute top-16 right-6 z-30 pointer-events-none"
+        className={`absolute top-16 ${isRTL ? 'left-6' : 'right-6'} z-30 pointer-events-none`}
       >
         <motion.div className="relative">
           {/* Glow effect */}
           <div className="absolute inset-0 blur-xl bg-red-500/50 rounded-full scale-150" />
           {/* X icon with border */}
-          <div className="relative border-[5px] border-red-500 text-red-500 px-5 py-3 rounded-2xl font-black text-3xl bg-black/30 backdrop-blur-sm flex items-center gap-2 rotate-[15deg] shadow-[0_0_30px_rgba(239,68,68,0.5)]">
+          <div className={`relative border-[5px] border-red-500 text-red-500 px-5 py-3 rounded-2xl font-black text-3xl bg-black/30 backdrop-blur-sm flex items-center gap-2 ${isRTL ? 'rotate-[-15deg]' : 'rotate-[15deg]'} shadow-[0_0_30px_rgba(239,68,68,0.5)]`}>
             <X className="w-8 h-8 stroke-[3]" />
-            <span>NOPE</span>
+            <span>{t('datingCard.nope')}</span>
           </div>
         </motion.div>
       </motion.div>
@@ -297,13 +300,39 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
         </motion.div>
         
         {/* ✅ Quick Info Row */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {/* City/Location */}
-          {(user.city || user.distance !== undefined) && (
+        <div className={`flex flex-wrap gap-2 mb-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          {/* Distance + Location Badge */}
+          {user.distance !== undefined && (
+            <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              {/* Distance */}
+              <div className={`flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-full ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <MapPin className="h-3.5 w-3.5 text-[#4ade80]" />
+                <span className="text-white/90 text-xs font-medium">
+                  {user.distance}{isRTL ? " מ'" : 'm'}
+                </span>
+              </div>
+              
+              {/* ✅ NEW: At This Bar / Nearby Badge */}
+              {user.distance <= 100 ? (
+                <div className={`flex items-center gap-1 bg-[#4ade80]/20 backdrop-blur-sm px-2.5 py-1 rounded-full border border-[#4ade80]/40 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-[10px]">✅</span>
+                  <span className="text-[#4ade80] text-xs font-bold">{t('datingCard.atThisBar')}</span>
+                </div>
+              ) : (
+                <div className={`flex items-center gap-1 bg-amber-500/20 backdrop-blur-sm px-2.5 py-1 rounded-full border border-amber-500/40 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-[10px]">📍</span>
+                  <span className="text-amber-400 text-xs font-bold">{t('datingCard.nearby')}</span>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* City (fallback if no distance) */}
+          {user.city && user.distance === undefined && (
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-full">
               <MapPin className="h-3.5 w-3.5 text-[#4ade80]" />
               <span className="text-white/90 text-xs font-medium">
-                {user.city ? user.city.split(' - ')[0] : `${user.distance}m away`}
+                {user.city.split(' - ')[0]}
               </span>
             </div>
           )}

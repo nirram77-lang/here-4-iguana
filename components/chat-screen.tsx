@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Send, MapPin, Clock, MoreVertical, CheckCheck, Heart, X, Flag, UserX, AlertTriangle, Camera, Image as ImageIcon, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Send, MapPin, Clock, MoreVertical, CheckCheck, Heart, X, Flag, UserX, AlertTriangle, Camera, Image as ImageIcon, Eye, EyeOff, Navigation } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import DebugPanel from "./debug-panel"  // ✅ Debug panel for chat screen
 import { 
   sendMessage, 
   listenToChatMessages, 
@@ -22,6 +23,7 @@ import {
 import { auth, db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc, collection, addDoc, arrayUnion, serverTimestamp, deleteDoc } from "firebase/firestore"
 import { GA } from "@/lib/ga-events"
+import { useLanguage } from "@/lib/LanguageContext"
 
 interface ChatScreenProps {
   matchId: string
@@ -31,6 +33,8 @@ interface ChatScreenProps {
     name: string
     photo: string
     distance: string
+    venueName?: string | null  // ✅ NEW: Name of venue they're at
+    zoneName?: string  // ✅ NEW: Name of entertainment zone
   }
   // ✅ NEW: Current user info for notifications
   currentUser?: {
@@ -40,6 +44,12 @@ interface ChatScreenProps {
   timeRemaining: number
   onBack?: () => void
   onViewProfile?: () => void  // ✅ NEW: Callback to view match profile
+  // 🆕 Proximity features
+  userLocation?: { lat: number; lng: number } | null
+  matchLocation?: { lat: number; lng: number } | null
+  currentVenueName?: string | null  // User's current venue
+  // ✅ v2.8.3: Filter messages by match creation time
+  matchCreatedAt?: Date | null
 }
 
 interface DisplayMessage {
@@ -53,6 +63,12 @@ interface DisplayMessage {
   imageUrl?: string
   imageType?: 'normal' | 'view-once'
   imageViewed?: boolean
+  // 🆕 Location sharing
+  messageType?: 'text' | 'image' | 'location' | 'meet-suggestion'
+  locationData?: {
+    venueName?: string
+    meetingPoint?: string  // "entrance", "bar", custom
+  }
 }
 
 export default function ChatScreen({ 
@@ -63,8 +79,16 @@ export default function ChatScreen({
   currentUser,  // ✅ NEW
   timeRemaining,
   onBack = () => {},
-  onViewProfile  // ✅ NEW
+  onViewProfile,  // ✅ NEW
+  // 🆕 Proximity features
+  userLocation,
+  matchLocation,
+  currentVenueName,
+  // ✅ v2.8.3: Filter messages by match creation time
+  matchCreatedAt
 }: ChatScreenProps) {
+  const { t, isRTL } = useLanguage()
+  
   const [messages, setMessages] = useState<DisplayMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [isTyping, setIsTyping] = useState(false)  // ✅ EXISTING: Track if WE are typing (not used)
@@ -76,6 +100,10 @@ export default function ChatScreen({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)  // ✨ NEW: For debouncing typing status
+  
+  // 🆕 Location sharing state
+  const [showLocationOptions, setShowLocationOptions] = useState(false)
+  const [proximityDistance, setProximityDistance] = useState<number | null>(null)
   
   // 🚨 REPORT & BLOCK
   const [showMenuDropdown, setShowMenuDropdown] = useState(false)
@@ -97,6 +125,13 @@ export default function ChatScreen({
   // 🎬 ANIMATION - Gentle and elegant
   const [showSendAnimation, setShowSendAnimation] = useState(false)
   const [animationPosition, setAnimationPosition] = useState({ x: 0, y: 0 })
+  
+  // ✅ Debug Panel - Long press on header
+  const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const debugPressTimer = useRef<NodeJS.Timeout | null>(null)
+  
+  // 😊 v2.8.26: Emoji Picker
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
 // Set up user IDs and matchId from props
 useEffect(() => {
@@ -191,7 +226,19 @@ useEffect(() => {
     setLoading(true)
     
     const unsubscribe = listenToChatMessages(matchId, (firestoreMessages) => {
-      const displayMessages: DisplayMessage[] = firestoreMessages.map(msg => ({
+      // ✅ v2.8.3: Filter messages to only show those from CURRENT match
+      const filteredMessages = matchCreatedAt 
+        ? firestoreMessages.filter(msg => {
+            const msgTime = msg.timestamp?.toDate() || new Date(0)
+            return msgTime >= matchCreatedAt
+          })
+        : firestoreMessages
+      
+      if (matchCreatedAt && firestoreMessages.length !== filteredMessages.length) {
+        console.log(`💬 Filtered ${firestoreMessages.length - filteredMessages.length} old messages (before ${matchCreatedAt.toLocaleString()})`)
+      }
+      
+      const displayMessages: DisplayMessage[] = filteredMessages.map(msg => ({
         id: msg.id,
         text: msg.text,
         sender: msg.senderId === currentUserId ? "me" : "them",
@@ -219,7 +266,7 @@ useEffect(() => {
         unsubscribeRef.current()
       }
     }
-  }, [matchId, currentUserId])
+  }, [matchId, currentUserId, matchCreatedAt])  // ✅ v2.8.3: Re-filter when matchCreatedAt changes
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -259,6 +306,63 @@ useEffect(() => {
       }
     }
   }, [matchId, currentUserId])
+
+  // 🆕 Calculate proximity distance when both locations are available
+  useEffect(() => {
+    if (userLocation && matchLocation) {
+      const distance = calculateDistanceMeters(
+        userLocation.lat, userLocation.lng,
+        matchLocation.lat, matchLocation.lng
+      )
+      setProximityDistance(distance)
+      console.log(`📍 Distance to match: ${Math.round(distance)}m`)
+    }
+  }, [userLocation, matchLocation])
+
+  // 🆕 Helper: Calculate distance in meters
+  const calculateDistanceMeters = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371000 // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+    return R * c
+  }
+
+  // 🆕 Share location message
+  const handleShareLocation = async (option: 'my-spot' | 'come-to-me' | 'meet-entrance') => {
+    setShowLocationOptions(false)
+    
+    let messageText = ''
+    let locationData: any = {}
+    
+    switch (option) {
+      case 'my-spot':
+        messageText = currentVenueName 
+          ? `📍 I'm at ${currentVenueName}` 
+          : `📍 I shared my location`
+        locationData = { venueName: currentVenueName }
+        break
+      case 'come-to-me':
+        messageText = currentVenueName 
+          ? `💚 Come find me at ${currentVenueName}!` 
+          : `💚 Come find me!`
+        locationData = { venueName: currentVenueName, meetingPoint: 'come-to-me' }
+        break
+      case 'meet-entrance':
+        messageText = `🚪 Let's meet at the entrance!`
+        locationData = { meetingPoint: 'entrance' }
+        break
+    }
+    
+    try {
+      await sendMessage(matchId, currentUserId, otherUserId, messageText)
+    } catch (error) {
+      console.error('Error sending location:', error)
+    }
+  }
 
   // 🚨 BLOCK & REPORT FUNCTIONS
   const handleBlockAndReport = () => {
@@ -570,7 +674,7 @@ useEffect(() => {
       const { doc, updateDoc, arrayUnion, arrayRemove, addDoc, collection, serverTimestamp } = await import('firebase/firestore')
       const { db } = await import('@/lib/firebase')
       
-      const messageRef = doc(db, 'chats', matchId, 'messages', messageId)
+      const messageRef = doc(db, 'matches', matchId, 'messages', messageId)
       
       // Check if already liked
       const message = messages.find(m => m.id === messageId)
@@ -949,8 +1053,12 @@ useEffect(() => {
       className="flex justify-start"
     >
       <div className="flex items-end gap-2 max-w-[75%]">
-        <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-[#4ade80] flex-shrink-0">
-          <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" />
+        <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-[#4ade80] flex-shrink-0 bg-[#1a4d3e] flex items-center justify-center">
+          {matchUser.photo && matchUser.photo !== '/placeholder.jpg' ? (
+            <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+          ) : (
+            <span className="text-sm">👤</span>
+          )}
         </div>
         
         <div className="px-4 py-3 rounded-2xl bg-[#1a4d3e] border border-[#4ade80]/20 rounded-bl-md">
@@ -978,16 +1086,43 @@ useEffect(() => {
 
   return (
     <div 
-      className="flex min-h-screen flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920]"
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920]"
       style={{ 
+        height: 'var(--app-height, 100dvh)',
+        minHeight: 'var(--app-height, 100dvh)',
+        maxHeight: 'var(--app-height, 100dvh)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
         WebkitUserSelect: 'none', 
         userSelect: 'none',
         WebkitTouchCallout: 'none',
         WebkitTapHighlightColor: 'transparent'
       }}
     >
-      {/* Header */}
-      <div className="bg-[#0d2920]/80 border-b border-[#4ade80]/20 backdrop-blur-sm sticky top-0 z-50">
+      {/* Header - with iOS safe area padding */}
+      <div 
+        className="bg-[#0d2920]/80 border-b border-[#4ade80]/20 backdrop-blur-sm sticky top-0 z-50"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        onTouchStart={() => {
+          debugPressTimer.current = setTimeout(() => setShowDebugPanel(true), 3000)
+        }}
+        onTouchEnd={() => {
+          if (debugPressTimer.current) clearTimeout(debugPressTimer.current)
+        }}
+        onMouseDown={() => {
+          debugPressTimer.current = setTimeout(() => setShowDebugPanel(true), 3000)
+        }}
+        onMouseUp={() => {
+          if (debugPressTimer.current) clearTimeout(debugPressTimer.current)
+        }}
+        onMouseLeave={() => {
+          if (debugPressTimer.current) clearTimeout(debugPressTimer.current)
+        }}
+      >
         <div className="flex items-center justify-between p-4">
           <Button 
             variant="ghost" 
@@ -1005,20 +1140,38 @@ useEffect(() => {
               className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity active:scale-95"
             >
               <div className="relative">
-                <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-[#4ade80]">
-                  <img 
-                    src={matchUser.photo} 
-                    alt={matchUser.name}
-                    className="h-full w-full object-cover"
-                  />
+                <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-[#4ade80] bg-[#1a4d3e] flex items-center justify-center">
+                  {matchUser.photo && matchUser.photo !== '/placeholder.jpg' ? (
+                    <img 
+                      src={matchUser.photo} 
+                      alt={matchUser.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        // Fallback to emoji if image fails
+                        (e.target as HTMLImageElement).style.display = 'none'
+                        const parent = (e.target as HTMLImageElement).parentElement
+                        if (parent && !parent.querySelector('.fallback-emoji')) {
+                          const span = document.createElement('span')
+                          span.className = 'fallback-emoji text-xl'
+                          span.textContent = '👤'
+                          parent.appendChild(span)
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span className="text-xl">👤</span>
+                  )}
                 </div>
                 <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[#4ade80] border-2 border-[#0d2920]" />
               </div>
               <div className="flex-1 text-left">
                 <h2 className="font-sans font-bold text-white text-base">{matchUser.name}</h2>
-                <div className="flex items-center gap-1 text-xs text-white/60">
+                <div className="flex items-center gap-1 text-xs text-[#4ade80]">
                   <MapPin className="h-3 w-3" />
-                  <span>{matchUser.distance} away</span>
+                  <span className="font-medium">
+                    {matchUser.distance}
+                    {matchUser.venueName && ` (${matchUser.venueName})`}
+                  </span>
                 </div>
               </div>
             </button>
@@ -1069,6 +1222,87 @@ useEffect(() => {
           </div>
         </div>
 
+        {/* ✅ ENHANCED: Proximity Banner - Shows distance and encourages meeting */}
+        {(matchUser.zoneName || (proximityDistance !== null && proximityDistance <= 500)) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className={`border-b px-4 py-3 ${
+              proximityDistance !== null && proximityDistance <= 50 
+                ? 'bg-gradient-to-r from-pink-500/20 to-[#4ade80]/20 border-pink-400/30' 
+                : proximityDistance !== null && proximityDistance <= 200
+                  ? 'bg-[#f97316]/15 border-[#f97316]/30'
+                  : 'bg-[#4ade80]/10 border-[#4ade80]/20'
+            }`}
+          >
+            {/* Super close! - Under 50m */}
+            {proximityDistance !== null && proximityDistance <= 50 && (
+              <motion.div
+                animate={{ scale: [1, 1.02, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="text-center"
+              >
+                <div className="flex items-center justify-center gap-2 text-base">
+                  <motion.span 
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity }}
+                  >
+                    💕
+                  </motion.span>
+                  <span className="text-pink-300 font-bold">
+                    {matchUser.name} is right here!
+                  </span>
+                  <motion.span 
+                    animate={{ rotate: [0, -10, 10, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity }}
+                  >
+                    💕
+                  </motion.span>
+                </div>
+                <p className="text-white/60 text-xs mt-1">Look around... 👀</p>
+              </motion.div>
+            )}
+            
+            {/* Getting warmer! - 50-200m */}
+            {proximityDistance !== null && proximityDistance > 50 && proximityDistance <= 200 && (
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  <motion.span
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  >
+                    🔥
+                  </motion.span>
+                  <span className="text-[#f97316] font-semibold">
+                    Getting warmer! ~{Math.round(proximityDistance)}m away
+                  </span>
+                </div>
+                <p className="text-white/50 text-xs mt-1">Almost there!</p>
+              </div>
+            )}
+            
+            {/* In the zone - 200-500m */}
+            {((proximityDistance !== null && proximityDistance > 200 && proximityDistance <= 500) || 
+              (matchUser.zoneName && (proximityDistance === null || proximityDistance > 200))) && (
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  <span className="text-[#4ade80]">💡</span>
+                  <span className="text-[#4ade80]/90">
+                    {proximityDistance !== null 
+                      ? `${matchUser.name} is ${Math.round(proximityDistance)}m away`
+                      : `You're both in ${matchUser.zoneName}!`
+                    }
+                  </span>
+                  <span className="text-[#4ade80]">🦎</span>
+                </div>
+                <p className="text-[#4ade80]/60 text-xs mt-0.5">
+                  Perfect time to meet up!
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         <motion.div
           animate={{ 
             backgroundColor: timeRemaining < 60 ? "rgba(239, 68, 68, 0.2)" : "rgba(74, 222, 128, 0.1)"
@@ -1097,8 +1331,12 @@ useEffect(() => {
             className="flex flex-col items-center gap-2 py-6"
           >
             <div className="flex items-center gap-2">
-              <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#4ade80]">
-                <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" />
+              <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#4ade80] bg-[#1a4d3e] flex items-center justify-center">
+                {matchUser.photo && matchUser.photo !== '/placeholder.jpg' ? (
+                  <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                ) : (
+                  <span className="text-2xl">👤</span>
+                )}
               </div>
               <div className="text-3xl">💬</div>
               <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#4ade80] bg-[#4ade80]/20 flex items-center justify-center">
@@ -1122,16 +1360,21 @@ useEffect(() => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ type: "spring", duration: 0.4 }}
-              className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}
+              className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"} pb-6`}
             >
-              <div className={`flex items-end gap-2 max-w-[75%] ${message.sender === "me" ? "flex-row-reverse" : "flex-row"}`}>
+              <div className={`flex items-end gap-2 max-w-[75%] ${message.sender === "me" ? "flex-row-reverse" : "flex-row"} overflow-visible`}>
                 {message.sender === "them" && (
-                  <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-[#4ade80] flex-shrink-0">
-                    <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" />
+                  <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-[#4ade80] flex-shrink-0 bg-[#1a4d3e] flex items-center justify-center">
+                    {matchUser.photo && matchUser.photo !== '/placeholder.jpg' ? (
+                      <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    ) : (
+                      <span className="text-sm">👤</span>
+                    )}
                   </div>
                 )}
                 
-                <div className="relative group">
+                {/* ❤️ FIX: overflow-visible allows hearts to show outside message bubble */}
+                <div className="relative group overflow-visible">
                   <div className={`
                     px-4 py-3 rounded-2xl
                     ${message.sender === "me" 
@@ -1194,32 +1437,31 @@ useEffect(() => {
                   
                   {/* ❤️ LIKE BUTTON - Shows on tap/hover */}
                   <div className={`
-                    absolute -bottom-1 ${message.sender === "me" ? "-left-6" : "-right-6"}
-                    relative
+                    absolute -bottom-1 ${message.sender === "me" ? "-left-8" : "-right-8"}
                   `}>
                     <motion.button
                       onClick={() => toggleMessageLike(message.id)}
                       whileTap={{ scale: 1.4 }}
                       animate={likeAnimations[message.id] ? { scale: [1, 1.3, 1] } : {}}
                       className={`
-                        p-1 rounded-full transition-all duration-200
+                        p-1.5 rounded-full transition-all duration-200 relative
                         ${message.likedBy?.length 
                           ? "opacity-100" 
-                          : "opacity-40 group-hover:opacity-100"
+                          : "opacity-60 group-hover:opacity-100"
                         }
                       `}
                       style={{ touchAction: 'manipulation' }}
                     >
                       <Heart 
-                        className={`h-4 w-4 transition-all duration-200 ${
+                        className={`h-5 w-5 transition-all duration-200 ${
                           message.likedBy?.includes(currentUserId)
-                            ? "text-red-500 fill-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]"
-                            : "text-white/50 hover:text-red-400"
+                            ? "text-red-500 fill-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]"
+                            : "text-white/60 hover:text-red-400"
                         }`}
                       />
+                      {/* ❤️ HEART BURST ANIMATION - Inside button for proper positioning */}
+                      <HeartBurst show={likeAnimations[message.id] || false} />
                     </motion.button>
-                    {/* ❤️ HEART BURST ANIMATION */}
-                    <HeartBurst show={likeAnimations[message.id] || false} />
                   </div>
                   
                   {/* ❤️ LIKE COUNT - Shows if liked */}
@@ -1264,32 +1506,44 @@ useEffect(() => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ✅ Suggested Messages - Always visible to help conversation */}
-      {messages.length < 5 && !loading && (
+      {/* ✅ Suggested Messages - Only for ACTIVE matches with few messages */}
+      {/* ✅ v2.8.26: Hollywood Edition - Cool action-oriented suggestions! */}
+      {messages.length < 5 && !loading && timeRemaining > 0 && (
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="px-4 pb-2"
         >
-          <p className="text-xs text-white/40 mb-2 text-center">Quick replies:</p>
+          <p className="text-xs text-white/40 mb-2 text-center" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+            {isRTL ? '💬 הודעות מהירות:' : '💬 Quick replies:'}
+          </p>
           <div className="flex flex-wrap gap-2 justify-center">
-            {[
-              "Hey! Nice to match with you 👋",
-              "What brings you here today?",
-              "Love your photos! 📸",
-              "Ready to meet up? 😊",
-              "Hi! How's your day going?"
-            ].map((suggestion, index) => (
+            {(isRTL ? [
+              "היי! מה קורה? 👋",
+              "אני ליד הבר, בוא/י! 🍹",
+              "רוקדים? 💃🕺",
+              "איפה את/ה עכשיו? 📍",
+              "נראה לי ראיתי אותך... 👀",
+              "מחכה לך! 🌙"
+            ] : [
+              "Hey! What's up? 👋",
+              "I'm by the bar, come! 🍹",
+              "Dancing? 💃🕺",
+              "Where are you now? 📍",
+              "Think I saw you... 👀",
+              "Waiting for you! 🌙"
+            ]).map((suggestion, index) => (
               <motion.button
                 key={index}
                 onClick={() => {
                   setInputText(suggestion)
                   GA.tipUsed(index)
                 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 className="px-3 py-1.5 bg-[#1a4d3e]/60 hover:bg-[#4ade80]/20 border border-[#4ade80]/30 rounded-full text-xs text-white/80 hover:text-white transition-all"
+                style={{ direction: isRTL ? 'rtl' : 'ltr' }}
               >
                 {suggestion}
               </motion.button>
@@ -1298,7 +1552,7 @@ useEffect(() => {
         </motion.div>
       )}
 
-      {messages.length === 0 && !loading && (
+      {messages.length === 0 && !loading && timeRemaining > 0 && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -1308,9 +1562,10 @@ useEffect(() => {
           <Button
             onClick={handleSuggestMeetup}
             className="w-full h-12 rounded-full bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] font-bold text-base shadow-lg"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
-            <MapPin className="mr-2 h-5 w-5" />
-            Suggest a Meetup Spot
+            <MapPin className={`h-5 w-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+            {isRTL ? '📍 בואו ניפגש!' : '📍 Suggest a Meetup Spot'}
           </Button>
         </motion.div>
       )}
@@ -1319,16 +1574,210 @@ useEffect(() => {
       {timeRemaining > 0 ? (
         // ✅ ACTIVE: Can send messages
         <div className="bg-[#0d2920]/90 border-t border-[#4ade80]/20 p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
+          {/* 🆕 Location Share Options Popup */}
+          <AnimatePresence>
+            {showLocationOptions && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                className="absolute bottom-24 left-4 right-4 bg-[#1a4d3e] border border-[#4ade80]/30 rounded-2xl p-4 shadow-xl z-50"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-white font-semibold" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                    {isRTL ? '📍 שתף מיקום' : '📍 Share Location'}
+                  </h3>
+                  <button 
+                    onClick={() => setShowLocationOptions(false)}
+                    className="text-white/50 hover:text-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="space-y-2">
+                  {/* Share my spot */}
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleShareLocation('my-spot')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                    style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#4ade80]/20 flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-[#4ade80]" />
+                    </div>
+                    <div className={isRTL ? 'text-right' : 'text-left'}>
+                      <p className="text-white font-medium">{isRTL ? 'שתף את המיקום שלי' : 'Share my spot'}</p>
+                      <p className="text-white/50 text-xs">
+                        {currentVenueName || (isRTL ? 'המיקום הנוכחי שלך' : 'Your current location')}
+                      </p>
+                    </div>
+                  </motion.button>
+                  
+                  {/* Come to me */}
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleShareLocation('come-to-me')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                    style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-pink-400/20 flex items-center justify-center">
+                      <span className="text-xl">💕</span>
+                    </div>
+                    <div className={isRTL ? 'text-right' : 'text-left'}>
+                      <p className="text-white font-medium">{isRTL ? 'בוא/י אליי!' : 'Come find me!'}</p>
+                      <p className="text-white/50 text-xs">{isRTL ? 'הזמן אותם למיקום שלך' : 'Invite them to your location'}</p>
+                    </div>
+                  </motion.button>
+                  
+                  {/* Meet at entrance */}
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleShareLocation('meet-entrance')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                    style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#f97316]/20 flex items-center justify-center">
+                      <span className="text-xl">🚪</span>
+                    </div>
+                    <div className={isRTL ? 'text-right' : 'text-left'}>
+                      <p className="text-white font-medium">{isRTL ? 'ניפגש בכניסה' : 'Meet at entrance'}</p>
+                      <p className="text-white/50 text-xs">{isRTL ? 'נקודת מפגש בטוחה' : 'Safe neutral meeting point'}</p>
+                    </div>
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <div className="flex items-center gap-2">
             {/* 📸 Camera Button */}
             <motion.button
               onClick={() => imageInputRef.current?.click()}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="h-12 w-12 rounded-full flex items-center justify-center bg-[#1a4d3e]/50 hover:bg-[#1a4d3e] transition-colors"
+              className="h-10 w-10 rounded-full flex items-center justify-center bg-[#1a4d3e]/50 hover:bg-[#1a4d3e] transition-colors"
             >
               <Camera className="h-5 w-5 text-white/70" />
             </motion.button>
+            
+            {/* 📍 Location Share Button */}
+            <motion.button
+              onClick={() => setShowLocationOptions(!showLocationOptions)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors ${
+                showLocationOptions 
+                  ? 'bg-[#4ade80]/30 text-[#4ade80]' 
+                  : 'bg-[#1a4d3e]/50 hover:bg-[#1a4d3e] text-white/70'
+              }`}
+            >
+              <Navigation className="h-5 w-5" />
+            </motion.button>
+            
+            {/* 😊 v2.8.26: Emoji Picker Button */}
+            <motion.button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors ${
+                showEmojiPicker 
+                  ? 'bg-[#4ade80]/30' 
+                  : 'bg-[#1a4d3e]/50 hover:bg-[#1a4d3e]'
+              }`}
+            >
+              <span className="text-xl">😊</span>
+            </motion.button>
+            
+            {/* 😊 v2.8.26: Emoji Picker Popup */}
+            <AnimatePresence>
+              {showEmojiPicker && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  className="absolute bottom-24 left-4 right-4 bg-[#1a4d3e] border border-[#4ade80]/30 rounded-2xl p-4 shadow-xl z-50"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-white font-semibold text-sm">
+                      {isRTL ? '😊 אימוג\'ים' : '😊 Emojis'}
+                    </h3>
+                    <button 
+                      onClick={() => setShowEmojiPicker(false)}
+                      className="text-white/50 hover:text-white"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  {/* Emoji Categories */}
+                  <div className="space-y-3">
+                    {/* Flirty & Fun */}
+                    <div>
+                      <p className="text-white/40 text-xs mb-2">{isRTL ? '💕 פלירט' : '💕 Flirty'}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['😍', '🥰', '😘', '💕', '❤️', '🔥', '✨', '💫', '🌹', '💋'].map((emoji) => (
+                          <motion.button
+                            key={emoji}
+                            onClick={() => {
+                              setInputText(prev => prev + emoji)
+                              setShowEmojiPicker(false)
+                            }}
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="text-2xl p-1 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            {emoji}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Party & Fun */}
+                    <div>
+                      <p className="text-white/40 text-xs mb-2">{isRTL ? '🎉 מסיבה' : '🎉 Party'}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['🎉', '🥳', '🍹', '🍸', '🍻', '💃', '🕺', '🎶', '🎤', '🪩'].map((emoji) => (
+                          <motion.button
+                            key={emoji}
+                            onClick={() => {
+                              setInputText(prev => prev + emoji)
+                              setShowEmojiPicker(false)
+                            }}
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="text-2xl p-1 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            {emoji}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Reactions */}
+                    <div>
+                      <p className="text-white/40 text-xs mb-2">{isRTL ? '😄 תגובות' : '😄 Reactions'}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['😄', '😂', '🤣', '😎', '🤩', '👋', '👍', '👏', '🙌', '🦎'].map((emoji) => (
+                          <motion.button
+                            key={emoji}
+                            onClick={() => {
+                              setInputText(prev => prev + emoji)
+                              setShowEmojiPicker(false)
+                            }}
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="text-2xl p-1 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            {emoji}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             
             {/* Hidden file input */}
             <input
@@ -1344,8 +1793,9 @@ useEffect(() => {
                 value={inputText}
                 onChange={handleInputChange}
                 onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Type a message..."
+                placeholder={t('chat.typeMessage')}
                 className="h-12 rounded-full bg-[#1a4d3e]/50 border-[#4ade80]/20 text-white placeholder:text-white/40 pr-12"
+                style={{ direction: isRTL ? 'rtl' : 'ltr' }}
               />
             </div>
             
@@ -1371,11 +1821,11 @@ useEffect(() => {
         // ✅ EXPIRED: Read-only mode
         <div className="bg-[#0d2920]/90 border-t border-[#4ade80]/20 p-4 backdrop-blur-sm">
           <div className="text-center py-2">
-            <p className="text-white/60 text-sm">
-              ⏰ This chat has expired
+            <p className="text-white/60 text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('chat.chatExpired')}
             </p>
-            <p className="text-white/40 text-xs mt-1">
-              Messages are read-only • Check if they left their number! 📱
+            <p className="text-white/40 text-xs mt-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+              {t('chat.chatExpiredNote')}
             </p>
           </div>
         </div>
@@ -1689,6 +2139,12 @@ useEffect(() => {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* ✅ Debug Panel - Long press header for 3 seconds */}
+      <DebugPanel 
+        isOpen={showDebugPanel} 
+        onClose={() => setShowDebugPanel(false)} 
+      />
     </div>
   )
 }
