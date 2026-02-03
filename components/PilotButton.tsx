@@ -276,8 +276,8 @@ export default function PilotButton({ lang }: PilotButtonProps) {
 
   const texts = {
     he: {
-      pilotLive: 'הפיילוט באוויר! 🔥',
-      subtitle: '3 ערים • 7 אזורי בילוי • בנות ובנים מחכים לך',
+      pilotLive: '🚀 כל הארץ פתוחה!',
+      subtitle: '33 ערים • 75+ אזורי בילוי • בנות ובנים מחכים לך',
       activeZones: 'מקומות שהאפליקציה עובדת בהם',
       hotNow: 'חם עכשיו',
       joinMovement: 'הורד את האפליקציה והצטרף למהפכה!',
@@ -288,7 +288,7 @@ export default function PilotButton({ lang }: PilotButtonProps) {
       notifyMe: 'עדכנו אותי',
       noSpam: 'לא נשלח ספאם. רק עדכון אחד.',
       thankYou: 'תודה! נעדכן אותך בהקדם',
-      joinPilot: 'הצטרף לפיילוט',
+      joinPilot: 'הצטרף עכשיו',
       venueName: 'שם המועדון / הבר',
       venueType: 'סוג המקום',
       contactName: 'שם איש קשר',
@@ -299,7 +299,7 @@ export default function PilotButton({ lang }: PilotButtonProps) {
       venueThankYou: 'תודה! נחזור אליך בהקדם 🎉',
       venueThankYouSub: 'הצוות שלנו יצור איתך קשר',
       within24: 'נחזור אליך תוך 24 שעות',
-      limitedSpots: 'מקומות מוגבלים בפיילוט',
+      limitedSpots: 'זמין בכל הארץ!',
       downloadApp: 'הורד את האפליקציה',
       clickToExpand: 'לחץ לפרטים',
       ctaMain: '🔥 צאי/צא הלילה - תכירי/תכיר מישהו!',
@@ -316,8 +316,8 @@ export default function PilotButton({ lang }: PilotButtonProps) {
       shareFeedback: 'שתפו חוויה',
     },
     en: {
-      pilotLive: 'Pilot is LIVE! 🇮🇱',
-      subtitle: 'Starting in Israel • More cities coming soon',
+      pilotLive: '🚀 Nationwide!',
+      subtitle: '33 cities • 75+ entertainment zones • Israel',
       activeZones: 'Where the App Works',
       hotNow: 'Hot Now',
       joinMovement: 'Get notified when we launch in your city!',
@@ -328,7 +328,7 @@ export default function PilotButton({ lang }: PilotButtonProps) {
       notifyMe: 'Notify Me',
       noSpam: 'No spam. Just launch updates.',
       thankYou: 'Thanks! We\'ll notify you',
-      joinPilot: 'Join the Pilot',
+      joinPilot: 'Join Now',
       venueName: 'Venue Name',
       venueType: 'Venue Type',
       contactName: 'Contact Name',
@@ -356,7 +356,7 @@ export default function PilotButton({ lang }: PilotButtonProps) {
       shareFeedback: 'Share Feedback',
     },
     pt: {
-      pilotLive: 'Piloto ATIVO! 🇧🇷',
+      pilotLive: '🚀 Todo o País!',
       subtitle: 'Começando em Israel • Mais cidades em breve',
       activeZones: 'Onde o App Funciona',
       hotNow: 'Em Alta',
@@ -368,7 +368,7 @@ export default function PilotButton({ lang }: PilotButtonProps) {
       notifyMe: 'Me Avise',
       noSpam: 'Sem spam. Apenas atualizações de lançamento.',
       thankYou: 'Obrigado! Vamos te notificar',
-      joinPilot: 'Junte-se ao Piloto',
+      joinPilot: 'Junte-se Agora',
       venueName: 'Nome do Local',
       venueType: 'Tipo de Local',
       contactName: 'Nome do Contato',
@@ -404,8 +404,8 @@ export default function PilotButton({ lang }: PilotButtonProps) {
 
   // ✅ v2.8.12: Button text based on active status, but ALWAYS clickable
   const buttonText = data?.isActive 
-    ? (lang === 'he' ? 'פיילוט LIVE' : 'Pilot LIVE')
-    : (lang === 'he' ? 'פיילוט בקרוב' : 'Pilot Soon')
+    ? (lang === 'he' ? 'LIVE 🔴' : 'LIVE 🔴')
+    : (lang === 'he' ? 'בקרוב' : 'Soon')
 
   return (
     <>
@@ -440,9 +440,8 @@ export default function PilotButton({ lang }: PilotButtonProps) {
           }}
         />
         
-        {/* Live dot */}
+        {/* Live dot - static for stability */}
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
         </span>
         
@@ -488,7 +487,6 @@ export default function PilotButton({ lang }: PilotButtonProps) {
                   <div className="text-center mb-4">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#4ade80]/20 rounded-full mb-2">
                       <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4ade80] opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4ade80]"></span>
                       </span>
                       <span className="text-[#4ade80] text-sm font-medium">LIVE</span>
@@ -500,92 +498,132 @@ export default function PilotButton({ lang }: PilotButtonProps) {
                   </div>
 
                   {/* ═══════════════════════════════════════════════════════════ */}
-                  {/* HEBREW VERSION - Detailed Cities & Zones */}
+                  {/* HEBREW VERSION - HOLLYWOOD EDITION! 🎬 */}
                   {/* ═══════════════════════════════════════════════════════════ */}
                   {lang === 'he' ? (
-                    <div className="space-y-3 mb-4">
-                      <h3 className="text-[#4ade80] font-semibold text-sm flex items-center gap-2 justify-center">
-                        <MapPin className="h-4 w-4" />
-                        {t.activeZones}
-                      </h3>
+                    <div className="space-y-4 mb-4">
                       
-                      {cities.map((city, cityIndex) => (
-                        <div 
-                          key={city.name}
-                          className="bg-white/5 rounded-xl border border-[#4ade80]/20 overflow-hidden"
-                        >
-                          {/* City Header - Clickable */}
-                          <button
-                            onClick={() => setExpandedCity(expandedCity === city.name ? null : city.name)}
-                            className="w-full p-3 flex items-center justify-between hover:bg-white/5 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{city.icon}</span>
-                              <span className="text-white font-bold">{city.name}</span>
-                              <span className="text-white/40 text-xs">({city.zones.length} אזורים)</span>
-                            </div>
-                            <ChevronDown className={`h-4 w-4 text-white/50 transition-transform ${expandedCity === city.name ? 'rotate-180' : ''}`} />
-                          </button>
-                          
-                          {/* Zones List - Expanded */}
-                          {expandedCity === city.name && (
-                            <div className="px-3 pb-3 space-y-2 animate-fadeIn">
-                              {city.zones.map((zone, zoneIndex) => (
-                                <div 
-                                  key={zone.name}
-                                  className={`p-2 rounded-lg ${zone.hot ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30' : 'bg-white/5'}`}
-                                >
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {zone.hot && <Zap className="h-3 w-3 text-orange-400" />}
-                                    <span className={`font-medium text-sm ${zone.hot ? 'text-orange-300' : 'text-white/90'}`}>
-                                      {zone.name}
-                                    </span>
-                                    {zone.hot && (
-                                      <span className="text-[10px] bg-orange-500/30 text-orange-300 px-1.5 py-0.5 rounded-full">
-                                        {t.hotNow}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {zone.venues.map((venue, i) => (
-                                      <span key={i} className="text-xs text-white/50 bg-white/5 px-2 py-0.5 rounded">
-                                        {venue}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                      {/* ═══════════════════════════════════════════════════════ */}
+                      {/* STATS CARDS - Hollywood Style with Glow */}
+                      {/* ═══════════════════════════════════════════════════════ */}
+                      <div className="grid grid-cols-3 gap-3">
+                        {/* Cities Card */}
+                        <div className="relative group">
+                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/30 to-green-600/30 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-60" />
+                          <div className="relative bg-gradient-to-br from-emerald-500/20 to-green-600/10 border border-emerald-400/40 rounded-2xl p-3 text-center backdrop-blur-sm">
+                            <div className="text-3xl mb-1">🏙️</div>
+                            <div className="text-2xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]">33</div>
+                            <div className="text-[10px] text-white/60 font-medium">ערים פעילות</div>
+                          </div>
                         </div>
-                      ))}
-                      
-                      {/* Stats with Feedback Button */}
-                      <div className="flex justify-center items-center gap-4 py-2">
-                        {/* ✅ v2.8.6: Feedback Button with shimmer */}
+                        
+                        {/* Zones Card */}
+                        <div className="relative group">
+                          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/30 to-orange-600/30 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-60" />
+                          <div className="relative bg-gradient-to-br from-amber-500/20 to-orange-600/10 border border-amber-400/40 rounded-2xl p-3 text-center backdrop-blur-sm">
+                            <div className="text-3xl mb-1">🎯</div>
+                            <div className="text-2xl font-black text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]">75+</div>
+                            <div className="text-[10px] text-white/60 font-medium">אזורי בילוי</div>
+                          </div>
+                        </div>
+                        
+                        {/* Users Card */}
+                        <div className="relative group">
+                          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/30 to-purple-600/30 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-60" />
+                          <div className="relative bg-gradient-to-br from-violet-500/20 to-purple-600/10 border border-violet-400/40 rounded-2xl p-3 text-center backdrop-blur-sm">
+                            <div className="text-3xl mb-1">👥</div>
+                            <div className="text-2xl font-black text-violet-400 drop-shadow-[0_0_10px_rgba(167,139,250,0.5)]">∞</div>
+                            <div className="text-[10px] text-white/60 font-medium">הזדמנויות</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Divider with glow */}
+                      <div className="relative py-2">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full h-px bg-gradient-to-r from-transparent via-[#4ade80]/50 to-transparent" />
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-[#0d1f17] px-3 text-[#4ade80] text-xs font-bold">🇮🇱 פריסה ארצית</span>
+                        </div>
+                      </div>
+
+                      {/* ═══════════════════════════════════════════════════════ */}
+                      {/* REGIONAL BREAKDOWN - Hollywood Style */}
+                      {/* ═══════════════════════════════════════════════════════ */}
+                      <div className="space-y-2.5">
+                        
+                        {/* מרכז */}
+                        <div className="relative overflow-hidden rounded-xl border border-blue-400/30 bg-gradient-to-r from-blue-500/10 via-cyan-500/5 to-blue-500/10">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-cyan-400" />
+                          <div className="p-2.5 pr-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-lg">🏙️</span>
+                              <span className="font-bold text-blue-300 text-sm">מרכז</span>
+                              <span className="text-[10px] text-blue-400/60 bg-blue-400/10 px-1.5 py-0.5 rounded-full">14 ערים</span>
+                            </div>
+                            <p className="text-[11px] text-white/70 leading-relaxed">
+                              תל אביב • רמת גן • גבעתיים • חולון • בת ים • פתח תקווה • ראשון לציון • רחובות • נס ציונה • רעננה • נתניה • הרצליה • כפר סבא • מודיעין
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* צפון */}
+                        <div className="relative overflow-hidden rounded-xl border border-green-400/30 bg-gradient-to-r from-green-500/10 via-emerald-500/5 to-green-500/10">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-400 to-emerald-400" />
+                          <div className="p-2.5 pr-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-lg">🌲</span>
+                              <span className="font-bold text-green-300 text-sm">צפון</span>
+                              <span className="text-[10px] text-green-400/60 bg-green-400/10 px-1.5 py-0.5 rounded-full">10 ערים</span>
+                            </div>
+                            <p className="text-[11px] text-white/70 leading-relaxed">
+                              חיפה • נהריה • עכו • טבריה • נצרת • כרמיאל • צפת • קריית שמונה • עפולה • זכרון יעקב
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* דרום */}
+                        <div className="relative overflow-hidden rounded-xl border border-orange-400/30 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-orange-500/10">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-orange-400 to-amber-400" />
+                          <div className="p-2.5 pr-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-lg">🏜️</span>
+                              <span className="font-bold text-orange-300 text-sm">דרום</span>
+                              <span className="text-[10px] text-orange-400/60 bg-orange-400/10 px-1.5 py-0.5 rounded-full">6 ערים</span>
+                            </div>
+                            <p className="text-[11px] text-white/70 leading-relaxed">
+                              באר שבע • אשקלון • אשדוד • אילת • דימונה • קריית גת
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* ירושלים */}
+                        <div className="relative overflow-hidden rounded-xl border border-purple-400/30 bg-gradient-to-r from-purple-500/10 via-pink-500/5 to-purple-500/10">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-400 to-pink-400" />
+                          <div className="p-2.5 pr-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-lg">🕌</span>
+                              <span className="font-bold text-purple-300 text-sm">ירושלים והסביבה</span>
+                              <span className="text-[10px] text-purple-400/60 bg-purple-400/10 px-1.5 py-0.5 rounded-full">3 ערים</span>
+                            </div>
+                            <p className="text-[11px] text-white/70 leading-relaxed">
+                              ירושלים • בית שמש • תל עדשים
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Feedback Button - Premium */}
+                      <div className="flex justify-center pt-2">
                         <button
                           onClick={() => setActiveTab('feedback')}
-                          className="relative flex flex-col items-center gap-1 px-4 py-2 bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/40 rounded-xl hover:border-purple-400 hover:bg-purple-500/30 transition-all group overflow-hidden"
+                          className="relative flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 border border-purple-400/40 rounded-full hover:border-purple-400 hover:scale-105 transition-all group overflow-hidden"
                         >
-                          {/* Shimmer effect */}
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                          <span className="text-xl">💬</span>
-                          <span className="text-[10px] text-white/70 font-medium">{t.shareFeedback}</span>
+                          <span className="text-lg">💬</span>
+                          <span className="text-sm text-white/80 font-medium">{t.shareFeedback}</span>
                         </button>
-                        
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-[#4ade80]">{cities.length}</div>
-                          <div className="text-xs text-white/50">ערים</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-[#4ade80]">{totalZones}</div>
-                          <div className="text-xs text-white/50">אזורי בילוי</div>
-                        </div>
-                        {/* ✅ v2.8.6: Bigger infinity icon */}
-                        <div className="text-center">
-                          <div className="text-4xl font-bold text-[#4ade80]">∞</div>
-                          <div className="text-xs text-white/50">הזדמנויות</div>
-                        </div>
                       </div>
                     </div>
                   ) : (
@@ -605,30 +643,65 @@ export default function PilotButton({ lang }: PilotButtonProps) {
                           {/* === ACTIVE CITIES (Orange/Hot) === */}
                           {/* Tel Aviv - ACTIVE 🔥 */}
                           <g>
-                            <circle cx="38" cy="38" r="4" fill="rgba(251, 146, 60, 0.4)" className="animate-ping" />
-                            <circle cx="38" cy="38" r="2.5" fill="#fb923c" />
+                            <circle cx="38" cy="38" r="5" fill="rgba(74, 222, 128, 0.3)" />
+                            <circle cx="38" cy="38" r="3" fill="#4ade80" />
+                            <circle cx="38" cy="38" r="1.5" fill="#fb923c" />
                           </g>
                           {/* Rehovot - ACTIVE 🔥 */}
                           <g>
-                            <circle cx="42" cy="48" r="4" fill="rgba(251, 146, 60, 0.4)" className="animate-ping" style={{ animationDelay: '0.3s' }} />
-                            <circle cx="42" cy="48" r="2.5" fill="#fb923c" />
+                            <circle cx="42" cy="48" r="5" fill="rgba(74, 222, 128, 0.3)" />
+                            <circle cx="42" cy="48" r="3" fill="#4ade80" />
+                            <circle cx="42" cy="48" r="1.5" fill="#fb923c" />
                           </g>
                           {/* Ashkelon - ACTIVE 🔥 */}
                           <g>
-                            <circle cx="36" cy="58" r="4" fill="rgba(251, 146, 60, 0.4)" className="animate-ping" style={{ animationDelay: '0.6s' }} />
-                            <circle cx="36" cy="58" r="2.5" fill="#fb923c" />
+                            <circle cx="36" cy="58" r="5" fill="rgba(74, 222, 128, 0.3)" />
+                            <circle cx="36" cy="58" r="3" fill="#4ade80" />
+                            <circle cx="36" cy="58" r="1.5" fill="#fb923c" />
                           </g>
-                          {/* === COMING SOON CITIES (Gray) === */}
+                          {/* === GREEN NETWORK - Expanding Cities === */}
                           {/* Haifa */}
-                          <circle cx="42" cy="22" r="1.5" fill="rgba(255,255,255,0.3)" />
+                          <g>
+                            <circle cx="42" cy="22" r="4" fill="rgba(74, 222, 128, 0.25)" />
+                            <circle cx="42" cy="22" r="2" fill="rgba(74, 222, 128, 0.6)" />
+                          </g>
                           {/* Jerusalem */}
-                          <circle cx="52" cy="42" r="1.5" fill="rgba(255,255,255,0.3)" />
+                          <g>
+                            <circle cx="52" cy="42" r="4" fill="rgba(74, 222, 128, 0.25)" />
+                            <circle cx="52" cy="42" r="2" fill="rgba(74, 222, 128, 0.6)" />
+                          </g>
                           {/* Beer Sheva */}
-                          <circle cx="42" cy="72" r="1.5" fill="rgba(255,255,255,0.3)" />
-                          {/* Eilat */}
-                          <circle cx="48" cy="92" r="1.5" fill="rgba(255,255,255,0.3)" />
+                          <g>
+                            <circle cx="42" cy="72" r="4" fill="rgba(74, 222, 128, 0.25)" />
+                            <circle cx="42" cy="72" r="2" fill="rgba(74, 222, 128, 0.6)" />
+                          </g>
                           {/* Netanya */}
-                          <circle cx="36" cy="30" r="1.5" fill="rgba(255,255,255,0.3)" />
+                          <g>
+                            <circle cx="36" cy="30" r="4" fill="rgba(74, 222, 128, 0.25)" />
+                            <circle cx="36" cy="30" r="2" fill="rgba(74, 222, 128, 0.6)" />
+                          </g>
+                          {/* Herzliya */}
+                          <g>
+                            <circle cx="37" cy="34" r="3" fill="rgba(74, 222, 128, 0.2)" />
+                            <circle cx="37" cy="34" r="1.5" fill="rgba(74, 222, 128, 0.5)" />
+                          </g>
+                          {/* Bat Yam */}
+                          <g>
+                            <circle cx="37" cy="42" r="3" fill="rgba(74, 222, 128, 0.2)" />
+                            <circle cx="37" cy="42" r="1.5" fill="rgba(74, 222, 128, 0.5)" />
+                          </g>
+                          {/* Ashdod */}
+                          <g>
+                            <circle cx="38" cy="52" r="3.5" fill="rgba(74, 222, 128, 0.2)" />
+                            <circle cx="38" cy="52" r="1.8" fill="rgba(74, 222, 128, 0.5)" />
+                          </g>
+                          {/* Ramat Gan */}
+                          <g>
+                            <circle cx="42" cy="38" r="3" fill="rgba(74, 222, 128, 0.2)" />
+                            <circle cx="42" cy="38" r="1.5" fill="rgba(74, 222, 128, 0.5)" />
+                          </g>
+                          {/* Eilat - smaller, coming soon */}
+                          <circle cx="48" cy="92" r="1.5" fill="rgba(74, 222, 128, 0.3)" />
                         </svg>
                         
                         {/* City labels - Active cities in orange */}
@@ -636,9 +709,9 @@ export default function PilotButton({ lang }: PilotButtonProps) {
                         <div className="absolute top-[45%] left-[55%] text-[10px] text-orange-400 font-medium">Rehovot 🔥</div>
                         <div className="absolute top-[55%] left-[10%] text-[10px] text-orange-400 font-medium">Ashkelon 🔥</div>
                         {/* Coming soon labels */}
-                        <div className="absolute top-[18%] left-[52%] text-[8px] text-white/30">Haifa</div>
-                        <div className="absolute top-[38%] left-[62%] text-[8px] text-white/30">Jerusalem</div>
-                        <div className="absolute top-[70%] left-[50%] text-[8px] text-white/30">Beer Sheva</div>
+                        <div className="absolute top-[18%] left-[52%] text-[8px] text-[#4ade80]/60">Haifa</div>
+                        <div className="absolute top-[38%] left-[62%] text-[8px] text-[#4ade80]/60">Jerusalem</div>
+                        <div className="absolute top-[70%] left-[50%] text-[8px] text-[#4ade80]/60">Beer Sheva</div>
                       </div>
                       
                       {/* Global message */}

@@ -265,7 +265,9 @@ export default function VenueSelectionScreen({
       console.log(`📍 Total venues: ${allVenues.length}`)
       
       // ✅ STEP 3: Calculate distances and sort
-      const venuesWithDistance = allVenues.map(venue => {
+      const venuesWithDistance = allVenues
+        .filter(venue => venue.location && venue.location.latitude && venue.location.longitude) // ✅ v2.8.28: Filter out venues without location
+        .map(venue => {
         const distance = currentLocation 
           ? calculateDistance(
               currentLocation.lat,
@@ -281,7 +283,7 @@ export default function VenueSelectionScreen({
           formattedDistance: currentLocation ? formatDistance(distance) : 'Unknown',
           // ✅ v2.8.13 FIX: Prioritize checkedInUsers.length (actual count) over stats.activeNow (may be stale)
           activeUsers: venue.checkedInUsers?.length || venue.stats?.activeNow || 0,
-          isNearby: distance <= (venue.radius || 500) // Default 500m radius
+          isNearby: distance <= (venue.radius || 100) // ✅ v2.8.28: Reduced to 100m - must be AT the venue!
         }
       })
       
@@ -339,6 +341,12 @@ export default function VenueSelectionScreen({
 
   // Handle venue selection
   const handleSelectVenue = async (venue: VenueWithDistance) => {
+    // ✅ v2.8.28: Safety check for venue location
+    if (!venue.location || !venue.location.latitude || !venue.location.longitude) {
+      setError('This venue has no location data')
+      return
+    }
+    
     if (!currentLocation) {
       // Request location first
       setLocationLoading(true)
@@ -359,15 +367,19 @@ export default function VenueSelectionScreen({
         venue.location.longitude
       )
       
-      if (distance > (venue.radius || 500)) {
-        setError(`You're too far from ${venue.displayName}. Get closer to check in.`)
+      // ✅ v2.8.28: Max 100m to check in (must be AT the venue!)
+      const maxDistance = venue.radius || 100
+      if (distance > maxDistance) {
+        setError(`You're ${formatDistance(distance)} from ${venue.displayName}. Get within ${formatDistance(maxDistance)} to check in.`)
         return
       }
     }
     
     // Check if within radius
     if (currentLocation && !venue.isNearby) {
-      setError(`You're too far from ${venue.displayName} (${venue.formattedDistance}). Get closer to check in.`)
+      // ✅ v2.8.28: Clearer error message
+      const maxDistance = venue.radius || 100
+      setError(`You're ${venue.formattedDistance} from ${venue.displayName}. Get within ${formatDistance(maxDistance)} to check in.`)
       return
     }
     

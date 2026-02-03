@@ -114,13 +114,13 @@ export default function DatingCard({ user, onSwipe }: DatingCardProps) {
       setExitX(500)
       setExitRotation(30)
       setIsExiting(true)
-      setTimeout(() => onSwipe('right'), 150)  // ✅ v2.8.6: Faster callback
+      setTimeout(() => onSwipe('right'), 200)  // ✅ v2.8.27: Increased delay
     } else if (offset < -threshold || velocity < -500) {
       // Swipe LEFT - PASS! ❌
       setExitX(-500)
       setExitRotation(-30)
       setIsExiting(true)
-      setTimeout(() => onSwipe('left'), 150)  // ✅ v2.8.6: Faster callback
+      setTimeout(() => onSwipe('left'), 200)  // ✅ v2.8.27: Increased delay
     }
   }, [onSwipe])
   

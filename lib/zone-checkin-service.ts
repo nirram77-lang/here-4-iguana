@@ -1,11 +1,13 @@
 /**
  * 🦎 I4IGUANA - Zone Check-in Service
  * 
+ * ✅ v2.8.31: FIXED to match Venue Mode algorithm!
+ * 
  * Handles:
  * - User check-in to entertainment zone
  * - Tracking nearest venue (within 100m)
  * - Real-time location updates
- * - Fetching users in zone
+ * - Fetching users in zone (with ALL filters like venue mode!)
  */
 
 import { 
@@ -51,6 +53,7 @@ export interface ZoneCheckIn {
 
 export interface UserInZone {
   oderId: string
+  uid: string  // ✅ v2.8.31: Added for compatibility with match system
   name: string
   age: number
   photos: string[]
@@ -118,7 +121,15 @@ export const checkInToZone = async (
   zone: EntertainmentZone
 ): Promise<boolean> => {
   try {
-    console.log(`📍 Checking in user ${oderId} to zone ${zone.name}`)
+    console.log(`\n`)
+    console.log(`🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
+    console.log(`📍 CHECK-IN TO ZONE - SAVING TO FIREBASE`)
+    console.log(`🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
+    console.log(`👤 User ID: ${oderId}`)
+    console.log(`📍 Zone ID: "${zone.id}"`)
+    console.log(`📍 Zone Name: "${zone.name}"`)
+    console.log(`📍 Location: ${lat}, ${lng}`)
+    console.log(`🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
     
     // Find nearest venue
     const nearestVenue = await findNearestVenue(lat, lng)
@@ -129,7 +140,7 @@ export const checkInToZone = async (
     
     // Save check-in
     const checkInRef = doc(db, 'zoneCheckIns', oderId)
-    await setDoc(checkInRef, {
+    const checkInData = {
       oderId,
       location: { lat, lng },
       zoneId: zone.id,
@@ -138,7 +149,16 @@ export const checkInToZone = async (
       checkedInAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       expiresAt: Timestamp.fromDate(expiresAt)
-    })
+    }
+    
+    console.log(`💾 Saving to zoneCheckIns/${oderId}:`, JSON.stringify({
+      ...checkInData,
+      checkedInAt: 'serverTimestamp()',
+      updatedAt: 'serverTimestamp()',
+      expiresAt: expiresAt.toISOString()
+    }, null, 2))
+    
+    await setDoc(checkInRef, checkInData)
     
     // ✅ v2.8.5 CRITICAL: Set user as available when checking into zone!
     const userRef = doc(db, 'users', oderId)
@@ -147,7 +167,8 @@ export const checkInToZone = async (
       lastZoneCheckIn: serverTimestamp()
     }, { merge: true })
     
-    console.log(`✅ User checked in to ${zone.name}${nearestVenue ? ` (near ${nearestVenue.name})` : ''}`)
+    console.log(`✅ CHECK-IN SAVED SUCCESSFULLY!`)
+    console.log(`✅ User ${oderId} checked into zone "${zone.id}" (${zone.name})`)
     console.log(`✅ isAvailable set to TRUE`)
     return true
     
@@ -237,6 +258,7 @@ export const getUserZoneCheckIn = async (oderId: string): Promise<ZoneCheckIn | 
 
 /**
  * 👥 Get all users in a zone (for matching)
+ * ✅ v2.8.31: FIXED to match Venue Mode algorithm with ALL filters!
  */
 export const getUsersInZone = async (
   zoneId: string,
@@ -244,35 +266,120 @@ export const getUsersInZone = async (
   currentUserLat: number,
   currentUserLng: number,
   currentUserGender: 'male' | 'female',
-  currentUserLookingFor: 'male' | 'female' | 'both'
+  currentUserLookingFor: 'male' | 'female' | 'both',
+  currentUserAge?: number,
+  currentUserAgeRange?: [number, number],
+  smokingFilter?: 'any' | 'no' | 'no_or_social',
+  relationshipFilter?: 'all' | 'relationship' | 'casual' | 'friends',
+  swipedRight?: string[],
+  swipedLeft?: string[]
 ): Promise<UserInZone[]> => {
   try {
-    console.log(`👥 Fetching users in zone ${zoneId}`)
+    console.log(`\n`)
+    console.log(`🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
+    console.log(`👥 ZONE MODE DEBUG - getUsersInZone CALLED`)
+    console.log(`🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
+    console.log(`📍 Zone ID: "${zoneId}"`)
+    console.log(`👤 Current user: ${currentUserId}`)
+    console.log(`   Gender: ${currentUserGender}`)
+    console.log(`   Looking for: ${currentUserLookingFor}`)
+    console.log(`   Age: ${currentUserAge || 'N/A'}`)
+    console.log(`   Age range: ${currentUserAgeRange?.[0] || 18}-${currentUserAgeRange?.[1] || 80}`)
+    console.log(`🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥`)
     
     const usersInZone: UserInZone[] = []
-    const addedUserIds = new Set<string>()  // ✅ Prevent duplicates
+    const addedUserIds = new Set<string>()
+    
+    const ageRange = currentUserAgeRange || [18, 80]
+    const smoking = smokingFilter || 'any'
+    const relationship = relationshipFilter || 'all'
+    const alreadySwipedRight = swipedRight || []
+    const alreadySwipedLeft = swipedLeft || []
+    
+    // ═══════════════════════════════════════════════════════════════
+    // DEBUG STEP 0: Get ALL zone check-ins to see what's in the DB
+    // ✅ v2.8.32: Also clean up check-ins for deleted users
+    // ═══════════════════════════════════════════════════════════════
+    console.log(`\n🔍 DEBUG: Fetching ALL zoneCheckIns from database...`)
+    const checkInsToDelete: string[] = []
+    try {
+      const allCheckInsRef = collection(db, 'zoneCheckIns')
+      const allCheckInsSnapshot = await getDocs(allCheckInsRef)
+      console.log(`📊 TOTAL zoneCheckIns in database: ${allCheckInsSnapshot.size}`)
+      
+      for (const docSnap of allCheckInsSnapshot.docs) {
+        const data = docSnap.data()
+        const isExpired = data.expiresAt?.toDate?.() < new Date()
+        console.log(`   📍 ID: ${docSnap.id.substring(0, 8)}... | zoneId: "${data.zoneId}" | expired: ${isExpired} | zone: ${data.zoneName}`)
+        
+        // ✅ v2.8.32: Check if user was deleted
+        if (data.oderId) {
+          const userRef = doc(db, 'users', data.oderId)
+          const userDoc = await getDoc(userRef)
+          if (!userDoc.exists() || userDoc.data()?.deleted === true) {
+            console.log(`   🗑️ User ${data.oderId.substring(0, 8)} was deleted - marking check-in for cleanup`)
+            checkInsToDelete.push(docSnap.id)
+          }
+        }
+      }
+      
+      // ✅ v2.8.32: Delete check-ins for deleted users
+      if (checkInsToDelete.length > 0) {
+        console.log(`🧹 Cleaning up ${checkInsToDelete.length} check-ins for deleted users...`)
+        for (const checkInId of checkInsToDelete) {
+          try {
+            await deleteDoc(doc(db, 'zoneCheckIns', checkInId))
+            console.log(`   ✅ Deleted: ${checkInId}`)
+          } catch (delErr) {
+            console.warn(`   ⚠️ Failed to delete: ${checkInId}`, delErr)
+          }
+        }
+      }
+    } catch (debugErr) {
+      console.error('Debug query failed:', debugErr)
+    }
     
     // ═══════════════════════════════════════════════════════════════
     // STEP 1: Get users from Zone Check-ins
+    // ✅ v2.8.31 FIX: Query only by zoneId, filter expiration client-side
+    // (Avoids need for composite index)
     // ═══════════════════════════════════════════════════════════════
+    console.log(`\n📍 Querying zoneCheckIns where zoneId == "${zoneId}"...`)
+    
     const checkInsRef = collection(db, 'zoneCheckIns')
     const q = query(
       checkInsRef,
-      where('zoneId', '==', zoneId),
-      where('expiresAt', '>', Timestamp.now())
+      where('zoneId', '==', zoneId)
     )
     
     const snapshot = await getDocs(q)
     const checkIns: ZoneCheckIn[] = []
+    const now = new Date()
+    
+    console.log(`📍 Query returned ${snapshot.size} total check-ins for zoneId "${zoneId}"`)
     
     snapshot.forEach((docSnap) => {
       const data = docSnap.data() as ZoneCheckIn
+      
+      // ✅ v2.8.31: Filter expired check-ins client-side
+      const expiresAt = data.expiresAt?.toDate?.() || new Date(0)
+      const isExpired = expiresAt < now
+      
+      if (isExpired) {
+        console.log(`   ⏭️ Skipping expired: ${docSnap.id}`)
+        return
+      }
+      
+      console.log(`   ✅ Active: ${docSnap.id} in zone "${data.zoneId}"`)
+      
       if (data.oderId !== currentUserId) {
         checkIns.push(data)
+      } else {
+        console.log(`   ⏭️ Skipping self (${currentUserId})`)
       }
     })
     
-    console.log(`📍 Found ${checkIns.length} users in zone check-ins`)
+    console.log(`📍 After excluding self: ${checkIns.length} other users to check`)
     
     // Process zone check-ins
     for (const checkIn of checkIns) {
@@ -280,28 +387,115 @@ export const getUsersInZone = async (
         const userRef = doc(db, 'users', checkIn.oderId)
         const userDoc = await getDoc(userRef)
         
-        if (!userDoc.exists()) continue
+        if (!userDoc.exists()) {
+          console.log(`   ❌ User ${checkIn.oderId} not found in users collection`)
+          continue
+        }
         
         const userData = userDoc.data()
         
-        // Filter by gender preferences
-        const userGender = userData.gender
-        const userLookingFor = userData.lookingFor || userData.preferences?.lookingFor
+        console.log(`\n🔍 Checking user: ${userData.name || 'Unknown'} (${checkIn.oderId.substring(0, 8)}...)`)
         
-        // Check if this user matches current user's preferences
+        // ✅ v2.8.31: Skip deleted users
+        if (userData.deleted === true) {
+          console.log(`   ⏭️ SKIP: User account was deleted`)
+          continue
+        }
+        
+        // ✅ v2.8.31: Skip if onboarding not complete
+        if (!userData.onboardingComplete) {
+          console.log(`   ⏭️ SKIP: Onboarding not complete`)
+          continue
+        }
+        
+        // ✅ v2.8.31: Skip already swiped users (same session)
+        if (alreadySwipedRight.includes(checkIn.oderId)) {
+          console.log(`   ⏭️ SKIP: Already liked this user (this session)`)
+          continue
+        }
+        if (alreadySwipedLeft.includes(checkIn.oderId)) {
+          console.log(`   ⏭️ SKIP: Already passed this user (this session)`)
+          continue
+        }
+        
+        // Skip if user is hidden
+        if (userData.isAvailable === false) {
+          console.log(`   ⏭️ SKIP: isAvailable=false`)
+          continue
+        }
+        
+        // Filter by gender preferences - TWO WAY!
+        const userGender = userData.gender
+        const userLookingFor = userData.lookingFor || userData.preferences?.lookingFor || 'both'
+        
+        console.log(`   📊 Their: gender=${userGender}, lookingFor=${userLookingFor}`)
+        console.log(`   📊 Me: gender=${currentUserGender}, lookingFor=${currentUserLookingFor}`)
+        
+        // 1. Check if current user wants this user's gender
         const currentUserWantsThis = 
           currentUserLookingFor === 'both' || 
           currentUserLookingFor === userGender
         
-        // Check if this user wants current user
+        // 2. Check if this user wants current user's gender
         const thisUserWantsCurrent = 
           userLookingFor === 'both' || 
           userLookingFor === currentUserGender
         
-        if (!currentUserWantsThis || !thisUserWantsCurrent) continue
+        if (!currentUserWantsThis) {
+          console.log(`   ⏭️ SKIP: I'm looking for ${currentUserLookingFor}, not ${userGender}`)
+          continue
+        }
         
-        // Skip if user is hidden
-        if (userData.isAvailable === false) continue
+        if (!thisUserWantsCurrent) {
+          console.log(`   ⏭️ SKIP: They're looking for ${userLookingFor}, not ${currentUserGender}`)
+          continue
+        }
+        
+        // ✅ v2.8.31: Age filtering - TWO WAY!
+        const otherUserAge = userData.age
+        const otherUserAgeRange = userData.preferences?.ageRange || [18, 80]
+        
+        console.log(`   📊 Their age: ${otherUserAge}, Their range: ${otherUserAgeRange[0]}-${otherUserAgeRange[1]}`)
+        
+        // Check if their age is in MY range
+        if (otherUserAge) {
+          if (otherUserAge < ageRange[0] || otherUserAge > ageRange[1]) {
+            console.log(`   ⏭️ SKIP: Their age (${otherUserAge}) outside MY range (${ageRange[0]}-${ageRange[1]})`)
+            continue
+          }
+        }
+        
+        // Check if MY age is in their range
+        if (currentUserAge) {
+          if (currentUserAge < otherUserAgeRange[0] || currentUserAge > otherUserAgeRange[1]) {
+            console.log(`   ⏭️ SKIP: My age (${currentUserAge}) outside THEIR range (${otherUserAgeRange[0]}-${otherUserAgeRange[1]})`)
+            continue
+          }
+        }
+        
+        // ✅ v2.8.31: Smoking filter
+        if (smoking !== 'any') {
+          const otherUserSmoking = userData.smoking || 'no'
+          if (smoking === 'no' && otherUserSmoking !== 'no') {
+            console.log(`   🚬 SKIP: Smoker (${otherUserSmoking}), looking for non-smokers`)
+            continue
+          }
+          if (smoking === 'no_or_social' && otherUserSmoking === 'yes') {
+            console.log(`   🚬 SKIP: Regular smoker, looking for non/social only`)
+            continue
+          }
+        }
+        
+        // ✅ v2.8.31: Relationship type filter
+        if (relationship !== 'all') {
+          const otherUserRelType = userData.lookingForType || userData.relationshipType || 'relationship'
+          if (otherUserRelType !== relationship) {
+            console.log(`   💕 SKIP: They want ${otherUserRelType}, I want ${relationship}`)
+            continue
+          }
+        }
+        
+        console.log(`   ✅ PASSED ALL FILTERS!`)
         
         // Calculate distance
         const distance = calculateDistance(
@@ -314,6 +508,7 @@ export const getUsersInZone = async (
         addedUserIds.add(checkIn.oderId)
         usersInZone.push({
           oderId: checkIn.oderId,
+          uid: checkIn.oderId,  // ✅ v2.8.31: Add uid for match system compatibility
           name: userData.name || 'Anonymous',
           age: userData.age || 0,
           photos: userData.photos || [],
@@ -325,7 +520,6 @@ export const getUsersInZone = async (
           formattedDistance: formatDistance(distance),
           venueName: checkIn.nearestVenue?.name || null,
           location: checkIn.location,
-          // Additional fields
           height: userData.height,
           drinking: userData.drinking,
           smoking: userData.smoking,
@@ -343,9 +537,8 @@ export const getUsersInZone = async (
     
     // ═══════════════════════════════════════════════════════════════
     // STEP 2: Get users from Venue Check-ins (within 500m radius)
-    // ✅ v2.8.5: Zone mode shows EVERYONE - including venue users!
     // ═══════════════════════════════════════════════════════════════
-    console.log(`🍸 Also fetching venue check-ins within 500m...`)
+    console.log(`\n🍸 Also fetching venue check-ins within 500m...`)
     
     try {
       const usersRef = collection(db, 'users')
@@ -357,19 +550,28 @@ export const getUsersInZone = async (
       const venueSnapshot = await getDocs(venueQuery)
       let venueUsersCount = 0
       
-      venueSnapshot.forEach((userDocSnap) => {
+      for (const userDocSnap of venueSnapshot.docs) {
         const userData = userDocSnap.data()
-        const userId = userDocSnap.id
+        const oderId = userDocSnap.id
         
         // Skip current user and already added users
-        if (userId === currentUserId || addedUserIds.has(userId)) return
+        if (oderId === currentUserId || addedUserIds.has(oderId)) continue
+        
+        // ✅ v2.8.31: Skip deleted users
+        if (userData.deleted === true) continue
+        
+        // ✅ v2.8.31: Skip if onboarding not complete
+        if (!userData.onboardingComplete) continue
+        
+        // ✅ v2.8.31: Skip already swiped users
+        if (alreadySwipedRight.includes(oderId) || alreadySwipedLeft.includes(oderId)) continue
         
         // Skip hidden users
-        if (userData.isAvailable === false) return
+        if (userData.isAvailable === false) continue
         
         // Check if user has valid check-in data with location
         const checkInData = userData.checkInData
-        if (!checkInData || !checkInData.location) return
+        if (!checkInData || !checkInData.location) continue
         
         // Check if venue is within 500m of current user
         const distance = calculateDistance(
@@ -379,28 +581,43 @@ export const getUsersInZone = async (
           checkInData.location.lng || checkInData.location.longitude
         )
         
-        // Only include if within 500m
-        if (distance > 500) return
+        if (distance > 500) continue
         
-        // Filter by gender preferences
+        // Gender filtering - TWO WAY
         const userGender = userData.gender
-        const userLookingFor = userData.lookingFor || userData.preferences?.lookingFor
+        const userLookingFor = userData.lookingFor || userData.preferences?.lookingFor || 'both'
         
-        const currentUserWantsThis = 
-          currentUserLookingFor === 'both' || 
-          currentUserLookingFor === userGender
+        const currentUserWantsThis = currentUserLookingFor === 'both' || currentUserLookingFor === userGender
+        const thisUserWantsCurrent = userLookingFor === 'both' || userLookingFor === currentUserGender
         
-        const thisUserWantsCurrent = 
-          userLookingFor === 'both' || 
-          userLookingFor === currentUserGender
+        if (!currentUserWantsThis || !thisUserWantsCurrent) continue
         
-        if (!currentUserWantsThis || !thisUserWantsCurrent) return
+        // ✅ v2.8.31: Age filtering
+        const otherUserAge = userData.age
+        const otherUserAgeRange = userData.preferences?.ageRange || [18, 80]
         
-        addedUserIds.add(userId)
+        if (otherUserAge && (otherUserAge < ageRange[0] || otherUserAge > ageRange[1])) continue
+        if (currentUserAge && (currentUserAge < otherUserAgeRange[0] || currentUserAge > otherUserAgeRange[1])) continue
+        
+        // ✅ v2.8.31: Smoking filter
+        if (smoking !== 'any') {
+          const otherUserSmoking = userData.smoking || 'no'
+          if (smoking === 'no' && otherUserSmoking !== 'no') continue
+          if (smoking === 'no_or_social' && otherUserSmoking === 'yes') continue
+        }
+        
+        // ✅ v2.8.31: Relationship filter
+        if (relationship !== 'all') {
+          const otherUserRelType = userData.lookingForType || userData.relationshipType || 'relationship'
+          if (otherUserRelType !== relationship) continue
+        }
+        
+        addedUserIds.add(oderId)
         venueUsersCount++
         
         usersInZone.push({
-          oderId: userId,
+          oderId,
+          uid: oderId,  // ✅ v2.8.31: Add uid for match system compatibility
           name: userData.name || 'Anonymous',
           age: userData.age || 0,
           photos: userData.photos || [],
@@ -410,12 +627,11 @@ export const getUsersInZone = async (
           hobbies: userData.hobbies || [],
           distance,
           formattedDistance: formatDistance(distance),
-          venueName: checkInData.venueName || userData.checkedInVenue || null,  // ✅ Show venue name!
+          venueName: checkInData.venueName || userData.checkedInVenue || null,
           location: {
             lat: checkInData.location.lat || checkInData.location.latitude,
             lng: checkInData.location.lng || checkInData.location.longitude
           },
-          // Additional fields
           height: userData.height,
           drinking: userData.drinking,
           smoking: userData.smoking,
@@ -425,19 +641,21 @@ export const getUsersInZone = async (
           occupation: userData.occupation,
           languages: userData.languages
         })
-      })
+      }
       
       console.log(`🍸 Added ${venueUsersCount} users from venue check-ins`)
       
     } catch (venueErr) {
       console.warn('⚠️ Error fetching venue users:', venueErr)
-      // Continue without venue users
     }
     
     // Sort by distance
     usersInZone.sort((a, b) => a.distance - b.distance)
     
-    console.log(`✅ Returning ${usersInZone.length} total matching users (zone + venues)`)
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`✅ ZONE MODE RESULT: ${usersInZone.length} matching users`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`)
+    
     return usersInZone
     
   } catch (error) {

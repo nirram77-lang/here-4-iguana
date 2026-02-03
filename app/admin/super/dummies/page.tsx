@@ -21,7 +21,7 @@ import {
   ArrowLeft, Users, MapPin, Building2, Plus, Trash2, Edit3, 
   CheckCircle, XCircle, Filter, Search, RefreshCw, Eye, 
   ChevronDown, ChevronRight, Sparkles, Zap, Globe, Heart,
-  UserPlus, LogIn, LogOut, Map, Grid, List, Camera
+  UserPlus, LogIn, LogOut, Map, Grid, List, Camera, Shuffle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -74,21 +74,119 @@ interface CityStats {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CITIES: Record<string, CityStats> = {
+  // ══════════════ דרום ══════════════
   'ashkelon': {
     name: 'אשקלון',
     icon: '🏖️',
     gradient: 'from-cyan-500 to-blue-600',
     totalDummies: 0,
     checkedIn: 0,
-    zones: ['ashkelon-marina', 'nir-home', 'ashkelon-delila', 'ashkelon-barnea', 'ashkelon-city-center', 'ashkelon-hanasi']
+    zones: ['ashkelon-marina', 'nir-home', 'ashkelon-delila', 'ashkelon-barnea', 'ashkelon-city-center']
   },
+  'ashdod': {
+    name: 'אשדוד',
+    icon: '🚢',
+    gradient: 'from-blue-500 to-indigo-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['ashdod-city', 'ashdod-marina', 'ashdod-rova-vav']
+  },
+  'beer-sheva': {
+    name: 'באר שבע',
+    icon: '🏜️',
+    gradient: 'from-amber-500 to-orange-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['bsheva-old-city', 'bsheva-big', 'bsheva-rager']
+  },
+  'eilat': {
+    name: 'אילת',
+    icon: '🏝️',
+    gradient: 'from-red-500 to-pink-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['eilat-promenade', 'eilat-hotel-strip', 'eilat-north-beach']
+  },
+  'kiryat-gat': {
+    name: 'קריית גת',
+    icon: '🏘️',
+    gradient: 'from-stone-500 to-stone-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['kiryat-gat-center']
+  },
+  'dimona': {
+    name: 'דימונה',
+    icon: '☀️',
+    gradient: 'from-yellow-500 to-amber-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['dimona-center']
+  },
+  // ══════════════ מרכז ══════════════
   'tel-aviv': {
     name: 'תל אביב',
     icon: '🌆',
     gradient: 'from-pink-500 to-purple-600',
     totalDummies: 0,
     checkedIn: 0,
-    zones: ['tlv-florentin', 'tlv-rothschild', 'tlv-port', 'tlv-dizengoff', 'tlv-neve-tzedek', 'tlv-arbaa']
+    zones: ['tlv-rothschild', 'tlv-florentin', 'tlv-arbaa', 'tlv-port', 'tlv-station', 'tlv-dizengoff', 'tlv-allenby', 'tlv-neve-tzedek']
+  },
+  'jerusalem': {
+    name: 'ירושלים',
+    icon: '🏛️',
+    gradient: 'from-amber-400 to-yellow-500',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['jlm-mahane-yehuda', 'jlm-german-colony', 'jlm-first-station', 'jlm-nahalat-shiva', 'jlm-talbiya', 'jlm-emek-refaim']
+  },
+  'ramat-gan': {
+    name: 'רמת גן',
+    icon: '🏢',
+    gradient: 'from-emerald-500 to-teal-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['rg-bursa', 'rg-ayalon', 'rg-city-center']
+  },
+  'petah-tikva': {
+    name: 'פתח תקווה',
+    icon: '🌳',
+    gradient: 'from-green-500 to-emerald-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['pt-rothschild', 'pt-em-hamoshavot', 'pt-big']
+  },
+  'rishon-lezion': {
+    name: 'ראשון לציון',
+    icon: '🏙️',
+    gradient: 'from-violet-500 to-purple-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['rishon-rothschild', 'rishon-rishonim', 'rishon-west']
+  },
+  'holon': {
+    name: 'חולון',
+    icon: '🎭',
+    gradient: 'from-fuchsia-500 to-pink-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['holon-sokolov', 'holon-center']
+  },
+  'bat-yam': {
+    name: 'בת ים',
+    icon: '🌊',
+    gradient: 'from-sky-500 to-blue-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['bat-yam-beach', 'bat-yam-center']
+  },
+  'givatayim': {
+    name: 'גבעתיים',
+    icon: '🏘️',
+    gradient: 'from-lime-500 to-green-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['givatayim-center']
   },
   'rehovot': {
     name: 'רחובות',
@@ -96,7 +194,136 @@ const CITIES: Record<string, CityStats> = {
     gradient: 'from-orange-500 to-amber-600',
     totalDummies: 0,
     checkedIn: 0,
-    zones: ['rehovot-science', 'rehovot-science-park', 'rehovot-herzl']
+    zones: ['rehovot-science-park', 'rehovot-herzl']
+  },
+  'nes-ziona': {
+    name: 'נס ציונה',
+    icon: '🌻',
+    gradient: 'from-yellow-400 to-orange-500',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['nes-ziona-center']
+  },
+  'modiin': {
+    name: 'מודיעין',
+    icon: '🏗️',
+    gradient: 'from-slate-500 to-gray-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['modiin-azrieli', 'modiin-ligad']
+  },
+  'herzliya': {
+    name: 'הרצליה',
+    icon: '💎',
+    gradient: 'from-cyan-400 to-blue-500',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['herzliya-pituach', 'herzliya-marina', 'herzliya-arena']
+  },
+  'raanana': {
+    name: 'רעננה',
+    icon: '🌿',
+    gradient: 'from-green-400 to-emerald-500',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['raanana-ahuza', 'raanana-park']
+  },
+  'kfar-saba': {
+    name: 'כפר סבא',
+    icon: '🌲',
+    gradient: 'from-teal-500 to-cyan-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['kfar-saba-weizmann', 'kfar-saba-center']
+  },
+  'netanya': {
+    name: 'נתניה',
+    icon: '🌅',
+    gradient: 'from-orange-400 to-red-500',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['netanya-promenade', 'netanya-city-center', 'netanya-poleg']
+  },
+  'beit-shemesh': {
+    name: 'בית שמש',
+    icon: '🌄',
+    gradient: 'from-amber-500 to-yellow-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['beit-shemesh-center']
+  },
+  // ══════════════ צפון ══════════════
+  'haifa': {
+    name: 'חיפה',
+    icon: '⛰️',
+    gradient: 'from-indigo-500 to-blue-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['haifa-downtown', 'haifa-carmel', 'haifa-german-colony', 'haifa-masada', 'haifa-bat-galim']
+  },
+  'acre': {
+    name: 'עכו',
+    icon: '🏰',
+    gradient: 'from-stone-500 to-amber-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['acre-old-city', 'acre-beach']
+  },
+  'nahariya': {
+    name: 'נהריה',
+    icon: '🌊',
+    gradient: 'from-blue-400 to-cyan-500',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['nahariya-gaaton', 'nahariya-beach']
+  },
+  'karmiel': {
+    name: 'כרמיאל',
+    icon: '🏔️',
+    gradient: 'from-emerald-400 to-teal-500',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['karmiel-center']
+  },
+  'safed': {
+    name: 'צפת',
+    icon: '✡️',
+    gradient: 'from-blue-500 to-indigo-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['safed-old-city', 'safed-artists']
+  },
+  'tiberias': {
+    name: 'טבריה',
+    icon: '🌊',
+    gradient: 'from-cyan-500 to-blue-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['tiberias-promenade', 'tiberias-center']
+  },
+  'afula': {
+    name: 'עפולה',
+    icon: '🌾',
+    gradient: 'from-yellow-500 to-green-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['afula-center', 'afula-yula-bar']
+  },
+  'nazareth': {
+    name: 'נצרת',
+    icon: '⛪',
+    gradient: 'from-rose-500 to-pink-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['nazareth-old-city', 'nazareth-center']
+  },
+  'kiryat-shmona': {
+    name: 'קריית שמונה',
+    icon: '🗻',
+    gradient: 'from-slate-500 to-blue-600',
+    totalDummies: 0,
+    checkedIn: 0,
+    zones: ['kiryat-shmona-center']
   }
 }
 
@@ -338,6 +565,155 @@ export default function DummyControlCenter() {
     setProcessing(false)
   }
 
+  // ✅ v2.8.34: Shuffle dummies between zones
+  // Randomly redistributes dummies across ALL entertainment zones in the system
+  const shuffleDummiesBetweenZones = async () => {
+    // ✅ FIX: Get ALL zones from CITIES configuration, not just zones with dummies
+    const allZones = Object.values(CITIES).flatMap(city => city.zones)
+    
+    if (allZones.length < 2) {
+      alert('צריך לפחות 2 אזורים כדי לערבל!')
+      return
+    }
+    
+    const males = dummies.filter(d => d.gender === 'male')
+    const females = dummies.filter(d => d.gender === 'female')
+    
+    if (!confirm(`🔀 לערבל דמויות בין כל האזורים?\n\n${allZones.length} אזורים בכל הארץ\n${males.length} גברים, ${females.length} נשים\n\nהדמויות יתחלקו מחדש באופן אקראי בכל ישראל!`)) return
+    
+    setProcessing(true)
+    
+    try {
+      // Shuffle array helper
+      const shuffleArray = <T,>(arr: T[]): T[] => {
+        const newArr = [...arr]
+        for (let i = newArr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [newArr[i], newArr[j]] = [newArr[j], newArr[i]]
+        }
+        return newArr
+      }
+      
+      // Shuffle the zones too for better randomness
+      const shuffledZones = shuffleArray(allZones)
+      
+      // Distribute dummies to zones evenly
+      const distributeToZones = (items: DummyUser[], zones: string[]): Record<string, string> => {
+        const shuffledItems = shuffleArray(items)
+        const distribution: Record<string, string> = {}
+        
+        shuffledItems.forEach((item, index) => {
+          const zoneIndex = index % zones.length
+          distribution[item.id] = zones[zoneIndex]
+        })
+        
+        return distribution
+      }
+      
+      // Get new zone assignments
+      const maleDistribution = distributeToZones(males, shuffledZones)
+      const femaleDistribution = distributeToZones(females, shuffledZones)
+      
+      // Update in batches (Firestore limit is 500 per batch)
+      const allUpdates = [
+        ...Object.entries(maleDistribution),
+        ...Object.entries(femaleDistribution)
+      ]
+      
+      // Split into batches of 450 (safe margin)
+      const batchSize = 450
+      let updateCount = 0
+      
+      for (let i = 0; i < allUpdates.length; i += batchSize) {
+        const batchUpdates = allUpdates.slice(i, i + batchSize)
+        const batch = writeBatch(db)
+        
+        batchUpdates.forEach(([dummyId, newZone]) => {
+          batch.update(doc(db, 'dummyUsers', dummyId), { dummyZone: newZone })
+          updateCount++
+        })
+        
+        await batch.commit()
+        console.log(`✅ Batch ${Math.floor(i / batchSize) + 1} committed (${batchUpdates.length} updates)`)
+      }
+      
+      console.log(`✅ Shuffled ${updateCount} dummies across ${allZones.length} zones`)
+      alert(`✅ ${updateCount} דמויות עורבלו בהצלחה בין ${allZones.length} אזורים בכל ישראל!`)
+      
+      await loadData()
+      
+    } catch (error) {
+      console.error('❌ Error shuffling dummies:', error)
+      alert('שגיאה בערבול: ' + (error as Error).message)
+    }
+    
+    setProcessing(false)
+  }
+
+  // ✅ v2.8.34: Shuffle dummies within a specific city
+  const shuffleDummiesInCity = async (cityKey: string) => {
+    const cityConfig = CITIES[cityKey]
+    if (!cityConfig) return
+    
+    const cityZones = cityConfig.zones
+    const cityDummies = dummies.filter(d => cityZones.includes(d.dummyZone || ''))
+    
+    if (cityDummies.length < 2 || cityZones.length < 2) {
+      alert(`צריך לפחות 2 דמויות ו-2 אזורים בעיר ${cityConfig.name}!`)
+      return
+    }
+    
+    const males = cityDummies.filter(d => d.gender === 'male')
+    const females = cityDummies.filter(d => d.gender === 'female')
+    
+    if (!confirm(`🔀 לערבל דמויות ב${cityConfig.name}?\n\n${cityZones.length} אזורים\n${males.length} גברים, ${females.length} נשים`)) return
+    
+    setProcessing(true)
+    
+    try {
+      const shuffleArray = <T,>(arr: T[]): T[] => {
+        const newArr = [...arr]
+        for (let i = newArr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [newArr[i], newArr[j]] = [newArr[j], newArr[i]]
+        }
+        return newArr
+      }
+      
+      const batch = writeBatch(db)
+      let updateCount = 0
+      
+      // Shuffle males
+      const shuffledMales = shuffleArray(males)
+      shuffledMales.forEach((dummy, index) => {
+        const newZone = cityZones[index % cityZones.length]
+        batch.update(doc(db, 'dummyUsers', dummy.id), { dummyZone: newZone })
+        updateCount++
+      })
+      
+      // Shuffle females
+      const shuffledFemales = shuffleArray(females)
+      shuffledFemales.forEach((dummy, index) => {
+        const newZone = cityZones[index % cityZones.length]
+        batch.update(doc(db, 'dummyUsers', dummy.id), { dummyZone: newZone })
+        updateCount++
+      })
+      
+      await batch.commit()
+      
+      console.log(`✅ Shuffled ${updateCount} dummies in ${cityConfig.name}`)
+      alert(`✅ ${updateCount} דמויות עורבלו ב${cityConfig.name}!`)
+      
+      await loadData()
+      
+    } catch (error) {
+      console.error('❌ Error shuffling:', error)
+      alert('שגיאה בערבול')
+    }
+    
+    setProcessing(false)
+  }
+
   // Single check-in
   const checkInDummy = async (dummyId: string, venueId: string, venueName: string) => {
     try {
@@ -509,6 +885,15 @@ export default function DummyControlCenter() {
             </Button>
             
             <div className="flex items-center gap-2">
+              {/* 📸 Photos Manager */}
+              <Button
+                onClick={() => router.push('/admin/super/dummy-photos')}
+                className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold"
+              >
+                <Camera className="w-5 h-5 mr-2" />
+                📸 Photos
+              </Button>
+              
               {/* ✅ v2.8.6: Navigate to Initialize Dummies page */}
               <Button
                 onClick={() => router.push('/admin/dummies')}
@@ -969,6 +1354,17 @@ export default function DummyControlCenter() {
             className="border-[#4ade80]/40 text-[#4ade80] hover:bg-[#4ade80]/20"
           >
             בחר הכל ({filteredDummies.length})
+          </Button>
+          
+          {/* ✅ v2.8.34: Shuffle Dummies Button */}
+          <Button
+            onClick={shuffleDummiesBetweenZones}
+            disabled={processing}
+            variant="outline"
+            size="sm"
+            className="border-purple-500/40 text-purple-400 hover:bg-purple-500/20"
+          >
+            🔀 ערבל בין אזורים
           </Button>
         </div>
       </section>

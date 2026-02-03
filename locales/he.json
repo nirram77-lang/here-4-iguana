@@ -182,6 +182,7 @@
     "logout": "התנתקות",
     "basicInfo": "מידע בסיסי",
     "name": "שם",
+    "email": "אימייל",
     "age": "גיל",
     "birthDate": "תאריך לידה",
     "city": "עיר",
@@ -286,7 +287,7 @@
   "welcome": {
     "title": "I4IGUANA",
     "tagline": "פגוש עכשיו. לא אחר כך.",
-    "subtitle": "מצא רווקים בטווח של 500 מטר",
+    "subtitle": "גלו מי סביבכם בטווח 500 מטר",
     "letsGo": "!יאללה"
   },
   "onboarding": {
@@ -318,7 +319,7 @@
     },
     "photos": {
       "title": "הוסף תמונות",
-      "subtitle": "הוסף לפחות תמונה אחת כדי להמשיך",
+      "subtitle": "הוסף 2 תמונות כדי להמשיך",
       "uploadingPhoto": "מעלה תמונה...",
       "dragHint": "👆 גרור תמונות לסידור מחדש! תמונה ראשונה = תמונת פרופיל ראשית ⭐"
     },
@@ -367,7 +368,7 @@
   "match": {
     "title": "יש Match! 🎉",
     "subtitle": "לכם יש חיבור!",
-    "sendHerMessage": "שלח לה הודעה",
+    "sendHerMessage": "שלח לה הודעה והיא תחליט 💬",
     "sheDecidesWhen": "היא מחליטה מתי להיפגש",
     "youreInControl": "את בשליטה",
     "whenHeMessages": "כשהוא ישלח הודעה, תחליטי אם להיפגש",
@@ -382,7 +383,7 @@
   },
   "meetingModal": {
     "youreMeetingUp": "נפגשים!",
-    "meetingWith": "נפגש/ת עם {{name}}",
+    "meetingWith": "נפגש/ת עם",
     "timerPaused": "הטיימר מושהה",
     "awesome": "מדהים!",
     "amazing": "מעולה!"
@@ -391,7 +392,7 @@
     "title": "המפגש הסתיים",
     "partnerLeft": "{name} עזב/ה את המפגש.",
     "nextTime": "אולי בפעם הבאה!",
-    "backToHome": "חזרה הביתה"
+    "backToHome": "המשך לגלות 🦎"
   },
   "enjoyMode": {
     "titleMale": "תהנה מהדייט! 🎉",
@@ -434,17 +435,17 @@
     "whatDeleted": "מה יימחק:"
   },
   "guidelines": {
-    "title": "כללי קהילה",
-    "subtitle": "בוא נשמור על זה בטוח ומהנה",
-    "beRespectful": "היה מכבד",
-    "beRespectfulDesc": "התייחס לאחרים כפי שהיית רוצה שיתייחסו אליך",
-    "staySafe": "שמור על בטיחות",
-    "staySafeDesc": "פגוש במקומות ציבוריים וספר למישהו לאן אתה הולך",
+    "title": "מרחב בטוח – כללי הקהילה",
+    "subtitle": "בואו נשמור על זה בטוח ומהנה",
+    "beRespectful": "כבוד הדדי",
+    "beRespectfulDesc": "להתייחס לאחרים כפי שרוצים שיתייחסו אלינו",
+    "staySafe": "שמירה על בטיחות",
+    "staySafeDesc": "להיפגש במקומות ציבוריים ולספר למישהו לאן הולכים",
     "haveFun": "תהנה!",
     "haveFunDesc": "I4IGUANA נועד לעזור לך למצוא קשרים אמיתיים",
     "createProfile": "צור פרופיל",
     "tapHeart": "לחץ על הלב כדי להמשיך",
-    "agreement": "על ידי המשך, אתה מסכים לכללי הקהילה שלנו"
+    "agreement": "בהמשך, הסכמה לכללי הקהילה שלנו"
   },
   "iguanaSearching": {
     "searching": "האיגואנה מחפשת...",
@@ -552,5 +553,31 @@
     "submit": "שלח והמשך",
     "skip": "דלג לעת עתה",
     "anonymous": "המשוב שלך אנונימי ועוזר לנו ליצור התאמות טובות יותר"
+  },
+  "superLike": {
+    "title": "🦎 Super Like! 💜",
+    "sendTo": "שלח Super Like ל",
+    "addMessage": "הוסף הודעה (אופציונלי)",
+    "messagePlaceholder": "היי, נראית מעניינת...",
+    "send": "שלח 🦎💜",
+    "cancel": "ביטול",
+    "sent": "🦎 נשלח בהצלחה!",
+    "remaining": "Super Likes",
+    "resetsIn": "מתאפס בעוד",
+    "days": "ימים",
+    "outOf": "נגמרו ה-Super Likes השבועיים",
+    "outOfLikes": "נגמרו - לחץ לעוד",
+    "getPremium": "👑 קבל עוד - פרימיום",
+    "unlimited": "ללא הגבלה",
+    "incomingTitle": "🦎 הודעות נכנסות",
+    "noMessage": "שלח/ה לך Super Like",
+    "openChat": "💬 פתח צ'אט",
+    "chatSystemMessage": "🦎 הצ'אט פעיל כל עוד שניכם באזור הבילוי!",
+    "replyNow": "💬 ענה/י עכשיו כדי להתחבר!",
+    "chatLocked": "🔒 הצ'אט נחסם",
+    "userLeftArea": "יצא/ה מאזור הבילוי",
+    "nextTimeFaster": "💡 בפעם הבאה - ענה/י מהר יותר!",
+    "alreadySent": "כבר שלחת Super Like",
+    "error": "שגיאה בשליחה, נסה שוב"
   }
 }

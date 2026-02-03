@@ -83,145 +83,79 @@ export default function MeetingFeedbackScreen({
 
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
+      className="flex flex-col items-center justify-center p-6 relative"
       style={{ 
-        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        overflow: 'hidden',
+        touchAction: 'none',
         background: 'linear-gradient(160deg, #0a1f1a 0%, #0d2920 30%, #051410 70%, #030b08 100%)'
       }}
     >
       
-      {/* 💕 Floating Hearts Background - HOLLYWOOD RED! */}
+      {/* 💕 Floating Hearts Background - STATIC to prevent flicker */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {hearts.map((heart) => (
-          <motion.div
+        {hearts.slice(0, 8).map((heart) => (
+          <div
             key={`heart-${heart.id}`}
-            className="absolute"
+            className="absolute animate-pulse"
             style={{
               left: `${heart.x}%`,
-              bottom: -30,
+              top: `${20 + heart.id * 10}%`,
               fontSize: heart.size,
-              color: `rgba(239, 68, 68, ${heart.opacity})`, // Red with dynamic opacity
-              textShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
-            }}
-            animate={{
-              y: [0, -(viewportHeight || 800) - 100],
-              opacity: [0, heart.opacity, heart.opacity, 0],
-              rotate: [0, 20, -20, 0],
-              scale: [0.8, 1, 1, 0.8],
-            }}
-            transition={{
-              duration: heart.duration,
-              repeat: Infinity,
-              delay: heart.delay,
-              ease: "linear"
+              color: `rgba(239, 68, 68, ${heart.opacity})`,
+              opacity: heart.opacity,
             }}
           >
             ❤️
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      {/* ✨ Sparkle Particles - Same as other screens! */}
+      {/* ✨ Sparkle Particles - STATIC */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
+        {[...Array(10)].map((_, i) => (
+          <div
             key={`sparkle-${i}`}
-            className="absolute w-1 h-1 bg-[#4ade80]/40 rounded-full"
+            className="absolute w-1 h-1 bg-[#4ade80]/40 rounded-full animate-pulse"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              opacity: [0, 1, 0],
-              scale: [0, 1.5, 0],
-            }}
-            transition={{
-              duration: 2 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 3,
+              left: `${10 + i * 9}%`,
+              top: `${15 + i * 8}%`,
             }}
           />
         ))}
       </div>
 
-      {/* 🎊 Confetti Effect on Positive Rating */}
-      <AnimatePresence>
-        {showConfetti && (
-          <>
-            {[...Array(30)].map((_, i) => (
-              <motion.div
-                key={`confetti-${i}`}
-                className="absolute z-50 text-2xl"
-                initial={{ 
-                  x: '50%',
-                  y: '40%',
-                  opacity: 1,
-                  scale: 1
-                }}
-                animate={{ 
-                  x: `${Math.random() * 100}%`,
-                  y: `${Math.random() * 100}%`,
-                  opacity: 0,
-                  scale: 0,
-                  rotate: Math.random() * 720
-                }}
-                exit={{ opacity: 0 }}
-                transition={{ 
-                  duration: 1 + Math.random(),
-                  ease: 'easeOut'
-                }}
-              >
-                {['💚', '✨', '🎉', '💕', '⭐', '🦎'][Math.floor(Math.random() * 6)]}
-              </motion.div>
-            ))}
-          </>
-        )}
-      </AnimatePresence>
+      {/* 🎊 Confetti removed - caused flickering */}
 
-      {/* 🌟 Main Glow Effect - Iguana Green! */}
-      <motion.div 
+      {/* 🌟 Main Glow Effect - STATIC */}
+      <div 
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full pointer-events-none"
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: [0.2, 0.35, 0.2]
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: 'easeInOut'
-        }}
         style={{
           background: rating === 'positive' 
-            ? 'radial-gradient(circle, rgba(74,222,128,0.35) 0%, transparent 70%)'
+            ? 'radial-gradient(circle, rgba(74,222,128,0.3) 0%, transparent 70%)'
             : rating === 'negative'
-            ? 'radial-gradient(circle, rgba(251,113,133,0.25) 0%, transparent 70%)'
+            ? 'radial-gradient(circle, rgba(251,113,133,0.3) 0%, transparent 70%)'
             : 'radial-gradient(circle, rgba(74,222,128,0.2) 0%, transparent 70%)',
+          filter: 'blur(40px)'
         }}
       />
 
-      {/* 📝 Content Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.9 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, type: 'spring', bounce: 0.3 }}
+      {/* 📝 Content Card - STATIC to prevent flickering */}
+      <div
         className="relative z-10 w-full max-w-sm"
       >
-        {/* ✨ Animated Border Glow - Iguana Green! */}
-        <motion.div
+        {/* ✨ Border Glow - STATIC */}
+        <div
           className="absolute -inset-[2px] rounded-3xl opacity-60"
-          animate={{
-            background: [
-              'linear-gradient(0deg, #4ade80, #22c55e, #15803d, #4ade80)',
-              'linear-gradient(180deg, #4ade80, #22c55e, #15803d, #4ade80)',
-              'linear-gradient(360deg, #4ade80, #22c55e, #15803d, #4ade80)',
-            ]
+          style={{ 
+            background: 'linear-gradient(0deg, #4ade80, #22c55e, #15803d, #4ade80)',
+            filter: 'blur(8px)' 
           }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: 'linear'
-          }}
-          style={{ filter: 'blur(8px)' }}
         />
         
         {/* Main Card - Iguana Green Theme! */}
@@ -322,24 +256,12 @@ export default function MeetingFeedbackScreen({
                   ? 'bg-gradient-to-br from-[#4ade80] via-[#22c55e] to-[#15803d] text-[#0d2920] shadow-xl shadow-[#4ade80]/40 border-2 border-[#86efac]/50'
                   : 'bg-[#0d2920]/50 text-white/60 hover:bg-[#1a4d3e]/50 border border-[#4ade80]/20 hover:border-[#4ade80]/40'
               }`}>
-                <motion.div
-                  animate={rating === 'positive' ? { 
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 10, 0]
-                  } : {}}
-                  transition={{ duration: 0.5 }}
-                >
+                <div>
                   <ThumbsUp className={`w-10 h-10 ${rating === 'positive' ? 'fill-[#0d2920] drop-shadow-lg' : ''}`} />
-                </motion.div>
-                <span className="font-bold text-base">{t('feedback.great')}</span>
+                </div>
+                <span className="font-bold text-base" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{t('feedback.great')}</span>
                 {rating === 'positive' && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-xl"
-                  >
-                    🎉
-                  </motion.span>
+                  <span className="text-xl">🎉</span>
                 )}
               </div>
             </motion.button>
@@ -371,24 +293,12 @@ export default function MeetingFeedbackScreen({
                   ? 'bg-gradient-to-br from-rose-400 via-red-500 to-rose-600 text-white shadow-xl shadow-rose-500/40 border-2 border-rose-300/50'
                   : 'bg-[#0d2920]/50 text-white/60 hover:bg-[#1a4d3e]/50 border border-[#4ade80]/20 hover:border-rose-400/40'
               }`}>
-                <motion.div
-                  animate={rating === 'negative' ? { 
-                    scale: [1, 1.1, 1],
-                    rotate: [0, -10, 0]
-                  } : {}}
-                  transition={{ duration: 0.5 }}
-                >
+                <div>
                   <ThumbsDown className={`w-10 h-10 ${rating === 'negative' ? 'fill-white drop-shadow-lg' : ''}`} />
-                </motion.div>
-                <span className="font-bold text-base">{t('feedback.notGreat')}</span>
+                </div>
+                <span className="font-bold text-base" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{t('feedback.notGreat')}</span>
                 {rating === 'negative' && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-xl"
-                  >
-                    😔
-                  </motion.span>
+                  <span className="text-xl">😔</span>
                 )}
               </div>
             </motion.button>
@@ -531,29 +441,16 @@ export default function MeetingFeedbackScreen({
           </motion.button>
         </div>
 
-        {/* 🦎 Bottom Message */}
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+        {/* 🦎 Bottom Message - STATIC */}
+        <p
           className="text-center text-white/40 text-xs mt-4 flex items-center justify-center gap-2"
           style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
           {t('feedback.anonymous')}
-          <motion.span
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            🦎
-          </motion.span>
-          <motion.span
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            💚
-          </motion.span>
-        </motion.p>
-      </motion.div>
+          <span>🦎</span>
+          <span>💚</span>
+        </p>
+      </div>
     </div>
   )
 }

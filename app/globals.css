@@ -4,9 +4,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Nightclub-inspired dark theme for Here 4 Iguana */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* ✅ v2.8.24: Dark theme by default to prevent white bars */
+  --background: #0d2920;
+  --foreground: oklch(0.985 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -134,11 +134,13 @@
   
   html {
     -webkit-text-size-adjust: 100%;
+    background-color: #0d2920 !important;  /* ✅ v2.8.24: Prevent white bars on iOS */
   }
   
   body {
     @apply bg-background text-foreground;
     -webkit-overflow-scrolling: touch;
+    background-color: #0d2920 !important;  /* ✅ v2.8.24: Prevent white bars */
   }
   
   /* ✅ PWA App Mode - ONLY applied when JavaScript adds this class */
@@ -153,7 +155,12 @@
     bottom: 0 !important;
     width: 100% !important;
     height: var(--app-height, 100vh) !important;
-    touch-action: manipulation !important;
+    touch-action: manipulation !important;  /* ✅ ZOOM LOCK: Only in PWA mode */
+  }
+  
+  /* ✅ ZOOM LOCK: Only for PWA app mode */
+  html.pwa-app-mode * {
+    touch-action: pan-x pan-y;
   }
   
   html.pwa-app-mode body {
@@ -257,27 +264,19 @@ input[type="range"]::-webkit-slider-track {
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #4ade80;
-  border: 2px solid white;
-  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.5);
   cursor: pointer;
-  transition: all 0.2s ease;
+  /* ✅ v2.8.25: NO transitions - prevents iOS flickering */
   /* CRITICAL: This centers the thumb on the track */
-  margin-top: -8px; /* (thumb height - track height) / 2 = (24 - 8) / 2 = 8px */
+  margin-top: -10px; /* (thumb height - track height) / 2 = (28 - 8) / 2 = 10px */
 }
 
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 6px 16px rgba(74, 222, 128, 0.6);
-}
-
-input[type="range"]::-webkit-slider-thumb:active {
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.8);
-}
+/* ✅ v2.8.25: Removed hover/active transforms - cause iOS flickering */
 
 /* Firefox - Track */
 input[type="range"]::-moz-range-track {
@@ -288,26 +287,17 @@ input[type="range"]::-moz-range-track {
 
 /* Firefox - Thumb */
 input[type="range"]::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #4ade80;
-  border: 2px solid white;
-  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.5);
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: none; /* Remove default Firefox border */
+  /* ✅ v2.8.25: NO transitions - prevents flickering */
 }
 
-input[type="range"]::-moz-range-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 6px 16px rgba(74, 222, 128, 0.6);
-}
-
-input[type="range"]::-moz-range-thumb:active {
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.8);
-}
+/* ✅ v2.8.25: Removed hover/active transforms */
 
 /* Firefox - Progress (filled part) */
 input[type="range"]::-moz-range-progress {
@@ -470,6 +460,8 @@ input[type="range"]:focus::-moz-range-thumb {
 }
 
 /* Standalone mode specific styles (when installed as PWA) */
+/* ✅ REMOVED overscroll-behavior - was blocking scroll on website! */
+/* The /app route handles its own scroll behavior */
 @media (display-mode: standalone) {
   html {
     height: -webkit-fill-available;
@@ -478,7 +470,7 @@ input[type="range"]:focus::-moz-range-thumb {
   body {
     min-height: 100vh;
     min-height: -webkit-fill-available;
-    overscroll-behavior-y: none;
+    /* overscroll-behavior-y: none; - REMOVED! Was blocking scroll */
   }
 }
 
@@ -489,20 +481,28 @@ input[type="range"]:focus::-moz-range-thumb {
 /* ========================================
    PREVENT BROWSER POPUPS & TEXT SELECTION
    Prevents Google Dictionary, context menus, etc.
+   ✅ ONLY applies in PWA/App mode!
    ======================================== */
 
-/* 🛡️ GLOBAL - Apply to everything */
-html,
-body,
-#__next,
-[data-app-container],
-.app-container,
-div,
-span,
-p,
-h1, h2, h3, h4, h5, h6,
-label,
-li, ul, ol {
+/* 🛡️ PWA MODE ONLY - Apply to everything when in app */
+html.pwa-app-mode,
+html.pwa-app-mode body,
+html.pwa-app-mode #__next,
+html.pwa-app-mode [data-app-container],
+html.pwa-app-mode .app-container,
+html.pwa-app-mode div,
+html.pwa-app-mode span,
+html.pwa-app-mode p,
+html.pwa-app-mode h1, 
+html.pwa-app-mode h2, 
+html.pwa-app-mode h3, 
+html.pwa-app-mode h4, 
+html.pwa-app-mode h5, 
+html.pwa-app-mode h6,
+html.pwa-app-mode label,
+html.pwa-app-mode li, 
+html.pwa-app-mode ul, 
+html.pwa-app-mode ol {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
@@ -522,8 +522,8 @@ textarea,
   -webkit-touch-callout: default !important;
 }
 
-/* 🖼️ Prevent long-press context menu on images */
-img {
+/* 🖼️ Prevent long-press context menu on images - PWA only */
+html.pwa-app-mode img {
   -webkit-user-drag: none !important;
   -khtml-user-drag: none !important;
   -moz-user-drag: none !important;
@@ -533,11 +533,11 @@ img {
   -webkit-touch-callout: none !important;
 }
 
-/* 🔘 Prevent on buttons and interactive elements */
-button,
-a,
-[role="button"],
-.cursor-pointer {
+/* 🔘 Prevent on buttons and interactive elements - PWA only */
+html.pwa-app-mode button,
+html.pwa-app-mode a,
+html.pwa-app-mode [role="button"],
+html.pwa-app-mode .cursor-pointer {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
@@ -545,13 +545,13 @@ a,
   -webkit-touch-callout: none !important;
 }
 
-/* 💬 Chat messages - specifically prevent selection */
-.message,
-.chat-message,
-[data-message],
-.text-white,
-.text-sm,
-.text-xs {
+/* 💬 Chat messages - specifically prevent selection - PWA only */
+html.pwa-app-mode .message,
+html.pwa-app-mode .chat-message,
+html.pwa-app-mode [data-message],
+html.pwa-app-mode .text-white,
+html.pwa-app-mode .text-sm,
+html.pwa-app-mode .text-xs {
   -webkit-user-select: none !important;
   user-select: none !important;
   -webkit-touch-callout: none !important;
@@ -669,18 +669,28 @@ a,
 
 /* Already covered by the rule above - keeping for backwards compatibility */
 
-/* iOS Safari specific - prevent ANY horizontal scroll */
-html {
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-body {
-  overflow-x: hidden;
-  position: relative;
-  width: 100%;
-}
+/* ✅ REMOVED global overflow-x: hidden - was interfering with Android scroll */
+/* Website should scroll normally, /app has its own handling */
 
 /* ========================================
    END OF PORTRAIT LOCK
    ======================================== */
+
+/* ========================================
+   🔒 iOS HORIZONTAL SCROLL PREVENTION
+   v2.8.24: REMOVED - was blocking scroll on Android!
+   ======================================== */
+
+/* ✅ REMOVED - overflow-x: hidden was blocking scroll on some Android devices */
+
+/* ========================================
+   END OF iOS FIX
+   ======================================== */
+
+/* ✅ v2.8.30: Emoji flag support */
+.emoji-flag {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+  font-style: normal;
+  line-height: 1;
+}
+

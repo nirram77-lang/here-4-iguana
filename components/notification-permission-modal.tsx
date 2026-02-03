@@ -13,6 +13,8 @@ import { Bell, X, MessageCircle, Heart, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GA } from '@/lib/ga-events'
 import { useLanguage } from '@/lib/LanguageContext'
+// ✅ v2.8.34: Use robust OneSignal service
+import { linkOneSignalToUser } from '@/lib/onesignal-service'
 
 interface NotificationPermissionModalProps {
   isOpen: boolean
@@ -149,37 +151,22 @@ export default function NotificationPermissionModal({
           console.log('🔔 OneSignal subscription status:', isSubscribed)
         }
         
-        // ✅ STEP 2: Link user ID for targeting
+        // ✅ STEP 2: Link user ID using robust service (v2.8.34)
         if (userId) {
           console.log('═══════════════════════════════════════════════════')
-          console.log('🔗 STEP 2: Linking user to OneSignal')
+          console.log('🔗 STEP 2: Linking user to OneSignal (v2.8.34)')
           console.log('   User ID:', userId)
           console.log('═══════════════════════════════════════════════════')
           
-          try {
-            console.log('🔔 Calling OneSignal.login()...')
-            await OneSignal.login(userId)
-            console.log('✅ OneSignal.login() SUCCESS!')
-            console.log('   Push notifications will now target user:', userId)
-            
-            // ✅ Save success flag
-            localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
-            localStorage.setItem('i4iguana_onesignal_linked', 'true')
-            localStorage.setItem('i4iguana_notifications_enabled', 'true')
-            
-          } catch (loginError: any) {
-            console.error('❌ OneSignal.login() failed:', loginError.message)
-            
-            // Try setExternalUserId as fallback
-            try {
-              if (OneSignal.setExternalUserId) {
-                await OneSignal.setExternalUserId(userId)
-                console.log('✅ setExternalUserId successful (fallback)')
-                localStorage.setItem(`oneSignalLinked_${userId}`, 'true')
-              }
-            } catch (e) {
-              console.error('❌ setExternalUserId also failed:', e)
-            }
+          // ✅ Use new robust service that saves to Firestore!
+          const linkStatus = await linkOneSignalToUser(userId)
+          
+          if (linkStatus.isLinked) {
+            console.log('✅ OneSignal linked and saved to Firestore!')
+            console.log('   Player ID:', linkStatus.playerId)
+            console.log('   Subscribed:', linkStatus.subscribed)
+          } else if (linkStatus.error) {
+            console.warn('⚠️ OneSignal link issue:', linkStatus.error)
           }
         }
         

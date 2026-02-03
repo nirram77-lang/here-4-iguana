@@ -13,13 +13,15 @@ interface SearchSettingsModalProps {
   currentAgeRange: [number, number]
   currentGender: 'male' | 'female' | 'both'
   currentExpandSearch: boolean
-  currentSmokingFilter?: 'any' | 'no' | 'no_or_social'  // ✅ NEW: Smoking filter
+  currentSmokingFilter?: 'any' | 'no' | 'no_or_social'
+  currentRelationshipFilter?: 'all' | 'relationship' | 'casual' | 'friends'  // ✅ NEW
   onSave: (settings: {
     radius: number
     ageRange: [number, number]
     lookingFor: 'male' | 'female' | 'both'
     expandSearch: boolean
-    smokingFilter: 'any' | 'no' | 'no_or_social'  // ✅ NEW
+    smokingFilter: 'any' | 'no' | 'no_or_social'
+    relationshipFilter: 'all' | 'relationship' | 'casual' | 'friends'  // ✅ NEW
   }) => void
 }
 
@@ -30,7 +32,8 @@ export default function SearchSettingsModal({
   currentAgeRange,
   currentGender,
   currentExpandSearch,
-  currentSmokingFilter = 'any',  // ✅ NEW: Default to 'any'
+  currentSmokingFilter = 'any',
+  currentRelationshipFilter = 'all',  // ✅ NEW
   onSave
 }: SearchSettingsModalProps) {
   const { t, isRTL } = useLanguage()
@@ -38,7 +41,8 @@ export default function SearchSettingsModal({
   const [ageRange, setAgeRange] = useState<[number, number]>(currentAgeRange)
   const [lookingFor, setLookingFor] = useState<'male' | 'female' | 'both'>(currentGender)
   const [expandSearch, setExpandSearch] = useState(currentExpandSearch)
-  const [smokingFilter, setSmokingFilter] = useState<'any' | 'no' | 'no_or_social'>(currentSmokingFilter)  // ✅ NEW
+  const [smokingFilter, setSmokingFilter] = useState<'any' | 'no' | 'no_or_social'>(currentSmokingFilter)
+  const [relationshipFilter, setRelationshipFilter] = useState<'all' | 'relationship' | 'casual' | 'friends'>(currentRelationshipFilter)  // ✅ NEW
   
   // ✅ NEW: Keep Screen On (Wake Lock API)
   const [keepScreenOn, setKeepScreenOn] = useState(() => {
@@ -109,8 +113,9 @@ export default function SearchSettingsModal({
     setAgeRange(currentAgeRange)
     setLookingFor(currentGender)
     setExpandSearch(currentExpandSearch)
-    setSmokingFilter(currentSmokingFilter)  // ✅ NEW
-  }, [currentRadius, currentAgeRange, currentGender, currentExpandSearch, currentSmokingFilter, isOpen])
+    setSmokingFilter(currentSmokingFilter)
+    setRelationshipFilter(currentRelationshipFilter)  // ✅ NEW
+  }, [currentRadius, currentAgeRange, currentGender, currentExpandSearch, currentSmokingFilter, currentRelationshipFilter, isOpen])
 
   const handleSave = () => {
     onSave({
@@ -118,7 +123,8 @@ export default function SearchSettingsModal({
       ageRange,
       lookingFor,
       expandSearch,
-      smokingFilter  // ✅ NEW
+      smokingFilter,
+      relationshipFilter  // ✅ NEW
     })
     onClose()
   }
@@ -214,7 +220,20 @@ export default function SearchSettingsModal({
                 </div>
               </div>
               
-              <div className="relative">
+              {/* ✅ v2.8.24: Fixed slider - same approach as onboarding */}
+              <div className="relative h-12 flex items-center px-2">
+                {/* Track Background */}
+                <div className="absolute w-full h-2 bg-white/10 rounded-lg" />
+                
+                {/* Active Track - ✅ v2.8.25: NO transition to prevent iOS flickering */}
+                <div 
+                  className="absolute h-2 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg"
+                  style={{
+                    left: '0%',
+                    right: `${100 - ((radius - 10) / 490) * 100}%`
+                  }}
+                />
+
                 <input
                   type="range"
                   min="10"
@@ -224,7 +243,6 @@ export default function SearchSettingsModal({
                   onChange={(e) => setRadius(parseInt(e.target.value))}
                   onWheel={(e) => {
                     e.preventDefault()
-                    // Fix RTL scroll direction - in RTL, wheel is reversed
                     const delta = isRTL ? e.deltaY : -e.deltaY
                     const step = 10
                     if (delta > 0) {
@@ -233,15 +251,29 @@ export default function SearchSettingsModal({
                       setRadius(Math.max(10, radius - step))
                     }
                   }}
-                  className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, #4ade80 0%, #4ade80 ${((radius - 10) / 490) * 100}%, #1a4d3e ${((radius - 10) / 490) * 100}%, #1a4d3e 100%)`
-                  }}
+                  className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer z-10
+                    [&::-webkit-slider-thumb]:appearance-none
+                    [&::-webkit-slider-thumb]:w-6
+                    [&::-webkit-slider-thumb]:h-6
+                    [&::-webkit-slider-thumb]:rounded-full
+                    [&::-webkit-slider-thumb]:bg-[#4ade80]
+                    [&::-webkit-slider-thumb]:cursor-pointer
+                    [&::-webkit-slider-thumb]:shadow-lg
+                    [&::-webkit-slider-thumb]:border-2
+                    [&::-webkit-slider-thumb]:border-[#0d2920]
+                    [&::-moz-range-thumb]:w-6
+                    [&::-moz-range-thumb]:h-6
+                    [&::-moz-range-thumb]:rounded-full
+                    [&::-moz-range-thumb]:bg-[#4ade80]
+                    [&::-moz-range-thumb]:border-2
+                    [&::-moz-range-thumb]:border-[#0d2920]
+                    [&::-moz-range-thumb]:cursor-pointer
+                    [&::-moz-range-thumb]:shadow-lg"
                 />
-                <div className="flex justify-between text-xs text-white/40 mt-1">
-                  <span>10m</span>
-                  <span>500m</span>
-                </div>
+              </div>
+              <div className="flex justify-between text-xs text-white/40 mt-1 px-2">
+                <span>10m</span>
+                <span>500m</span>
               </div>
             </div>
 
@@ -278,9 +310,9 @@ export default function SearchSettingsModal({
                 {/* Track Background */}
                 <div className="absolute w-full h-2 bg-white/10 rounded-lg" />
                 
-                {/* Active Range - Green between the two handles */}
+                {/* Active Range - ✅ v2.8.25: NO transition to prevent iOS flickering */}
                 <div 
-                  className="absolute h-2 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg transition-all duration-150"
+                  className="absolute h-2 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg"
                   style={{
                     left: `${((ageRange[0] - 18) / (80 - 18)) * 100}%`,
                     right: `${100 - ((ageRange[1] - 18) / (80 - 18)) * 100}%`

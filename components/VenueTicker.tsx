@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { db } from '@/lib/firebase'
 import { doc, onSnapshot } from 'firebase/firestore'
+import { MapPin, Zap, X } from 'lucide-react'
+import IsraelMapHollywood from './israel-map-hollywood'
 
 interface Venue {
   name: string
@@ -461,11 +463,11 @@ export default function VenueTicker({ lang = 'he' }: VenueTickerProps) {
         {/* Header - HOT NOW */}
         <div className="relative bg-gradient-to-r from-orange-600/40 via-red-500/50 to-orange-600/40 px-4 py-2 border-b border-orange-500/30">
           <div className="flex items-center justify-center gap-2">
-            <span className="text-xl animate-bounce">🔥</span>
+            <span className="text-xl ">🔥</span>
             <span className="text-orange-300 text-sm font-black tracking-wider uppercase">
               {isHebrew ? 'אזורים חמים!' : 'HOT ZONES!'}
             </span>
-            <span className="text-xl animate-bounce" style={{ animationDelay: '0.1s' }}>🔥</span>
+            <span className="text-xl " style={{ animationDelay: '0.1s' }}>🔥</span>
           </div>
         </div>
         
@@ -552,108 +554,9 @@ export default function VenueTicker({ lang = 'he' }: VenueTickerProps) {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════════ */}
-      {/* Main Container - Pilot Cities - Elegant Glass Panel */}
+      {/* 🗺️ Interactive Israel Map - HOLLYWOOD EDITION */}
       {/* ═══════════════════════════════════════════════════════════════════════════ */}
-      <div className="relative bg-black/60 backdrop-blur-md border border-green-500/30 rounded-xl overflow-hidden shadow-lg shadow-green-500/10">
-        
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-600/20 via-green-500/30 to-green-600/20 px-4 py-1.5 border-b border-green-500/20">
-          <div className="flex items-center justify-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            <span className="text-green-400 text-xs font-bold tracking-wide">
-              {isHebrew ? 'כיסוי ארצי 🇮🇱' : 'NATIONWIDE'}
-            </span>
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-          </div>
-        </div>
-
-        {/* City Content */}
-        <div className="px-4 py-3 min-w-[280px]">
-          {/* City Name */}
-          <div 
-            className={`flex items-center justify-center gap-2 mb-2 transition-all duration-400 ${
-              isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
-            }`}
-          >
-            <span className="text-2xl">{currentCity.icon}</span>
-            <span className="text-white font-bold text-lg">
-              {isHebrew ? currentCity.cityHe : currentCity.city}
-            </span>
-          </div>
-
-          {/* Zones */}
-          <div 
-            className={`flex flex-wrap justify-center gap-1.5 mb-2 transition-all duration-500 delay-100 ${
-              isTransitioning ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            {(isHebrew ? currentCity.zonesHe : currentCity.zones).map((zone, idx) => (
-              <span 
-                key={idx}
-                className="text-[10px] text-green-300/80 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20"
-              >
-                {zone}
-              </span>
-            ))}
-          </div>
-
-          {/* Venues List - Animated */}
-          <div className="space-y-1 max-h-[200px] overflow-hidden">
-            {currentCity.venues.map((venue, idx) => (
-              <div
-                key={idx}
-                className={`flex items-center gap-2 bg-gradient-to-r from-green-500/5 to-transparent 
-                  px-2 py-1 rounded-lg border-r-2 border-green-500/50
-                  transition-all duration-500 ${
-                    showVenues 
-                      ? 'opacity-100 translate-x-0' 
-                      : isHebrew 
-                        ? 'opacity-0 translate-x-4' 
-                        : 'opacity-0 -translate-x-4'
-                  }`}
-                style={{ transitionDelay: `${idx * 100}ms` }}
-              >
-                <span className="text-sm">{venue.icon}</span>
-                <span className="text-white/90 text-sm font-medium">
-                  {isHebrew ? venue.nameHe : venue.name}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Progress Dots */}
-          <div className="flex justify-center gap-1.5 mt-3">
-            {pilotCities.map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  idx === currentCityIndex 
-                    ? 'w-4 bg-green-400' 
-                    : 'w-1.5 bg-green-500/30'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom CTA */}
-        <div className="bg-gradient-to-r from-green-600/10 via-green-500/20 to-green-600/10 px-4 py-2 border-t border-green-500/20">
-          <p className="text-center text-[10px] text-green-300/70">
-            {isHebrew ? '📍 היכנסו למועדון • התחברו • פגשו!' : '📍 Check in • Connect • Meet!'}
-          </p>
-        </div>
-
-        {/* Glow Effect */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-8 bg-green-400/10 blur-xl" />
-        </div>
-      </div>
+      <IsraelMapHollywood lang={lang} />
     </div>
   )
 }

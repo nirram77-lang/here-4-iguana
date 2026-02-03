@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { Loader2 } from "lucide-react"
@@ -16,9 +16,18 @@ interface LoginScreenProps {
 export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreenProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [savedEmail, setSavedEmail] = useState<string | null>(null)  // ✅ v2.8.25: Previous account
   
   const { signInWithGoogle } = useAuth()
   const { t, isRTL } = useLanguage()
+
+  // ✅ v2.8.25: Check for previously logged-in account
+  useEffect(() => {
+    const email = localStorage.getItem('googleEmail')
+    if (email) {
+      setSavedEmail(email)
+    }
+  }, [])
 
   const handleGoogleAuth = async () => {
     setLoading(true)
@@ -133,6 +142,16 @@ export default function LoginScreen({ onSuccess, isSignUp = false }: LoginScreen
           transition={{ delay: 0.3 }}
           className="w-full space-y-4"
         >
+          {/* ✅ v2.8.25: Show previously used account */}
+          {savedEmail && (
+            <div className="text-center mb-2">
+              <p className="text-white/60 text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {isRTL ? 'המשך עם החשבון:' : 'Continue with account:'}
+              </p>
+              <p className="text-[#4ade80] font-medium">{savedEmail}</p>
+            </div>
+          )}
+          
           <Button
             onClick={handleGoogleAuth}
             disabled={loading}

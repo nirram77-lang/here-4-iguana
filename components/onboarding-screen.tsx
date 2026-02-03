@@ -75,11 +75,14 @@ export default function OnboardingScreen({ user, onComplete }: OnboardingProps) 
 
   return (
     <div 
-      className="bg-gradient-to-br from-black via-green-900/20 to-black relative overflow-hidden overflow-y-auto"
+      className="bg-gradient-to-br from-[#0a1a14] via-[#0d2920] to-[#051410] relative"
       style={{ 
         minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
         paddingBottom: '100px',
-        paddingTop: 'env(safe-area-inset-top, 0px)'
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        // ✅ v2.8.34: iOS overscroll fix
+        overscrollBehavior: 'contain',
+        backgroundColor: '#0d2920'
       }}
     >
       {/* Background Grid */}
@@ -378,7 +381,7 @@ export default function OnboardingScreen({ user, onComplete }: OnboardingProps) 
           <button
             onClick={handleNext}
             disabled={
-              (step === 1 && !formData.name) ||
+              (step === 1 && (!formData.name || formData.name.trim().length < 2)) ||
               (step === 3 && (!formData.gender || !formData.interestedIn))
             }
             className="flex-1 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"

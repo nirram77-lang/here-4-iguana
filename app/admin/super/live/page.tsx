@@ -173,6 +173,13 @@ export default function LiveDashboardPage() {
   // ✅ v2.8.18: Stats detail modals
   const [activeModal, setActiveModal] = useState<'online' | 'matches' | 'meetings' | 'zones' | 'venues' | 'dummies' | null>(null)
   
+  // ✅ v2.8.31: Real Users Alert State
+  const [realUsersAlerts, setRealUsersAlerts] = useState<any[]>([])
+  
+  // ✅ v2.8.31: Calculate real users from venues
+  const totalRealUsersInVenues = Object.values(realUsersByVenue).reduce((sum, users) => sum + users.length, 0)
+  const totalGammaUsers = allDummies.filter(d => d.isAvailable).length
+  
   // ✅ v2.8.29: Filter and grouping state for Hollywood-level control center
   const [zoneFilter, setZoneFilter] = useState<string>('')
   const [venueFilter, setVenueFilter] = useState<string>('')
@@ -534,13 +541,14 @@ export default function LiveDashboardPage() {
       
       setZoneActivities(activities)
       
-      // ✅ Calculate total users including dummies
+      // ✅ v2.8.31: Calculate total users including venue check-ins
       const totalDummiesInZones = Object.values(dummyCountsByZoneRef.current).reduce((sum, count) => sum + count, 0)
+      const totalRealInVenues = Object.values(realUserCountsByVenueRef.current).reduce((sum, count) => sum + count, 0)
       
-      // Update stats
+      // Update stats - include BOTH zone check-ins AND venue check-ins!
       setStats(prev => ({
         ...prev,
-        onlineUsers: snapshot.size + totalDummiesInZones,  // ✅ Include dummies!
+        onlineUsers: snapshot.size + totalDummiesInZones + totalRealInVenues,  // ✅ Include all!
         activeZones: activities.filter(z => z.userCount > 0 || z.dummyCount > 0).length
       }))
       
@@ -569,10 +577,11 @@ export default function LiveDashboardPage() {
         }
         
         // ✅ v2.8.20: Show ALL venues, not just active ones!
+        // ✅ v2.8.28: Use displayName first (preferred), then name
         activities.push({
           id: docSnap.id,
-          name: data.name || 'Unknown Venue',
-          city: data.location?.city || 'Unknown',
+          name: data.displayName || data.name || 'Unknown Venue',
+          city: data.city || data.location?.city || 'Unknown',
           userCount,
           dummyCount,
           checkInTime: data.lastCheckIn?.toDate() || null
@@ -607,15 +616,76 @@ export default function LiveDashboardPage() {
     unsubscribersRef.current.push(unsubDummies)
     
     // ✅ v2.8.18: Listen to real users with venue check-ins
+    // ✅ v2.8.28: Add real-time notifications for real user activity!
     const realUsersQuery = query(
       collection(db, 'users'),
       where('checkedInVenue', '!=', null)
     )
-    const unsubRealUsers = onSnapshot(realUsersQuery, () => {
-      console.log(`👥 Real users in venues updated`)
+    const unsubRealUsers = onSnapshot(realUsersQuery, (snapshot) => {
+      console.log(`👥 Real users in venues updated: ${snapshot.size}`)
+      
+      // ✅ v2.8.28: Add live event for each new real user check-in!
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added' || change.type === 'modified') {
+          const data = change.doc.data()
+          const userName = data.name || data.displayName || 'משתמש אמיתי'
+          const venueName = data.checkedInVenueName || data.checkedInVenue || 'מועדון'
+          const city = data.city || data.checkedInCity || ''
+          const isNewUser = change.type === 'added'
+          
+          addLiveEvent({
+            type: 'checkin',
+            message: isNewUser 
+              ? `🔥 ${userName} (אמיתי!) צ'ק-אין ל${venueName} ${city}`
+              : `🔄 ${userName} עבר/ה ל${venueName} ${city}`,
+            venue: venueName
+          })
+          
+          console.log(`🔥 REAL USER CHECK-IN: ${userName} → ${venueName}`)
+        }
+      })
+      
       loadRealUsersInVenues() // Reload real users
     })
     unsubscribersRef.current.push(unsubRealUsers)
+    
+    // ✅ v2.8.28: Also listen to zone check-ins for real users!
+    const realUserZoneCheckInsQuery = query(
+      collection(db, 'zoneCheckIns'),
+      where('expiresAt', '>', Timestamp.now())
+    )
+    const unsubRealUserZoneCheckIns = onSnapshot(realUserZoneCheckInsQuery, (snapshot) => {
+      console.log(`📍 Zone check-ins updated: ${snapshot.size}`)
+      
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data()
+          // Only notify for real users (not dummies)
+          if (!data.oderId?.startsWith('dummy_')) {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', data.oderId))
+              if (userDoc.exists()) {
+                const userData = userDoc.data()
+                const userName = userData.name || userData.displayName || 'משתמש אמיתי'
+                const zoneName = ENTERTAINMENT_ZONES[data.zoneId]?.name || data.zoneId
+                const cityHe = ENTERTAINMENT_ZONES[data.zoneId]?.cityHe || ''
+                
+                addLiveEvent({
+                  type: 'zone_enter',
+                  message: `🌟 ${userName} (אמיתי!) נכנס/ה לאזור ${zoneName} ב${cityHe}`,
+                  zone: zoneName
+                })
+                
+                console.log(`🌟 REAL USER ZONE ENTRY: ${userName} → ${zoneName}`)
+              }
+            } catch (err) {
+              console.warn('Could not get user data for zone checkin:', err)
+            }
+          }
+        }
+      })
+    })
+    unsubscribersRef.current.push(unsubRealUserZoneCheckIns)
     
     // 4. Listen to active matches
     const matchesQuery = query(
@@ -708,27 +778,11 @@ export default function LiveDashboardPage() {
       
       setZoneActivities(activities)
       
-      // Update active zones count
-      setStats(prev => ({
-        ...prev,
-        activeZones: activities.filter(z => z.dummyCount > 0 || z.userCount > 0).length
-      }))
-      
-      console.log(`✅ Zone activities rebuilt: ${activities.filter(z => z.dummyCount > 0).length} zones with dummies`)
-    }
-  }, [allDummies])
-
-  // ✅ v2.8.20 FIX: Rebuild venue activities when real user data changes
-  useEffect(() => {
-    const realUserCount = Object.values(realUsersByVenue).reduce((sum, users) => sum + users.length, 0)
-    if (realUserCount > 0 || Object.keys(realUserCountsByVenueRef.current).length > 0) {
-      console.log('🔄 Rebuilding venue activities with real user data...')
-      
-      // Trigger venue listener to re-read the ref
+      // ✅ v2.8.31: Also update venue activities with dummy counts
       setVenueActivities(prev => {
         return prev.map(venue => ({
           ...venue,
-          userCount: realUserCountsByVenueRef.current[venue.id] || 0
+          dummyCount: dummyCountsByVenueRef.current[venue.id] || 0
         })).sort((a, b) => {
           const aTotal = a.userCount + a.dummyCount
           const bTotal = b.userCount + b.dummyCount
@@ -738,20 +792,57 @@ export default function LiveDashboardPage() {
         })
       })
       
-      // Update active venues count
-      const activeCount = Object.values(realUserCountsByVenueRef.current).filter(c => c > 0).length +
-                         Object.entries(dummyCountsByVenueRef.current).filter(([id, c]) => 
-                           c > 0 && !realUserCountsByVenueRef.current[id]
-                         ).length
+      // ✅ v2.8.31: Calculate active venues properly
+      const venuesWithDummies = new Set(Object.keys(dummyCountsByVenueRef.current).filter(id => dummyCountsByVenueRef.current[id] > 0))
+      const venuesWithRealUsers = new Set(Object.keys(realUserCountsByVenueRef.current).filter(id => realUserCountsByVenueRef.current[id] > 0))
+      const allActiveVenues = new Set([...venuesWithRealUsers, ...venuesWithDummies])
+      
+      // Update stats
+      setStats(prev => ({
+        ...prev,
+        activeZones: activities.filter(z => z.dummyCount > 0 || z.userCount > 0).length,
+        activeVenues: allActiveVenues.size
+      }))
+      
+      console.log(`✅ Zone activities rebuilt: ${activities.filter(z => z.dummyCount > 0).length} zones with dummies`)
+      console.log(`✅ Active venues: ${allActiveVenues.size} (${venuesWithDummies.size} with dummies, ${venuesWithRealUsers.size} with real users)`)
+    }
+  }, [allDummies])
+
+  // ✅ v2.8.20 FIX: Rebuild venue activities when real user data changes
+  useEffect(() => {
+    const realUserCount = Object.values(realUsersByVenue).reduce((sum, users) => sum + users.length, 0)
+    if (realUserCount > 0 || Object.keys(realUserCountsByVenueRef.current).length > 0 || Object.keys(dummyCountsByVenueRef.current).length > 0) {
+      console.log('🔄 Rebuilding venue activities with real user data...')
+      
+      // Trigger venue listener to re-read the ref
+      setVenueActivities(prev => {
+        return prev.map(venue => ({
+          ...venue,
+          userCount: realUserCountsByVenueRef.current[venue.id] || 0,
+          dummyCount: dummyCountsByVenueRef.current[venue.id] || 0
+        })).sort((a, b) => {
+          const aTotal = a.userCount + a.dummyCount
+          const bTotal = b.userCount + b.dummyCount
+          if (aTotal > 0 && bTotal === 0) return -1
+          if (aTotal === 0 && bTotal > 0) return 1
+          return bTotal - aTotal
+        })
+      })
+      
+      // ✅ v2.8.31: Fix - count venues with EITHER real users OR dummies
+      const venuesWithRealUsers = new Set(Object.keys(realUserCountsByVenueRef.current).filter(id => realUserCountsByVenueRef.current[id] > 0))
+      const venuesWithDummies = new Set(Object.keys(dummyCountsByVenueRef.current).filter(id => dummyCountsByVenueRef.current[id] > 0))
+      const allActiveVenues = new Set([...venuesWithRealUsers, ...venuesWithDummies])
       
       setStats(prev => ({
         ...prev,
-        activeVenues: activeCount
+        activeVenues: allActiveVenues.size
       }))
       
-      console.log(`✅ Venue activities rebuilt: ${realUserCount} real users`)
+      console.log(`✅ Venue activities rebuilt: ${realUserCount} real users, ${venuesWithDummies.size} venues with dummies`)
     }
-  }, [realUsersByVenue])
+  }, [realUsersByVenue, dummyUsersByVenue])
 
   // ✅ v2.8.6: Start simulated live activity when dummies are loaded
   useEffect(() => {
@@ -1079,6 +1170,127 @@ export default function LiveDashboardPage() {
       <div className="flex">
         {/* Main Content */}
         <main className={`flex-1 p-6 transition-all max-w-[1800px] mx-auto ${(selectedZone || selectedVenue) ? 'mr-[420px]' : ''}`}>
+          
+          {/* ═══════════════════════════════════════════════════════════════════════════ */}
+          {/* 🚨 REAL-TIME USER ALERTS PANEL - v2.8.31 */}
+          {/* ═══════════════════════════════════════════════════════════════════════════ */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {/* Real Users Alert */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-2xl border-2 p-4 ${
+                totalRealUsersInVenues > 0 
+                  ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.3)]' 
+                  : 'bg-white/5 border-white/10'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    totalRealUsersInVenues > 0 
+                      ? 'bg-gradient-to-br from-red-500 to-orange-500 shadow-lg' 
+                      : 'bg-white/10'
+                  }`}>
+                    <Users className={`w-6 h-6 ${totalRealUsersInVenues > 0 ? 'text-white' : 'text-white/50'}`} />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-bold ${totalRealUsersInVenues > 0 ? 'text-red-400' : 'text-white/50'}`}>
+                      🔥 משתמשים אמיתיים
+                    </h3>
+                    <p className={`text-sm ${totalRealUsersInVenues > 0 ? 'text-white/80' : 'text-white/40'}`}>
+                      {totalRealUsersInVenues > 0 
+                        ? `${totalRealUsersInVenues} משתמשים במועדונים עכשיו!` 
+                        : 'אין משתמשים אמיתיים כרגע'}
+                    </p>
+                  </div>
+                </div>
+                <motion.div 
+                  className={`text-5xl font-black ${totalRealUsersInVenues > 0 ? 'text-red-400' : 'text-white/30'}`}
+                  animate={totalRealUsersInVenues > 0 ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  {totalRealUsersInVenues}
+                </motion.div>
+              </div>
+              
+              {/* Real Users List */}
+              {totalRealUsersInVenues > 0 && (
+                <div className="mt-4 space-y-2 max-h-[120px] overflow-y-auto">
+                  {Object.entries(realUsersByVenue).flatMap(([venueId, users]) => 
+                    users.map((user: any) => (
+                      <div 
+                        key={user.id} 
+                        className="flex items-center gap-3 p-2 bg-black/30 rounded-lg border border-red-500/20"
+                      >
+                        <img 
+                          src={user.photos?.[0] || '/placeholder.jpg'} 
+                          className="w-10 h-10 rounded-full object-cover border-2 border-red-500/50" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-white truncate">{user.name}, {user.age || '?'}</div>
+                          <div className="text-xs text-red-400/80 truncate">
+                            📍 {user.checkedInVenueName || venueId}
+                          </div>
+                        </div>
+                        {user.gender && (
+                          <span className="text-lg">{user.gender === 'male' ? '👨' : '👩'}</span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </motion.div>
+            
+            {/* Gamma/Dummy Users Alert */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="rounded-2xl border-2 p-4 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-yellow-500/30"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-600 flex items-center justify-center shadow-lg">
+                    🤖
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-yellow-400">Gamma Users (Dummies)</h3>
+                    <p className="text-sm text-white/60">
+                      {totalGammaUsers} פרופילים פעילים באזורים ומועדונים
+                    </p>
+                  </div>
+                </div>
+                <div className="text-5xl font-black text-yellow-400">
+                  {totalGammaUsers}
+                </div>
+              </div>
+              
+              {/* Quick Stats */}
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="p-2 bg-black/30 rounded-lg text-center">
+                  <div className="text-lg font-bold text-yellow-400">
+                    {Object.keys(dummyUsersByZone).filter(z => (dummyUsersByZone[z] || []).length > 0).length}
+                  </div>
+                  <div className="text-xs text-white/50">אזורים</div>
+                </div>
+                <div className="p-2 bg-black/30 rounded-lg text-center">
+                  <div className="text-lg font-bold text-yellow-400">
+                    {Object.keys(dummyUsersByVenue).filter(v => (dummyUsersByVenue[v] || []).length > 0).length}
+                  </div>
+                  <div className="text-xs text-white/50">מועדונים</div>
+                </div>
+                <div className="p-2 bg-black/30 rounded-lg text-center">
+                  <div className="text-lg font-bold text-yellow-400">
+                    {allDummies.filter(d => d.gender === 'female').length}♀ / {allDummies.filter(d => d.gender === 'male').length}♂
+                  </div>
+                  <div className="text-xs text-white/50">מגדר</div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+          
           {/* Stats Cards - Hollywood Style ✅ v2.8.18: Interactive! */}
           <div className="grid grid-cols-6 gap-4 mb-8">
             {[

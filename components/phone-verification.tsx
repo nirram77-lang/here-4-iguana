@@ -491,14 +491,14 @@ export default function PhoneVerification({
             >
               {verificationCode.map((digit, index) => (
                 <input
-                  key={index}
+                  key={`code-input-${index}`}
                   ref={(el) => { codeInputRefs.current[index] = el }}
                   type="text"
                   inputMode="numeric"
                   value={digit}
                   onChange={(e) => handleCodeChange(index, e.target.value)}
                   onKeyDown={(e) => handleCodeKeyDown(index, e)}
-                  className="w-12 h-14 bg-white/10 border-2 border-white/30 rounded-xl text-center text-white text-2xl font-bold focus:outline-none focus:border-green-400 focus:bg-white/20 transition-all"
+                  className="w-12 h-14 bg-white/10 border-2 border-white/30 rounded-xl text-center text-white text-2xl font-bold focus:outline-none focus:border-green-400 focus:bg-white/20"
                   maxLength={1}
                   disabled={loading}
                   autoFocus={index === 0}

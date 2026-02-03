@@ -157,21 +157,18 @@ export default function EnjoyModeScreen({
 
   return (
     <div 
-      className="bg-gradient-to-b from-[#0a1f18] via-[#0d2920] to-[#051410] flex flex-col overflow-hidden overscroll-none"
+      className="bg-gradient-to-b from-[#0a1f18] via-[#0d2920] to-[#051410] flex flex-col"
       style={{ 
-        height: 'var(--app-height, 100dvh)',
-        minHeight: 'var(--app-height, 100dvh)',
-        maxHeight: 'var(--app-height, 100dvh)',
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
         width: '100%',
-        paddingBottom: 'calc(100px + env(safe-area-inset-bottom, 20px))',
-        // ✅ v2.8.26 FIX iOS: Prevent scroll/bounce completely
-        touchAction: 'manipulation',
+        height: '100%',
+        overflow: 'hidden',
         overscrollBehavior: 'none',
+        touchAction: 'none',
         WebkitOverflowScrolling: 'auto'
       }}
     >
@@ -205,16 +202,19 @@ export default function EnjoyModeScreen({
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT - Compact and responsive */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-8">
+      <div 
+        className="relative z-10 flex-1 flex flex-col items-center justify-center px-6"
+        style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}
+      >
         
         {/* Partner Photo with Glow */}
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", delay: 0.2 }}
-          className="relative mb-6"
+          className="relative mb-4"
         >
           {/* Pulsing glow rings */}
           <motion.div
@@ -227,8 +227,8 @@ export default function EnjoyModeScreen({
             style={{ transform: 'scale(1.5)' }}
           />
           
-          {/* Photo */}
-          <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-[#4ade80] shadow-2xl shadow-[#4ade80]/30">
+          {/* Photo - smaller on small screens */}
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-[#4ade80] shadow-2xl shadow-[#4ade80]/30">
             <img 
               src={partnerPhoto} 
               alt={partnerName}
@@ -246,17 +246,17 @@ export default function EnjoyModeScreen({
           </motion.div>
         </motion.div>
 
-        {/* Title */}
+        {/* Title - smaller margins */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-center mb-6"
+          className="text-center mb-4"
         >
-          <h1 className="text-3xl font-black text-white mb-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          <h1 className="text-2xl sm:text-3xl font-black text-white mb-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
             {currentUserGender === 'female' ? t('enjoyMode.titleFemale') : t('enjoyMode.titleMale')}
           </h1>
-          <p className="text-white/70 text-lg" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          <p className="text-white/70 text-base sm:text-lg" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
             {isRTL ? (
               <>עם <span className="text-[#4ade80] font-bold">{partnerName}</span></>
             ) : (
@@ -265,54 +265,54 @@ export default function EnjoyModeScreen({
           </p>
         </motion.div>
 
-        {/* Countdown Timer */}
+        {/* Countdown Timer - more compact */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", delay: 0.6 }}
-          className="bg-white/5 border border-white/10 rounded-3xl px-8 py-6 mb-8 backdrop-blur-sm"
+          className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 mb-4 backdrop-blur-sm"
         >
-          <div className={`flex items-center justify-center gap-3 mb-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <Clock className="w-5 h-5 text-white/60" />
-            <span className="text-white/60 text-sm">{t('enjoyMode.appReturnsIn')}</span>
+          <div className={`flex items-center justify-center gap-2 mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <Clock className="w-4 h-4 text-white/60" />
+            <span className="text-white/60 text-xs sm:text-sm">{t('enjoyMode.appReturnsIn')}</span>
           </div>
-          <div className="text-5xl font-black text-[#4ade80] text-center font-mono">
+          <div className="text-4xl sm:text-5xl font-black text-[#4ade80] text-center font-mono">
             {formatTime(timeRemaining)}
           </div>
         </motion.div>
 
-        {/* Inspirational Message */}
+        {/* Inspirational Message - compact */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="bg-gradient-to-r from-[#4ade80]/10 to-[#22c55e]/10 border border-[#4ade80]/30 rounded-2xl px-6 py-4 mb-8 max-w-sm text-center"
+          className="bg-gradient-to-r from-[#4ade80]/10 to-[#22c55e]/10 border border-[#4ade80]/30 rounded-xl px-4 py-3 mb-4 max-w-xs text-center"
         >
           <motion.div
             animate={{ rotate: [0, 5, -5, 0] }}
             transition={{ duration: 4, repeat: Infinity }}
-            className="text-4xl mb-2"
+            className="text-3xl mb-1"
           >
             🦎
           </motion.div>
-          <p className="text-white/80 text-sm leading-relaxed" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          <p className="text-white/80 text-xs sm:text-sm leading-relaxed" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
             {t('enjoyMode.inspirationalMessage')}
           </p>
         </motion.div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - compact */}
         <motion.div
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 1 }}
-          className="w-full max-w-sm space-y-4"
+          className="w-full max-w-xs space-y-3"
         >
           {/* Chat Button */}
           <Button
             onClick={onOpenChat}
-            className="w-full h-16 rounded-2xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-lg shadow-lg shadow-[#4ade80]/30"
+            className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] font-bold text-base shadow-lg shadow-[#4ade80]/30"
           >
-            <MessageCircle className={`${isRTL ? 'ml-3' : 'mr-3'} h-6 w-6`} />
+            <MessageCircle className={`${isRTL ? 'ml-2' : 'mr-2'} h-5 w-5`} />
             {t('enjoyMode.openChat')}
           </Button>
 
@@ -323,13 +323,13 @@ export default function EnjoyModeScreen({
           >
             <Button
               onClick={handleExitClick}
-              className="w-full h-16 rounded-2xl bg-gradient-to-r from-[#15803d] via-[#22c55e] to-[#15803d] hover:from-[#166534] hover:via-[#16a34a] hover:to-[#166534] text-white font-bold text-base shadow-xl border-2 border-[#4ade80]/40 transition-all duration-300"
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#15803d] via-[#22c55e] to-[#15803d] hover:from-[#166534] hover:via-[#16a34a] hover:to-[#166534] text-white font-bold text-sm shadow-xl border-2 border-[#4ade80]/40 transition-all duration-300"
               style={{
                 backgroundImage: 'linear-gradient(135deg, #15803d 0%, #22c55e 25%, #4ade80 50%, #22c55e 75%, #15803d 100%)',
                 boxShadow: '0 4px 20px rgba(74, 222, 128, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
               }}
             >
-              <span className={`text-2xl ${isRTL ? 'ml-3' : 'mr-3'}`}>🦎</span>
+              <span className={`text-xl ${isRTL ? 'ml-2' : 'mr-2'}`}>🦎</span>
               {t('enjoyMode.backToGame')}
             </Button>
           </motion.div>
@@ -428,22 +428,22 @@ export default function EnjoyModeScreen({
         )}
       </AnimatePresence>
 
-      {/* ✅ NEW: Bottom Navigation Bar */}
+      {/* ✅ Bottom Navigation Bar - Compact */}
       <div 
         className="fixed bottom-0 left-0 right-0 bg-[#0d2920]/95 backdrop-blur-md border-t border-[#4ade80]/20 z-40"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex justify-around items-center py-3 px-4 max-w-lg mx-auto">
+        <div className="flex justify-around items-center py-2 px-4 max-w-lg mx-auto">
           {/* Home Tab - Blocked */}
           <button
             onClick={() => {
               setShowBlockedMessage(t('nav.blockedHome'))
               setTimeout(() => setShowBlockedMessage(null), 2500)
             }}
-            className="flex flex-col items-center gap-1 opacity-40"
+            className="flex flex-col items-center gap-0.5 opacity-40"
           >
-            <Home className="h-6 w-6 text-white/50" />
-            <span className="text-[10px] text-white/50">{t('nav.home')}</span>
+            <Home className="h-5 w-5 text-white/50" />
+            <span className="text-[9px] text-white/50">{t('nav.home')}</span>
           </button>
 
           {/* Notifications Tab - Blocked */}
@@ -452,29 +452,27 @@ export default function EnjoyModeScreen({
               setShowBlockedMessage(t('nav.blockedNotifications'))
               setTimeout(() => setShowBlockedMessage(null), 2500)
             }}
-            className="flex flex-col items-center gap-1 opacity-40"
+            className="flex flex-col items-center gap-0.5 opacity-40"
           >
-            <svg className="h-6 w-6 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-5 w-5 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            <span className="text-[10px] text-white/50">{t('nav.alerts')}</span>
+            <span className="text-[9px] text-white/50">{t('nav.alerts')}</span>
           </button>
 
           {/* Profile Tab - OPEN */}
           <button
             onClick={onOpenProfile}
-            className="flex flex-col items-center gap-1"
+            className="flex flex-col items-center gap-0.5"
           >
-            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] flex items-center justify-center">
-              <svg className="h-4 w-4 text-[#0d2920]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="h-5 w-5 rounded-full bg-gradient-to-br from-[#4ade80] to-[#22c55e] flex items-center justify-center">
+              <svg className="h-3 w-3 text-[#0d2920]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <span className="text-[10px] text-[#4ade80] font-medium">{t('nav.profile')}</span>
+            <span className="text-[9px] text-[#4ade80] font-medium">{t('nav.profile')}</span>
           </button>
         </div>
-        {/* Safe area for phones with home indicator */}
-        <div style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
       </div>
     </div>
   )

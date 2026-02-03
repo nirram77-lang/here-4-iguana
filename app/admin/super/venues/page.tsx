@@ -20,7 +20,8 @@ import {
   Mail,
   ChevronDown,
   Inbox,
-  Activity
+  Activity,
+  Crown
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -112,11 +113,15 @@ export default function SuperAdminPanel() {
   const [adminEmail, setAdminEmail] = useState('')
   const [showAddVenue, setShowAddVenue] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [cityFilter, setCityFilter] = useState<string>('all')  // ✅ City filter
+  const [sortBy, setSortBy] = useState<'name' | 'city'>('name')  // ✅ Sort option
   const [cleaning, setCleaning] = useState(false)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
   const [pendingReportsCount, setPendingReportsCount] = useState(0)
   const [waitlistCount, setWaitlistCount] = useState(0)
   const [feedbackCount, setFeedbackCount] = useState(0)  // ✅ v2.8.6: Pilot feedback
+  const [premiumRequestsCount, setPremiumRequestsCount] = useState(0)  // ✅ Premium upgrade requests
+  const [audiobookOrdersCount, setAudiobookOrdersCount] = useState(0)  // ✅ Audiobook orders
   const [showInboxDropdown, setShowInboxDropdown] = useState(false)
   
   // Listen for waitlist entries (only unhandled)
@@ -164,18 +169,60 @@ export default function SuperAdminPanel() {
   }, [])
   
   // ✅ v2.8.6: Listen for pilot feedback (unread)
+  // ✅ v2.8.32: Also count meetingFeedback!
   useEffect(() => {
-    const unsubscribe = onSnapshot(
+    let pilotUnread = 0
+    let meetingUnread = 0
+    
+    // Listen to pilotFeedback
+    const unsubPilot = onSnapshot(
       collection(db, 'pilotFeedback'),
       (snapshot) => {
-        // Count only entries that are NOT read
-        const unreadCount = snapshot.docs.filter(doc => {
-          const data = doc.data()
-          return !data.read // Count if read is false, undefined, or null
-        }).length
-        setFeedbackCount(unreadCount)
+        pilotUnread = snapshot.docs.filter(doc => !doc.data().read).length
+        setFeedbackCount(pilotUnread + meetingUnread)
       }
     )
+    
+    // Listen to meetingFeedback
+    const unsubMeeting = onSnapshot(
+      collection(db, 'meetingFeedback'),
+      (snapshot) => {
+        meetingUnread = snapshot.docs.filter(doc => !doc.data().read).length
+        setFeedbackCount(pilotUnread + meetingUnread)
+      }
+    )
+    
+    return () => {
+      unsubPilot()
+      unsubMeeting()
+    }
+  }, [])
+  
+  // ✅ Listen for premium upgrade requests
+  useEffect(() => {
+    const q = query(
+      collection(db, 'premium_requests'),
+      where('status', '==', 'pending')
+    )
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPremiumRequestsCount(snapshot.size)
+    })
+    
+    return () => unsubscribe()
+  }, [])
+  
+  // ✅ Listen for pending audiobook orders
+  useEffect(() => {
+    const q = query(
+      collection(db, 'audiobook_orders'),
+      where('status', '==', 'pending')
+    )
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setAudiobookOrdersCount(snapshot.size)
+    })
+    
     return () => unsubscribe()
   }, [])
   
@@ -302,11 +349,35 @@ export default function SuperAdminPanel() {
     console.log('📥 QR code downloaded:', venue.name)
   }
 
-  // Filter venues
-  const filteredVenues = venues.filter(venue =>
-    venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    venue.location.address.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // ✅ Get unique cities for dropdown
+  const uniqueCities = [...new Set(venues.map(v => (v as any).city || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'he'))
+
+  // ✅ Filter and sort venues
+  const filteredVenues = [...venues]  // Create a copy to avoid mutating original
+    .filter(venue => {
+      // Search filter
+      const matchesSearch = 
+        venue.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (venue.location?.address || '').toLowerCase().includes(searchTerm.toLowerCase())
+      
+      // City filter
+      const venueCity = (venue as any).city || ''
+      const matchesCity = cityFilter === 'all' || venueCity === cityFilter
+      
+      return matchesSearch && matchesCity
+    })
+    .sort((a, b) => {
+      // Sort by city first if selected
+      if (sortBy === 'city') {
+        const cityA = (a as any).city || ''
+        const cityB = (b as any).city || ''
+        const cityCompare = cityA.localeCompare(cityB, 'he')
+        if (cityCompare !== 0) return cityCompare
+      }
+      // Sort by displayName (Hebrew alphabetical, ascending = א→ת)
+      return a.displayName.localeCompare(b.displayName, 'he')
+    })
 
   if (loading) {
     return (
@@ -355,6 +426,39 @@ export default function SuperAdminPanel() {
                 🎬 Dummies
               </Button>
               
+              {/* 🧹 Cleanup Button */}
+              <Button
+                onClick={() => router.push('/admin/super/venues-cleanup')}
+                variant="outline"
+                size="sm"
+                className="border-[#ef4444]/50 text-[#ef4444] hover:bg-[#ef4444]/20 h-9 sm:h-10 text-xs sm:text-sm flex-shrink-0"
+              >
+                <Trash2 className="mr-1 sm:mr-2 h-4 w-4" />
+                🧹 Cleanup
+              </Button>
+              
+              {/* 🗺️ Zones Overview Button */}
+              <Button
+                onClick={() => router.push('/admin/super/zones-overview')}
+                variant="outline"
+                size="sm"
+                className="border-[#3b82f6]/50 text-[#3b82f6] hover:bg-[#3b82f6]/20 h-9 sm:h-10 text-xs sm:text-sm flex-shrink-0"
+              >
+                <MapPin className="mr-1 sm:mr-2 h-4 w-4" />
+                🗺️ Zones
+              </Button>
+              
+              {/* 📍 Places Import Button */}
+              <Button
+                onClick={() => router.push('/admin/super/places-import')}
+                variant="outline"
+                size="sm"
+                className="border-[#22c55e]/50 text-[#22c55e] hover:bg-[#22c55e]/20 h-9 sm:h-10 text-xs sm:text-sm flex-shrink-0"
+              >
+                <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                📍 Import
+              </Button>
+              
               {/* Inbox Dropdown */}
               <div className="relative flex-shrink-0">
                 <Button
@@ -366,9 +470,9 @@ export default function SuperAdminPanel() {
                   <Inbox className="mr-1 sm:mr-2 h-4 w-4" />
                   Inbox
                   <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${showInboxDropdown ? 'rotate-180' : ''}`} />
-                  {(pendingReportsCount + pendingRequestsCount + waitlistCount + feedbackCount) > 0 && (
+                  {(pendingReportsCount + pendingRequestsCount + waitlistCount + feedbackCount + premiumRequestsCount + audiobookOrdersCount) > 0 && (
                     <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
-                      {pendingReportsCount + pendingRequestsCount + waitlistCount + feedbackCount}
+                      {pendingReportsCount + pendingRequestsCount + waitlistCount + feedbackCount + premiumRequestsCount + audiobookOrdersCount}
                     </span>
                   )}
                 </Button>
@@ -445,7 +549,7 @@ export default function SuperAdminPanel() {
                           router.push('/admin/super/feedback')
                           setShowInboxDropdown(false)
                         }}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 transition-colors"
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/10"
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-xl">💬</span>
@@ -454,6 +558,44 @@ export default function SuperAdminPanel() {
                         {feedbackCount > 0 && (
                           <span className="px-2 py-0.5 bg-purple-500 text-white text-xs font-bold rounded-full">
                             {feedbackCount}
+                          </span>
+                        )}
+                      </button>
+                      
+                      {/* ✅ Premium Upgrade Requests */}
+                      <button
+                        onClick={() => {
+                          router.push('/admin/super/premium')
+                          setShowInboxDropdown(false)
+                        }}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/10"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Crown className="h-5 w-5 text-amber-400" />
+                          <span className="text-white">בקשות Premium</span>
+                        </div>
+                        {premiumRequestsCount > 0 && (
+                          <span className="px-2 py-0.5 bg-amber-500 text-white text-xs font-bold rounded-full">
+                            {premiumRequestsCount}
+                          </span>
+                        )}
+                      </button>
+                      
+                      {/* 🎧 FunnyDates Audiobook Orders */}
+                      <button
+                        onClick={() => {
+                          router.push('/admin/super/audiobook')
+                          setShowInboxDropdown(false)
+                        }}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">🎧</span>
+                          <span className="text-white">רכישות אודיובוק</span>
+                        </div>
+                        {audiobookOrdersCount > 0 && (
+                          <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+                            {audiobookOrdersCount}
                           </span>
                         )}
                       </button>
@@ -590,22 +732,23 @@ export default function SuperAdminPanel() {
 
         {/* Actions Bar - Sticky on mobile */}
         <div className="sticky top-0 z-30 bg-gradient-to-b from-[#0d2920] to-[#0d2920]/95 backdrop-blur-md py-3 sm:py-4 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-            <Input
-              placeholder="🔍 Search venues..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full sm:flex-1 h-10 sm:h-12 bg-[#0d2920]/50 border-[#4ade80]/20 text-white placeholder:text-white/40 text-sm"
-            />
-            
-            <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
+            {/* Row 1: Search + Add */}
+            <div className="flex gap-2 sm:gap-4">
+              <Input
+                placeholder="🔍 Search venues..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 h-10 sm:h-12 bg-[#0d2920]/50 border-[#4ade80]/20 text-white placeholder:text-white/40 text-sm"
+              />
+              
               {/* Cleanup Button */}
               <Button
                 onClick={handleCleanup}
                 disabled={cleaning}
                 variant="outline"
                 size="sm"
-                className="flex-1 sm:flex-none h-10 sm:h-12 px-3 border-[#4ade80]/50 text-[#4ade80] hover:bg-[#4ade80]/20 text-xs sm:text-sm"
+                className="h-10 sm:h-12 px-3 border-[#4ade80]/50 text-[#4ade80] hover:bg-[#4ade80]/20 text-xs sm:text-sm"
               >
                 <RefreshCw className={`mr-1 h-4 w-4 ${cleaning ? 'animate-spin' : ''}`} />
                 {cleaning ? '...' : 'Clean'}
@@ -614,11 +757,43 @@ export default function SuperAdminPanel() {
               <Button
                 onClick={() => setShowAddVenue(true)}
                 size="sm"
-                className="flex-1 sm:flex-none h-10 sm:h-12 px-3 sm:px-4 bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] font-bold text-xs sm:text-sm"
+                className="h-10 sm:h-12 px-3 sm:px-4 bg-gradient-to-r from-[#4ade80] to-[#3bc970] hover:from-[#3bc970] hover:to-[#2da55e] text-[#0d2920] font-bold text-xs sm:text-sm"
               >
                 <Plus className="mr-1 h-4 w-4" />
                 Add
               </Button>
+            </div>
+            
+            {/* Row 2: City Filter + Sort */}
+            <div className="flex gap-2 items-center">
+              {/* City Filter */}
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="h-9 px-3 bg-[#0d2920]/70 border border-[#4ade80]/30 rounded-lg text-white text-sm focus:outline-none focus:border-[#4ade80]"
+              >
+                <option value="all">🏙️ כל הערים ({venues.length})</option>
+                {uniqueCities.map(city => (
+                  <option key={city} value={city}>
+                    {city} ({venues.filter(v => (v as any).city === city).length})
+                  </option>
+                ))}
+              </select>
+              
+              {/* Sort Toggle */}
+              <Button
+                onClick={() => setSortBy(sortBy === 'name' ? 'city' : 'name')}
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 border-[#4ade80]/30 text-white hover:bg-[#4ade80]/20 text-xs"
+              >
+                {sortBy === 'name' ? '🔤 א-ב' : '🏙️ עיר→א-ב'}
+              </Button>
+              
+              {/* Results count */}
+              <span className="text-white/60 text-sm ml-auto">
+                {filteredVenues.length} מועדונים
+              </span>
             </div>
           </div>
         </div>

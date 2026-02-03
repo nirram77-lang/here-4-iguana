@@ -1037,14 +1037,22 @@ useEffect(() => {
                   </button>
                 ) : (
                   // ✅ DISABLED: Show button with appropriate message
-                  <div className="w-full space-y-2">
-                    <Button
-                      disabled
-                      className="w-full h-12 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-pink-500/30 to-rose-500/30 text-pink-200/70 cursor-not-allowed border border-pink-500/20"
-                    >
-                      <Heart className={`${isRTL ? 'ml-2' : 'mr-2'} h-5 w-5`} />
-                      💕 {t('match.wereDeepMeeting')}
-                    </Button>
+                  <div className="w-full space-y-3">
+                    {/* ✅ v2.8.25 HOLLYWOOD: Beautiful disabled button for men */}
+                    <div className="relative">
+                      <Button
+                        disabled
+                        className="w-full h-12 rounded-xl font-bold text-base shadow-lg bg-gradient-to-r from-pink-600 to-rose-600 text-white/90 cursor-not-allowed border border-pink-400/50"
+                        style={{ filter: 'saturate(0.7)' }}
+                      >
+                        <Heart className={`${isRTL ? 'ml-2' : 'mr-2'} h-5 w-5`} />
+                        💕 {t('match.wereDeepMeeting')}
+                      </Button>
+                      {/* Lock overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl">
+                        <span className="text-2xl">🔒</span>
+                      </div>
+                    </div>
                     {/* ✅ Different messages based on state */}
                     {isPartnerReadyToMeet ? (
                       // ✅ Partner already clicked "We're Meeting"!
@@ -1067,12 +1075,13 @@ useEffect(() => {
                         </p>
                       </div>
                     ) : (
-                      // ✅ v2.8.4 MAN: She decides - Send her a message first!
-                      <div className="bg-[#1a4d3e]/30 rounded-xl p-3 border border-[#4ade80]/20">
-                        <p className="text-center text-sm text-white/80" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                      // ✅ v2.8.25 MAN HOLLYWOOD: Beautiful message that she decides
+                      <div className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-xl p-4 border border-pink-400/30">
+                        <p className="text-center text-base font-medium text-pink-200 flex items-center justify-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                          <span>👑</span>
                           {t('match.sheDecidesWhen')}
                         </p>
-                        <p className="text-center text-xs text-white/50 mt-1" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                        <p className="text-center text-sm text-white/70 mt-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                           {t('match.sendHerMessage')}
                         </p>
                       </div>
@@ -1359,10 +1368,14 @@ useEffect(() => {
       />
 
       {/* ✅ FIXED: Bottom Navigation - Back to Swiping DISABLED during active match */}
+      {/* ✅ v2.8.27: Added safe-area-inset-bottom for phones with notch */}
       <motion.div
         initial={{ y: 100 }}
         animate={{ y: 0 }}
         className="fixed bottom-0 left-0 right-0 bg-[#0d2920]/90 backdrop-blur-xl border-t-2 border-[#4ade80]/30 z-40"
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+        }}
       >
         <div className="flex justify-around items-center py-4 px-6 max-w-md mx-auto">
           {/* ✅ FIX #1: Back to Swiping Button - DISABLED during active match */}

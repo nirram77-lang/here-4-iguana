@@ -220,10 +220,13 @@ export default function OnboardingPhotos({
 
   return (
     <div 
-      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto overflow-x-hidden"
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto"
       style={{ 
         minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
-        paddingBottom: '120px'  // ✅ Extra space for buttons
+        paddingBottom: '120px',
+        overflowX: 'hidden',
+        touchAction: 'pan-y',
+        overscrollBehaviorX: 'none'
       }}
     >
       <div className="absolute inset-0">
@@ -471,8 +474,15 @@ export default function OnboardingPhotos({
             </Button>
             <Button
               onClick={handleComplete}
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                if (canComplete && !uploading) {
+                  handleComplete()
+                }
+              }}
               disabled={!canComplete || uploading}
-              className="flex-1 h-14 rounded-full bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 h-14 rounded-full bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               {uploading ? (
                 <>

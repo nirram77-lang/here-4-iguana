@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import PilotButton from '@/components/PilotButton'
+import VenueTicker from '@/components/VenueTicker'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
@@ -23,27 +24,10 @@ export default function LandingPage() {
       {/* ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג•ג• */}
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* HOLIDAY TICKER - Bottom Left */}
+      {/* FLOATING VENUE TICKER - Like Portuguese page */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:block fixed left-4 bottom-8 z-40">
-        <div className="bg-gradient-to-r from-[#1a0a0a]/95 to-[#0a1a0a]/95 backdrop-blur-md border border-red-500/30 rounded-2xl p-4 shadow-2xl max-w-[280px]">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-2xl">🎄</span>
-            <div>
-              <div className="text-sm font-bold text-red-400">Holiday Season</div>
-              <div className="text-xs text-gray-400">Limited time magic ✨</div>
-            </div>
-          </div>
-          <div className="text-sm text-gray-300 leading-relaxed">
-            This season, skip the small talk.<br/>
-            <span className="text-green-400 font-semibold">Meet someone real.</span>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-            <span>🎁</span>
-            <span>New connections await</span>
-            <span>❄️</span>
-          </div>
-        </div>
+      <div className="hidden lg:block fixed left-4 top-24 z-40">
+        <VenueTicker lang="en" />
       </div>
 
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${

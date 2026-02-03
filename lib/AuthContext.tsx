@@ -120,6 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('⚠️ No displayName from Google - user.displayName is:', result.user.displayName)
       }
       
+      // ✅ v2.8.25: Also save email for login screen "Continue as" feature
+      if (result.user.email) {
+        localStorage.setItem('googleEmail', result.user.email)
+        console.log('💾 Saved Google email to localStorage:', result.user.email)
+      }
+      
       return result.user
     } catch (error: any) {
       console.error('❌ Google sign-in error:', error.code, error.message)

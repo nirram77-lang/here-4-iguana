@@ -42,6 +42,7 @@ export interface DummyUser {
   education?: string
   drinking?: string
   smoking?: string
+  lookingFor?: 'relationship' | 'casual' | 'friends'  // ✅ v2.8.28: Relationship type
   city?: string
   
   // Dummy-specific fields
@@ -183,6 +184,7 @@ const ZONE_CENTERS: { [key: string]: { lat: number; lng: number } } = {
   'pt-rothschild': { lat: 32.0900, lng: 34.8850 },
   'pt-em-hamoshavot': { lat: 32.0841, lng: 34.8878 },
   'pt-big': { lat: 32.1000, lng: 34.8700 },
+  'pt-hashaham': { lat: 32.0920, lng: 34.8730 },  // HaShaham - bars district
   'petah-tikva': { lat: 32.0841, lng: 34.8878 },  // Alias
   
   // ══════════════════════════════════════════════════════════════════════════
@@ -246,6 +248,13 @@ const ZONE_CENTERS: { [key: string]: { lat: number; lng: number } } = {
   'haifa-masada': { lat: 32.8090, lng: 34.9920 },
   'haifa-bat-galim': { lat: 32.8300, lng: 34.9600 },
   'haifa': { lat: 32.7940, lng: 34.9896 },  // Alias
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🍷 ZICHRON YAAKOV
+  // ══════════════════════════════════════════════════════════════════════════
+  'zichron-midrahov': { lat: 32.5714, lng: 34.9544 },
+  'zichron-wineries': { lat: 32.5680, lng: 34.9510 },
+  'zichron-yaakov': { lat: 32.5714, lng: 34.9544 },  // Alias
   
   // ══════════════════════════════════════════════════════════════════════════
   // 🏔️ NORTH
@@ -558,6 +567,7 @@ export const generateDummyProfile = (
     education: getRandom(EDUCATIONS),
     drinking: getRandom(['never', 'socially', 'often']),
     smoking: getRandom(['never', 'socially', 'often']),
+    lookingFor: getRandom(['relationship', 'casual', 'friends']),  // ✅ v2.8.28: Variety of relationship types
     city: detectCity(zone),  // ✅ v2.8.5 FIX: Use correct city ID format
     
     isDummy: true,

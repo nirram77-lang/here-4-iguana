@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { motion } from "framer-motion"
 import { useLanguage } from "@/lib/LanguageContext"
 
 interface OnboardingHobbiesProps {
@@ -22,12 +21,76 @@ const availableHobbies = [
   "😂 Stand-up Comedy", "🏖️ Beach Bars", "🍕 Food Tours", "🎬 Movies"
 ]
 
+// ✅ v2.8.25: Hebrew translations for hobbies
+const hobbiesHebrew: Record<string, string> = {
+  "🕺 Dancing": "🕺 ריקודים",
+  "🎧 DJ": "🎧 DJ",
+  "🍹 Cocktails": "🍹 קוקטיילים",
+  "🎵 House Music": "🎵 האוס",
+  "🎶 Techno": "🎶 טכנו",
+  "⚡ EDM": "⚡ EDM",
+  "🎤 Live Music": "🎤 מוזיקה חיה",
+  "🎙️ Karaoke": "🎙️ קריוקי",
+  "🎱 Pool": "🎱 ביליארד",
+  "🎯 Darts": "🎯 חצים",
+  "🍷 Wine Tasting": "🍷 טעימות יין",
+  "🍺 Craft Beer": "🍺 בירה בוטיק",
+  "🌆 Rooftop Bars": "🌆 בארים על גגות",
+  "🌙 Late Nights": "🌙 לילות ארוכים",
+  "🎤 Hip Hop": "🎤 היפ הופ",
+  "🎺 Jazz": "🎺 ג'אז",
+  "🎸 Rock": "🎸 רוק",
+  "💃 Salsa": "💃 סלסה",
+  "🕺 Bachata": "🕺 בצ'טה",
+  "🎪 Festivals": "🎪 פסטיבלים",
+  "✨ VIP Lounges": "✨ טרקלינים VIP",
+  "⚽ Sports Bars": "⚽ פאבים ספורט",
+  "🎮 Gaming": "🎮 גיימינג",
+  "🧠 Trivia Nights": "🧠 ערבי טריוויה",
+  "😂 Stand-up Comedy": "😂 סטנדאפ",
+  "🏖️ Beach Bars": "🏖️ בארים בחוף",
+  "🍕 Food Tours": "🍕 סיורי אוכל",
+  "🎬 Movies": "🎬 סרטים"
+}
+
+// ✅ v2.8.25: Portuguese translations for hobbies
+const hobbiesPortuguese: Record<string, string> = {
+  "🕺 Dancing": "🕺 Dançar",
+  "🎧 DJ": "🎧 DJ",
+  "🍹 Cocktails": "🍹 Coquetéis",
+  "🎵 House Music": "🎵 House",
+  "🎶 Techno": "🎶 Techno",
+  "⚡ EDM": "⚡ EDM",
+  "🎤 Live Music": "🎤 Música ao Vivo",
+  "🎙️ Karaoke": "🎙️ Karaokê",
+  "🎱 Pool": "🎱 Sinuca",
+  "🎯 Darts": "🎯 Dardos",
+  "🍷 Wine Tasting": "🍷 Degustação de Vinhos",
+  "🍺 Craft Beer": "🍺 Cerveja Artesanal",
+  "🌆 Rooftop Bars": "🌆 Rooftops",
+  "🌙 Late Nights": "🌙 Noitadas",
+  "🎤 Hip Hop": "🎤 Hip Hop",
+  "🎺 Jazz": "🎺 Jazz",
+  "🎸 Rock": "🎸 Rock",
+  "💃 Salsa": "💃 Salsa",
+  "🕺 Bachata": "🕺 Bachata",
+  "🎪 Festivals": "🎪 Festivais",
+  "✨ VIP Lounges": "✨ Lounges VIP",
+  "⚽ Sports Bars": "⚽ Bares de Esportes",
+  "🎮 Gaming": "🎮 Games",
+  "🧠 Trivia Nights": "🧠 Noites de Trivia",
+  "😂 Stand-up Comedy": "😂 Stand-up",
+  "🏖️ Beach Bars": "🏖️ Bares na Praia",
+  "🍕 Food Tours": "🍕 Tours Gastronômicos",
+  "🎬 Movies": "🎬 Cinema"
+}
+
 export default function OnboardingHobbies({ 
   onNext, 
   onBack,
   initialHobbies = []  // ✅ FIX: Default to empty array, use initial if provided
 }: OnboardingHobbiesProps) {
-  const { t, isRTL } = useLanguage()
+  const { t, isRTL, language } = useLanguage()
   
   // ✅ FIX: Use initialHobbies to preserve selections on back navigation
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>(initialHobbies)
@@ -59,29 +122,31 @@ export default function OnboardingHobbies({
 
   return (
     <div 
-      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto overflow-x-hidden"
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative"
       style={{ 
-        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorX: 'none',
         paddingBottom: '100px'
       }}
     >
-      <div className="absolute inset-0">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
+      {/* Static sparkles - no animation to prevent flickering */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(10)].map((_, i) => (
+          <div
             key={i}
-            className="absolute w-1 h-1 bg-white/30 rounded-full"
+            className="absolute w-1 h-1 bg-white/20 rounded-full"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              opacity: [0.2, 0.8, 0.2],
-              scale: [1, 1.5, 1],
-            }}
-            transition={{
-              duration: 2 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
+              left: `${10 + i * 9}%`,
+              top: `${5 + i * 9}%`,
             }}
           />
         ))}
@@ -100,19 +165,14 @@ export default function OnboardingHobbies({
             ))}
           </div>
 
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
+          <div
             className="text-center mb-8"
             style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
-            <motion.div
-              animate={{ rotate: [0, -10, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
-              className="text-6xl mb-4"
-            >
+            {/* Static emoji - no animation */}
+            <div className="text-6xl mb-4">
               🎯
-            </motion.div>
+            </div>
             <h1 className="font-serif text-3xl font-bold text-white mb-2">
               {t('onboarding.hobbies.title')}
             </h1>
@@ -122,55 +182,61 @@ export default function OnboardingHobbies({
             <div className="text-[#4ade80] text-xl font-bold">
               {t('onboarding.hobbies.selected', { count: selectedHobbies.length })}
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mb-6"
-          >
+          <div className="mb-6">
             <div className="flex flex-wrap gap-3 justify-center">
-              {availableHobbies.map((hobby, index) => (
-                <motion.button
+              {availableHobbies.map((hobby) => (
+                <button
                   key={hobby}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: index * 0.03 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => toggleHobby(hobby)}
                   disabled={!selectedHobbies.includes(hobby) && selectedHobbies.length >= 8}
                   className={`
-                    px-4 py-3 rounded-full font-sans text-sm font-medium transition-all
+                    px-4 py-3 rounded-full font-sans text-sm font-medium transition-colors duration-150
                     ${selectedHobbies.includes(hobby)
-                      ? 'bg-[#4ade80] text-[#0d2920] border-2 border-[#4ade80] shadow-lg scale-105'
-                      : 'bg-[#1a4d3e]/50 text-white/80 border border-[#4ade80]/20 hover:border-[#4ade80]/50'
+                      ? 'bg-[#4ade80] text-[#0d2920] border-2 border-[#4ade80] shadow-lg'
+                      : 'bg-[#1a4d3e]/50 text-white/80 border border-[#4ade80]/20'
                     }
                     disabled:opacity-30 disabled:cursor-not-allowed
+                    active:scale-95
                   `}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  {hobby}
-                </motion.button>
+                  {language === 'he' ? (hobbiesHebrew[hobby] || hobby) : 
+                   language === 'pt' ? (hobbiesPortuguese[hobby] || hobby) : hobby}
+                </button>
               ))}
             </div>
-          </motion.div>
-
-          <div className="flex gap-3 sticky bottom-0 bg-gradient-to-t from-[#051410] to-transparent pt-4 pb-2">
-            <Button
-              onClick={onBack}
-              variant="outline"
-              className="flex-1 h-14 rounded-full bg-transparent border-2 border-white/30 text-white hover:bg-white/10"
-            >
-              {t('onboarding.back')}
-            </Button>
-            <Button
-              onClick={handleContinue}
-              disabled={selectedHobbies.length < 3}
-              className="flex-1 h-14 rounded-full bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold disabled:opacity-50"
-            >
-              {t('common.continue')}
-            </Button>
           </div>
+
+          {/* Spacer to ensure content doesn't hide behind fixed buttons */}
+          <div className="h-24"></div>
+        </div>
+      </div>
+      
+      {/* Fixed bottom buttons - solid background */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pt-4"
+        style={{ 
+          background: 'linear-gradient(to top, #051410 70%, transparent)',
+          paddingBottom: 'max(24px, env(safe-area-inset-bottom))'
+        }}
+      >
+        <div className="flex gap-3 max-w-md mx-auto">
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="flex-1 h-14 rounded-full bg-[#1a4d3e] border-2 border-white/30 text-white hover:bg-[#245a4a]"
+          >
+            {t('onboarding.back')}
+          </Button>
+          <Button
+            onClick={handleContinue}
+            disabled={selectedHobbies.length < 3}
+            className="flex-1 h-14 rounded-full bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold disabled:opacity-50"
+          >
+            {t('common.continue')}
+          </Button>
         </div>
       </div>
     </div>

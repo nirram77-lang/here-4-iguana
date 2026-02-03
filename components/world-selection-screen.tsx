@@ -12,6 +12,7 @@
  * Simple, clear, beautiful.
  * 
  * v2.8.6: Added bottom navigation for Profile/Notifications
+ * v2.8.31: Added venue tooltip when user is not in entertainment area
  */
 
 import { useState, useEffect } from 'react'
@@ -27,9 +28,14 @@ import {
   Navigation,
   Home,
   Bell,
-  User
+  User,
+  Globe,
+  X
 } from 'lucide-react'
 import { useLanguage } from '@/lib/LanguageContext'
+
+// ✅ v2.8.31: Distance threshold for showing venue tooltip (500 meters)
+const VENUE_TOOLTIP_DISTANCE_THRESHOLD = 500
 
 interface WorldSelectionScreenProps {
   onSelectZones: () => void
@@ -50,11 +56,14 @@ export default function WorldSelectionScreen({
   onNavigateToProfile,
   onNavigateToNotifications
 }: WorldSelectionScreenProps) {
-  const { t, isRTL } = useLanguage()
+  const { t, isRTL, language } = useLanguage()
   
   const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [selectedWorld, setSelectedWorld] = useState<'zones' | 'venues' | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  
+  // ✅ v2.8.31: Venue tooltip state
+  const [showVenueTooltip, setShowVenueTooltip] = useState(false)
   
   // Floating hearts animation
   const [hearts] = useState(() => 
@@ -66,6 +75,53 @@ export default function WorldSelectionScreen({
       delay: Math.random() * 5
     }))
   )
+  
+  // ✅ v2.8.31: Show venue tooltip when user is NOT in an entertainment area
+  // Only show ONCE per session, and again after 1 hour
+  useEffect(() => {
+    // Check if user is NOT near any entertainment zone
+    const isNotInVenueArea = nearestZoneDistance === null || nearestZoneDistance > VENUE_TOOLTIP_DISTANCE_THRESHOLD
+    
+    if (isNotInVenueArea && isLoaded) {
+      // Check if we already showed the tooltip in this session
+      const sessionShown = sessionStorage.getItem('venueTooltipShown')
+      const lastShownTime = localStorage.getItem('venueTooltipLastShown')
+      const oneHourAgo = Date.now() - (60 * 60 * 1000) // 1 hour in milliseconds
+      
+      // Don't show if already shown in this session
+      if (sessionShown === 'true') {
+        console.log('📍 Tooltip already shown this session - skipping')
+        return
+      }
+      
+      // Don't show if shown less than 1 hour ago (across sessions)
+      if (lastShownTime && parseInt(lastShownTime) > oneHourAgo) {
+        console.log('📍 Tooltip shown less than 1 hour ago - skipping')
+        return
+      }
+      
+      // Show tooltip after a short delay (let the screen load first)
+      const showTimer = setTimeout(() => {
+        setShowVenueTooltip(true)
+        // Mark as shown for this session
+        sessionStorage.setItem('venueTooltipShown', 'true')
+        // Save timestamp for cross-session tracking
+        localStorage.setItem('venueTooltipLastShown', Date.now().toString())
+        console.log('📍 Showing venue tooltip - user is not in entertainment area')
+      }, 800)
+      
+      // Auto-hide after 4 seconds (Hollywood dramatic timing!)
+      const hideTimer = setTimeout(() => {
+        setShowVenueTooltip(false)
+        console.log('📍 Hiding venue tooltip')
+      }, 4800) // 800ms delay + 4000ms display = 4800ms total
+      
+      return () => {
+        clearTimeout(showTimer)
+        clearTimeout(hideTimer)
+      }
+    }
+  }, [nearestZoneDistance, isLoaded])
   
   useEffect(() => {
     const updateViewportHeight = () => setViewportHeight(window.innerHeight)
@@ -110,7 +166,10 @@ export default function WorldSelectionScreen({
         left: 0,
         right: 0,
         bottom: 0,
-        width: '100%',
+        width: '100vw',
+        maxWidth: '100vw',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
         background: 'linear-gradient(160deg, #0a1f1a 0%, #0d2920 30%, #051410 70%, #030b08 100%)'
       }}
     >
@@ -408,6 +467,111 @@ export default function WorldSelectionScreen({
           </div>
         </div>
       </div>
+      
+      {/* ✅ v2.8.31: HOLLYWOOD VENUE TOOLTIP - Shows when user is NOT in entertainment area */}
+      <AnimatePresence>
+        {showVenueTooltip && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ 
+              type: "spring", 
+              damping: 20, 
+              stiffness: 300,
+              duration: 0.5 
+            }}
+            className="absolute bottom-32 left-4 right-4 z-[9999] pointer-events-auto"
+          >
+            <div 
+              className="relative overflow-hidden rounded-3xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(74, 222, 128, 0.15) 0%, rgba(16, 185, 129, 0.1) 50%, rgba(5, 150, 105, 0.15) 100%)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(74, 222, 128, 0.3)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 60px rgba(74, 222, 128, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)'
+              }}
+            >
+              {/* Animated glow border */}
+              <div 
+                className="absolute inset-0 rounded-3xl pointer-events-none"
+                style={{
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(74, 222, 128, 0.4) 50%, transparent 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer 2s infinite linear',
+                  opacity: 0.5
+                }}
+              />
+              
+              {/* Content */}
+              <div className={`relative p-5 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                {/* Close button */}
+                <button
+                  onClick={() => setShowVenueTooltip(false)}
+                  className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white/60" />
+                </button>
+                
+                {/* Icon with glow */}
+                <div className="flex items-start gap-4">
+                  <div 
+                    className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#4ade80] to-[#22c55e] flex items-center justify-center flex-shrink-0"
+                    style={{
+                      boxShadow: '0 0 20px rgba(74, 222, 128, 0.4), 0 4px 15px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    <MapPin className="w-7 h-7 text-white" />
+                  </div>
+                  
+                  <div className="flex-1 pt-1">
+                    {/* Title */}
+                    <h3 className="text-white font-bold text-lg mb-1">
+                      {language === 'he' ? '📍 לא באזור בילוי?' : 
+                       language === 'pt' ? '📍 Não está em área de lazer?' :
+                       '📍 Not in an entertainment area?'}
+                    </h3>
+                    
+                    {/* Description */}
+                    <p className="text-white/70 text-sm leading-relaxed mb-3">
+                      {language === 'he' ? 'האפליקציה פועלת במקומות בילוי נבחרים. גלה את כל המקומות בפריסה ארצית!' : 
+                       language === 'pt' ? 'O app funciona em locais de entretenimento. Descubra todos os locais!' :
+                       'The app works at selected entertainment venues. Discover all locations nationwide!'}
+                    </p>
+                    
+                    {/* CTA Button */}
+                    <a
+                      href={language === 'he' ? 'https://i4iguana.com/he' : 
+                            language === 'pt' ? 'https://i4iguana.com/br' :
+                            'https://i4iguana.com'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#4ade80] to-[#22c55e] text-white font-semibold text-sm shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      style={{
+                        boxShadow: '0 4px 15px rgba(74, 222, 128, 0.3)'
+                      }}
+                    >
+                      <Globe className="w-4 h-4" />
+                      {language === 'he' ? 'לצפייה במפת המקומות' : 
+                       language === 'pt' ? 'Ver mapa de locais' :
+                       'View Venues Map'}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Shimmer animation for tooltip */}
+      <style jsx global>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
     </div>
   )
 }

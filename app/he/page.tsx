@@ -15,40 +15,10 @@ export default function HebrewLandingPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Share functionality
-  const handleShare = async (method: string) => {
-    const url = 'https://i4iguana.com/he'
-    const title = 'I4IGUANA - מהפכת ההיכרויות בזמן אמת'
-    const text = 'הכירו אנשים אמיתיים קרוב אליכם! בלי סוויפים אינסופיים. מפגש אמיתי. עכשיו.'
-
-    switch (method) {
-      case 'whatsapp':
-        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank')
-        break
-      case 'email':
-        window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + url)}`, '_blank')
-        break
-      case 'copy':
-        await navigator.clipboard.writeText(url)
-        alert('הקישור הועתק!')
-        break
-      case 'native':
-        if (navigator.share) {
-          await navigator.share({ title, text, url })
-        }
-        break
-    }
-  }
-
   return (
     <div 
       className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden landing-page" 
       dir="rtl"
-      style={{
-        touchAction: 'manipulation',
-        overscrollBehavior: 'none',
-        WebkitOverflowScrolling: 'touch'
-      }}
     >
       
       {/* Floating Hearts - Fixed on screen */}
@@ -63,7 +33,7 @@ export default function HebrewLandingPage() {
       {/* NAVIGATION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrollY > 50 ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
+        scrollY > 50 ? 'bg-[#0a1f1a] shadow-lg' : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -150,7 +120,7 @@ export default function HebrewLandingPage() {
 
           {/* Mobile Menu */}
           {menuOpen && (
-            <div className="md:hidden absolute top-full left-0 right-0 bg-[#0a1f1a]/98 backdrop-blur-lg border-b border-white/10 px-6 py-6 space-y-4 shadow-2xl">
+            <div className="md:hidden absolute top-full left-0 right-0 bg-[#0a1f1a] border-b border-white/10 px-6 py-6 space-y-4 shadow-2xl">
               <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">איך זה עובד</a>
               <a href="#features" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">יתרונות</a>
               <a href="#for-venues" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">לבעלי מועדונים</a>
@@ -182,20 +152,6 @@ export default function HebrewLandingPage() {
                   <span>EN</span>
                 </Link>
               </div>
-              
-              {/* Share - Mobile */}
-              <div className="flex items-center gap-2 py-2">
-                <button onClick={() => handleShare('whatsapp')} className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full text-sm font-bold text-white">
-                  💬 וואטסאפ
-                </button>
-                <button onClick={() => handleShare('email')} className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-sm font-bold text-white">
-                  📧 אימייל
-                </button>
-                <button onClick={() => handleShare('copy')} className="px-3 py-1.5 bg-white/10 border border-white/30 rounded-full text-sm font-bold text-white">
-                  🔗 העתק
-                </button>
-              </div>
-
               <Link href="/he/terms" onClick={() => setMenuOpen(false)} className="block text-gray-300 hover:text-green-400 py-2">תנאי שימוש</Link>
               <Link 
                 href="/app"
@@ -226,13 +182,13 @@ export default function HebrewLandingPage() {
           
           {/* Animated Circles */}
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" style={{animationDelay: '1s'}}></div>
           
-          {/* Radar Effect */}
+          {/* Radar Effect - Static rings for stability */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px]">
-            <div className="absolute inset-0 border border-green-500/20 rounded-full animate-ping" style={{animationDuration: '3s'}}></div>
-            <div className="absolute inset-8 border border-green-500/30 rounded-full animate-ping" style={{animationDuration: '3s', animationDelay: '0.5s'}}></div>
-            <div className="absolute inset-16 border border-green-500/40 rounded-full animate-ping" style={{animationDuration: '3s', animationDelay: '1s'}}></div>
+            <div className="absolute inset-0 border border-green-500/20 rounded-full opacity-50"></div>
+            <div className="absolute inset-8 border border-green-500/30 rounded-full opacity-50"></div>
+            <div className="absolute inset-16 border border-green-500/40 rounded-full opacity-50"></div>
           </div>
 
           {/* Iguana Mascot - Background */}
@@ -256,78 +212,68 @@ export default function HebrewLandingPage() {
             <span className="text-green-400 text-sm font-medium">✨ הכרויות בזמן אמת - פה ועכשיו ✨</span>
           </div>
 
-          {/* Main Heading - בלי-בלי-נפגשים-עכשיו */}
-          <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight animate-fadeInUp">
-            <span className="text-white">
-              בלי סווייפים אינסופיים.
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* שכבה 1 - בום רגשי - משפט דגל */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black mb-8 leading-tight animate-fadeInUp">
+            <span className="text-white block mb-2">
+              מסכים לא יוצרים כימיה.
             </span>
-            <br />
-            <span className="text-white">
-              בלי משחקים.
+            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(74,222,128,0.6)]">
+              מפגשים אמיתיים כן
             </span>
-            <br />
-            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(74,222,128,0.5)]">
-              פגישה אמיתית.
-            </span>
-            {' '}
-            <span className="bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
-              עכשיו.
-            </span>
+            <span className="inline-block w-3 h-3 md:w-4 md:h-4 bg-green-400 rounded-full animate-pulse ml-1 shadow-[0_0_20px_rgba(74,222,128,0.8)]"></span>
           </h1>
+          
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* שכבה 2 - חידוד חד עם צבעים הוליוודיים */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          <p className="text-xl md:text-2xl mb-8 animate-fadeInUp" style={{animationDelay: '0.5s'}}>
+            <span className="text-white/70">בלי סווייפים אינסופיים. בלי משחקים.</span>
+            <br />
+            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(74,222,128,0.5)]">פגישה אמיתית.</span>
+            {' '}
+            <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">עכשיו.</span>
+          </p>
 
-          {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-gray-400 mb-4 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-            <span className="text-pink-400">אנשים אמיתיים.</span> <span className="text-white">מקומות אמיתיים.</span> <span className="text-green-400 font-semibold">10-500 מטר ממך.</span>
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* שכבה 3 - פרטים עם צבעים */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          <p className="text-lg md:text-xl mb-4 animate-fadeInUp" style={{animationDelay: '0.8s'}}>
+            <span className="text-pink-400">אנשים אמיתיים.</span>
+            {' '}
+            <span className="text-white">מקומות אמיתיים.</span>
+            {' '}
+            <span className="text-green-400 font-semibold">10-500 מטר ממך.</span>
           </p>
           
-          {/* She Decides - כותרת משנה */}
-          <p className="text-lg md:text-xl text-pink-400 font-semibold mb-10 animate-fadeInUp flex items-center justify-center gap-2" style={{animationDelay: '0.3s'}}>
+          {/* She Decides */}
+          <p className="text-lg md:text-xl text-pink-400 font-semibold mb-10 animate-fadeInUp flex items-center justify-center gap-2" style={{animationDelay: '1s'}}>
             <span className="text-pink-500">💜</span>
             <span>היא בוחרת. אתם נפגשים.</span>
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* CTA - כפתור אחד ברור */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          <div className="flex flex-col items-center gap-3 animate-fadeInUp" style={{animationDelay: '1.2s'}}>
             <Link 
               href="/app"
-              className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-2"
+              className="group px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-xl shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-3"
             >
               <span>פתח אפליקציה</span>
-              <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 group-hover:-translate-x-1 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
-            <a 
-              href="#how-it-works"
-              className="px-8 py-4 border-2 border-white/20 rounded-full font-bold text-lg hover:bg-white/10 transition-all"
-            >
-              למדו עוד
-            </a>
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-center justify-center gap-8 md:gap-16 mt-16 animate-fadeInUp" style={{animationDelay: '0.6s'}}>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-green-400">10m</div>
-              <div className="text-sm md:text-base font-medium" style={{ color: '#8B7355' }}>מרחק מינימלי</div>
-            </div>
-            <div className="w-px h-12 bg-white/20"></div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-green-400">500m</div>
-              <div className="text-sm md:text-base font-medium" style={{ color: '#8B7355' }}>טווח מקסימלי</div>
-            </div>
-            <div className="w-px h-12 bg-white/20"></div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-green-400">בזמן</div>
-              <div className="text-base md:text-lg font-semibold" style={{ color: '#8B7355' }}>אמת</div>
-            </div>
+            <span className="text-white/40 text-sm">בלי התחייבות. בלי חפירות.</span>
           </div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
           <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
-            <div className="w-1 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <div className="w-1 h-2 bg-green-400 rounded-full"></div>
           </div>
         </div>
       </section>
@@ -756,8 +702,30 @@ export default function HebrewLandingPage() {
             </div>
           </div>
 
+          {/* No Art Gallery Logo - Hollywood Style */}
+          <div className="py-6 md:py-10 flex justify-center">
+            <a 
+              href="https://noartgallery.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group relative"
+            >
+              {/* Background Glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 scale-150" />
+              
+              <img 
+                src="/no-art-gallery-logo.png" 
+                alt="No Art Gallery" 
+                className="h-6 md:h-10 w-auto relative z-10 transition-all duration-500 group-hover:scale-110"
+                style={{
+                  filter: 'drop-shadow(0 0 10px rgba(255, 140, 0, 0.5)) drop-shadow(0 0 20px rgba(255, 100, 0, 0.3))'
+                }}
+              />
+            </a>
+          </div>
+
           {/* Bottom */}
-          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-sm">
               © {new Date().getFullYear()} I4IGUANA. כל הזכויות שמורות.
             </p>

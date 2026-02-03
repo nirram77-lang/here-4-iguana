@@ -241,6 +241,16 @@ export default function DownloadPage() {
               <Smartphone className="w-4 h-4" />
               <span>or open this page on your phone</span>
             </div>
+            
+            {/* ✅ v2.8.31: Hint to click iguana */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+              className="mt-4 text-white/50 text-xs"
+            >
+              💡 Or click the iguana below to enter the app
+            </motion.p>
           </motion.div>
         )}
 
@@ -332,6 +342,22 @@ export default function DownloadPage() {
               🦎
             </motion.div>
           </div>
+
+          {/* ✅ v2.8.31: Desktop - Click iguana to enter app! */}
+          {platform === 'desktop' && (
+            <motion.button
+              onClick={() => window.location.href = '/app'}
+              className="absolute inset-0 rounded-full bg-transparent cursor-pointer focus:outline-none"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {/* Hover Ring */}
+              <motion.div
+                className="absolute inset-0 rounded-full border-3 border-[#4ade80]/50 opacity-0 hover:opacity-100 transition-opacity"
+                style={{ borderWidth: '3px' }}
+              />
+            </motion.button>
+          )}
 
           {/* Install Button Overlay (mobile only) */}
           {platform !== 'desktop' && installState === "idle" && (

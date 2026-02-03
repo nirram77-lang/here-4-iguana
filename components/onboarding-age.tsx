@@ -131,7 +131,10 @@ export default function OnboardingAge({
       className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] overflow-y-auto"
       style={{ 
         minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
-        paddingBottom: '100px'
+        paddingBottom: '100px',
+        overflowX: 'hidden',
+        touchAction: 'pan-y',
+        overscrollBehaviorX: 'none'
       }}
     >
       {/* Header with back button */}
@@ -246,7 +249,7 @@ export default function OnboardingAge({
               
               {/* Active Range */}
               <div 
-                className="absolute h-2 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg transition-all duration-150"
+                className="absolute h-2 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg"
                 style={{
                   left: `${((minAge - 18) / (80 - 18)) * 100}%`,
                   right: `${100 - ((maxAge - 18) / (80 - 18)) * 100}%`
@@ -338,7 +341,7 @@ export default function OnboardingAge({
               
               {/* Active Track */}
               <div 
-                className="absolute h-2 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg transition-all duration-150"
+                className="absolute h-2 bg-gradient-to-r from-[#4ade80] to-[#22c55e] rounded-lg"
                 style={{
                   left: '0%',
                   right: `${100 - ((maxDistance - 50) / (500 - 50)) * 100}%`

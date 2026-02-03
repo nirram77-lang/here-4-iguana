@@ -288,15 +288,37 @@ export default function WeAreMeetingModal({
                 {t('meetingModal.timerPaused')}
               </motion.p>
 
-              {/* ✅ v2.8.25: Close button - FIXED FOR iOS! Using onClick instead of onTouchStart */}
-              {/* ✅ v2.8.26: Added 1 second delay before button is active */}
+              {/* ✅ v2.8.27 FIX Android: Simplified button handler */}
               <button
                 type="button"
-                onClick={handleButtonPress}
+                onClick={(e) => {
+                  console.log('🔘 Button CLICKED!')
+                  e.preventDefault()
+                  e.stopPropagation()
+                  
+                  if (!buttonEnabled) {
+                    console.log('🚫 Button not enabled yet')
+                    return
+                  }
+                  
+                  handleAwesomeClose()
+                }}
+                onTouchEnd={(e) => {
+                  console.log('👆 Button TOUCH END!')
+                  e.preventDefault()
+                  e.stopPropagation()
+                  
+                  if (!buttonEnabled) {
+                    console.log('🚫 Button not enabled yet (touch)')
+                    return
+                  }
+                  
+                  handleAwesomeClose()
+                }}
                 disabled={!buttonEnabled}
                 className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition-all ${
                   buttonEnabled 
-                    ? 'bg-gradient-to-r from-[#4ade80] to-[#22c55e] text-[#0d2920] shadow-[#4ade80]/30 active:scale-95' 
+                    ? 'bg-gradient-to-r from-[#4ade80] to-[#22c55e] text-[#0d2920] shadow-[#4ade80]/30 active:scale-95 hover:from-[#3bc970] hover:to-[#16a34a] cursor-pointer' 
                     : 'bg-gradient-to-r from-[#4ade80]/50 to-[#22c55e]/50 text-[#0d2920]/50 cursor-not-allowed'
                 }`}
                 style={{ 
@@ -306,7 +328,7 @@ export default function WeAreMeetingModal({
                   userSelect: 'none',
                   position: 'relative',
                   zIndex: 100,
-                  pointerEvents: buttonEnabled ? 'auto' : 'none',
+                  pointerEvents: 'auto',
                   cursor: buttonEnabled ? 'pointer' : 'not-allowed',
                   direction: isRTL ? 'rtl' : 'ltr'
                 }}

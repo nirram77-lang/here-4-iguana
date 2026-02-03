@@ -70,8 +70,17 @@ export default function LandingPage() {
     console.log('📲 handleDownload triggered')
     setIsPressed(true)
     
-    // ✅ v2.8.6: Better iOS detection
+    // ✅ v2.8.34: Detect device type
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isAndroid = /Android/.test(navigator.userAgent)
+    const isMobile = isIOS || isAndroid || /Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    
+    // ✅ v2.8.34: Desktop - go directly to app (no install needed)
+    if (!isMobile) {
+      console.log('🖥️ Desktop detected - redirecting to app')
+      window.location.href = '/app'
+      return
+    }
     
     // @ts-ignore
     if (window.deferredPrompt) {

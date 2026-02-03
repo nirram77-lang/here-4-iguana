@@ -156,7 +156,7 @@ const CITIES: CityConfig[] = [
     name: 'Petah Tikva',
     nameHe: 'פתח תקווה',
     emoji: '🏙️',
-    zones: ['pt-rothschild', 'pt-em-hamoshavot', 'pt-big'],
+    zones: ['pt-rothschild', 'pt-em-hamoshavot', 'pt-big', 'pt-hashaham'],
     color: 'from-indigo-500 to-purple-500'
   },
   {
@@ -218,6 +218,14 @@ const CITIES: CityConfig[] = [
     emoji: '⛰️',
     zones: ['haifa-downtown', 'haifa-carmel', 'haifa-german-colony', 'haifa-masada', 'haifa-bat-galim'],
     color: 'from-emerald-500 to-teal-500'
+  },
+  {
+    id: 'zichron-yaakov',
+    name: 'Zichron Yaakov',
+    nameHe: 'זיכרון יעקב',
+    emoji: '🍷',
+    zones: ['zichron-midrahov', 'zichron-wineries'],
+    color: 'from-purple-500 to-pink-500'
   },
   {
     id: 'nahariya',

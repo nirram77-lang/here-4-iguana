@@ -204,22 +204,33 @@ export default function AccessibilityWidget() {
 
         /* Accessibility button animation */
         @keyframes a11y-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-          50% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+          0%, 100% { box-shadow: 0 4px 15px rgba(34, 139, 34, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3); }
+          50% { box-shadow: 0 6px 25px rgba(34, 139, 34, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4); }
         }
       `}</style>
 
-      {/* Floating Accessibility Button */}
+      {/* Floating Accessibility Button - Bottle Green Hollywood Style */}
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 left-4 z-[9999] w-14 h-14 bg-gradient-to-br from-[#4ade80] to-[#22c55e] rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-        style={{ animation: 'a11y-pulse 2s infinite' }}
-        whileHover={{ scale: 1.1 }}
+        className="fixed bottom-24 left-4 z-[9999] w-12 h-12 rounded-full flex items-center justify-center"
+        style={{ 
+          background: 'linear-gradient(145deg, #1a5c45 0%, #228B22 50%, #2e8b57 100%)',
+          border: '2px solid rgba(34, 139, 34, 0.6)',
+          boxShadow: '0 4px 15px rgba(34, 139, 34, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+          animation: 'a11y-pulse 2s infinite'
+        }}
+        whileHover={{ 
+          scale: 1.1,
+          boxShadow: '0 6px 25px rgba(34, 139, 34, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+        }}
         whileTap={{ scale: 0.95 }}
         aria-label="פתח תפריט נגישות"
         title="נגישות"
       >
-        <Accessibility className="w-7 h-7 text-white" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-6 h-6">
+          <circle cx="12" cy="4" r="2"/>
+          <path d="M12 6v4m0 0l-4 8m4-8l4 8M6 12h12"/>
+        </svg>
       </motion.button>
 
       {/* Accessibility Panel */}

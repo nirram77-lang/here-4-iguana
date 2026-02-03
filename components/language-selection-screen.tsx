@@ -57,7 +57,23 @@ export default function LanguageSelectionScreen({ onComplete }: LanguageSelectio
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a1f1a] via-[#0d2920] to-[#051410] text-white overflow-hidden relative">
+    <div 
+      className="bg-gradient-to-b from-[#0a1f1a] via-[#0d2920] to-[#051410] text-white relative"
+      data-onboarding="true"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorX: 'none'
+      }}
+    >
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* ANIMATED BACKGROUND */}

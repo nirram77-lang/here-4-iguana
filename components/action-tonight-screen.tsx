@@ -1006,7 +1006,7 @@ export default function ActionTonightScreen({
                           }
                         </p>
                         
-                        {/* ✅ v2.8.17: Connect (≤100m) or Navigate (>100m) - improved touch feedback */}
+                        {/* ✅ v2.8.28: Connect (≤100m) / Almost (100-500m) / Navigate (>500m) */}
                         {zone.distance <= 100 ? (
                           <button
                             onClick={(e) => {
@@ -1017,6 +1017,19 @@ export default function ActionTonightScreen({
                             style={{ minHeight: '44px', minWidth: '100px' }}
                           >
                             Connect! 🟢
+                          </button>
+                        ) : zone.distance <= 500 ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              // Open Google Maps navigation for short distance
+                              const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${zone.center.lat},${zone.center.lng}&travelmode=walking`
+                              window.open(mapsUrl, '_blank')
+                            }}
+                            className="text-xs text-[#0d2920] bg-[#f97316] px-5 py-2 rounded-full font-bold transition-all duration-150 active:scale-95 active:bg-[#ea580c] hover:bg-[#ea580c] shadow-lg shadow-[#f97316]/30"
+                            style={{ minHeight: '44px', minWidth: '100px' }}
+                          >
+                            Almost! 🚶
                           </button>
                         ) : (
                           <button

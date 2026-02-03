@@ -182,7 +182,7 @@ export const CITIES: Record<string, City> = {
     center: { lat: 32.0841, lng: 34.8878 },
     isActive: true,
     launchDate: '2025-01-01',
-    zones: ['pt-rothschild', 'pt-em-hamoshavot', 'pt-big']
+    zones: ['pt-rothschild', 'pt-em-hamoshavot', 'pt-big', 'pt-hashaham']  // ✅ Added HaShaham
   },
   'rishon-lezion': {
     id: 'rishon-lezion',
@@ -274,6 +274,15 @@ export const CITIES: Record<string, City> = {
     isActive: true,
     launchDate: '2024-02-01',
     zones: ['haifa-downtown', 'haifa-carmel', 'haifa-german-colony', 'haifa-masada', 'haifa-bat-galim']
+  },
+  'zichron-yaakov': {
+    id: 'zichron-yaakov',
+    name: 'Zichron Yaakov',
+    nameHe: 'זיכרון יעקב',
+    center: { lat: 32.5714, lng: 34.9544 },
+    isActive: true,
+    launchDate: '2025-01-11',
+    zones: ['zichron-midrahov', 'zichron-wineries']
   },
   'nahariya': {
     id: 'nahariya',
@@ -1091,6 +1100,20 @@ export const ENTERTAINMENT_ZONES: Record<string, EntertainmentZone> = {
     isActive: true
   },
   
+  'pt-hashaham': {
+    id: 'pt-hashaham',
+    name: 'HaShaham',
+    city: 'petah-tikva',
+    cityHe: 'פתח תקווה',
+    center: { lat: 32.0920, lng: 34.8730 },  // רחוב השחם - ליד אוסקר ווילד
+    radius: 500,
+    previewRadius: 900,
+    vibe: 'Bars & pubs district',
+    peakHours: 'Thu-Sat 21:00-03:00',
+    icon: '🍺',
+    isActive: true
+  },
+  
   // ══════════════════════════════════════════════════════════
   // 🌆 RISHON LEZION
   // ══════════════════════════════════════════════════════════
@@ -1344,6 +1367,38 @@ export const ENTERTAINMENT_ZONES: Record<string, EntertainmentZone> = {
     vibe: 'Beach bars & seafood restaurants',
     peakHours: 'Thu-Sat 18:00-01:00',
     icon: '🌊',
+    isActive: true
+  },
+  
+  // ══════════════════════════════════════════════════════════
+  // 🍷 ZICHRON YAAKOV - Wine Country!
+  // ══════════════════════════════════════════════════════════
+  
+  'zichron-midrahov': {
+    id: 'zichron-midrahov',
+    name: 'Midrahov HaMeyasdim',
+    city: 'zichron-yaakov',
+    cityHe: 'זיכרון יעקב',
+    center: { lat: 32.5714, lng: 34.9544 },
+    radius: 400,
+    previewRadius: 800,
+    vibe: 'Historic pedestrian street - cafes, wine bars & boutiques',
+    peakHours: 'Thu-Sat 19:00-01:00',
+    icon: '🍷',
+    isActive: true
+  },
+  
+  'zichron-wineries': {
+    id: 'zichron-wineries',
+    name: 'Wineries District',
+    city: 'zichron-yaakov',
+    cityHe: 'זיכרון יעקב',
+    center: { lat: 32.5680, lng: 34.9510 },
+    radius: 500,
+    previewRadius: 900,
+    vibe: 'Wine tasting & gourmet restaurants',
+    peakHours: 'Thu-Sat 18:00-23:00',
+    icon: '🏰',
     isActive: true
   },
   

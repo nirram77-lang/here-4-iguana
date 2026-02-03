@@ -49,7 +49,7 @@ interface TickerItem {
 }
 
 interface GlobalNewsTickerProps {
-  lang?: 'en' | 'pt'
+  lang?: 'en' | 'pt' | 'he'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -58,25 +58,36 @@ interface GlobalNewsTickerProps {
 
 const TRANSLATIONS = {
   en: {
-    header: 'HOLIDAY MAGIC',
+    header: 'LIVE NOW',
     items: [
-      { type: 'announcement', message: "This holiday, don't go home alone", icon: '🎄', priority: 1 },
-      { type: 'milestone', message: 'New Year, New Connections', icon: '✨', priority: 2 },
-      { type: 'stat', message: "Someone's waiting 10m away", icon: '🎁', priority: 3 },
-      { type: 'pilot_active', message: 'Holiday Magic • LIVE in Israel', icon: '❄️', country: 'Israel', countryFlag: '🇮🇱', priority: 4 },
-      { type: 'announcement', message: 'Skip the mistletoe • Meet for real', icon: '💕', priority: 5 },
-      { type: 'milestone', message: 'Best gift? A real connection', icon: '🎅', priority: 6 }
+      { type: 'pilot_active', message: '🔥 33 cities LIVE in Israel • Join Now!', icon: '🇮🇱', country: 'Israel', countryFlag: '🇮🇱', priority: 1 },
+      { type: 'announcement', message: 'Stop swiping • Start meeting', icon: '💕', priority: 2 },
+      { type: 'stat', message: "Someone's waiting 10m away", icon: '📍', priority: 3 },
+      { type: 'milestone', message: 'Real people • Real places • Real time', icon: '✨', priority: 4 },
+      { type: 'announcement', message: 'She decides • You meet', icon: '💜', priority: 5 },
+      { type: 'milestone', message: 'No games • Just connections', icon: '🦎', priority: 6 }
+    ]
+  },
+  he: {
+    header: 'LIVE עכשיו',
+    items: [
+      { type: 'pilot_active', message: '🔥 33 ערים פעילים בישראל • הצטרפו עכשיו!', icon: '🇮🇱', country: 'Israel', countryFlag: '🇮🇱', priority: 1 },
+      { type: 'announcement', message: 'תפסיקו לסוויפ • תתחילו להיפגש', icon: '💕', priority: 2 },
+      { type: 'stat', message: 'מישהו מחכה 10 מטר ממך', icon: '📍', priority: 3 },
+      { type: 'milestone', message: 'אנשים אמיתיים • מקומות אמיתיים • בזמן אמת', icon: '✨', priority: 4 },
+      { type: 'announcement', message: 'היא מחליטה • אתם נפגשים', icon: '💜', priority: 5 },
+      { type: 'milestone', message: 'בלי משחקים • רק חיבורים', icon: '🦎', priority: 6 }
     ]
   },
   pt: {
-    header: 'MAGIA DE VERÃO',
+    header: 'EM BREVE',
     items: [
-      { type: 'announcement', message: 'Neste verão, não fique sozinho', icon: '☀️', priority: 1 },
-      { type: 'milestone', message: 'Ano Novo, Novas Conexões', icon: '✨', priority: 2 },
-      { type: 'stat', message: 'Alguém espera a 10m de você', icon: '🎁', priority: 3 },
-      { type: 'pilot_active', message: 'Em breve no Brasil!', icon: '🇧🇷', country: 'Brasil', countryFlag: '🇧🇷', priority: 4 },
-      { type: 'announcement', message: 'Chega de apps • Encontro real', icon: '💕', priority: 5 },
-      { type: 'milestone', message: 'Melhor presente? Conexão real', icon: '🎉', priority: 6 }
+      { type: 'pilot_coming', message: 'Em breve no Brasil!', icon: '🇧🇷', country: 'Brasil', countryFlag: '🇧🇷', priority: 1 },
+      { type: 'announcement', message: 'Pare de deslizar • Comece a encontrar', icon: '💕', priority: 2 },
+      { type: 'stat', message: 'Alguém espera a 10m de você', icon: '📍', priority: 3 },
+      { type: 'milestone', message: 'Pessoas reais • Lugares reais • Tempo real', icon: '✨', priority: 4 },
+      { type: 'announcement', message: 'Ela decide • Vocês se encontram', icon: '💜', priority: 5 },
+      { type: 'milestone', message: 'Sem jogos • Só conexões', icon: '🦎', priority: 6 }
     ]
   }
 }
@@ -87,46 +98,46 @@ const TRANSLATIONS = {
 
 const DEFAULT_TICKER_ITEMS: Omit<TickerItem, 'id'>[] = [
   {
-    type: 'announcement',
-    message: "This holiday, don't go home alone",
-    icon: '🎄',
+    type: 'pilot_active',
+    message: '🔥 Pilot LIVE in Israel • Join Now!',
+    icon: '🇮🇱',
+    country: 'Israel',
+    countryFlag: '🇮🇱',
     isActive: true,
     priority: 1
   },
   {
-    type: 'milestone',
-    message: 'New Year, New Connections',
-    icon: '✨',
+    type: 'announcement',
+    message: 'Stop swiping • Start meeting',
+    icon: '💕',
     isActive: true,
     priority: 2
   },
   {
     type: 'stat',
     message: "Someone's waiting 10m away",
-    icon: '🎁',
+    icon: '📍',
     isActive: true,
     priority: 3
   },
   {
-    type: 'pilot_active',
-    message: 'Holiday Magic • LIVE in Israel',
-    icon: '❄️',
-    country: 'Israel',
-    countryFlag: '🇮🇱',
+    type: 'milestone',
+    message: 'Real people • Real places • Real time',
+    icon: '✨',
     isActive: true,
     priority: 4
   },
   {
     type: 'announcement',
-    message: 'Skip the mistletoe • Meet for real',
-    icon: '💕',
+    message: 'She decides • You meet',
+    icon: '💜',
     isActive: true,
     priority: 5
   },
   {
     type: 'milestone',
-    message: 'Best gift? A real connection',
-    icon: '🎅',
+    message: 'No games • Just connections',
+    icon: '🦎',
     isActive: true,
     priority: 6
   }
@@ -150,13 +161,13 @@ const TYPE_CONFIG = {
     glow: 'shadow-cyan-500/50'
   },
   milestone: { 
-    label: '✨ HOLIDAY', 
+    label: '✨ NEW', 
     color: 'bg-gradient-to-r from-yellow-500 to-amber-500',
     textColor: 'text-yellow-400',
     glow: 'shadow-yellow-500/50'
   },
   announcement: { 
-    label: '🎄 SPECIAL', 
+    label: '💚 SPECIAL', 
     color: 'bg-gradient-to-r from-green-500 to-emerald-500',
     textColor: 'text-green-400',
     glow: 'shadow-green-500/50'

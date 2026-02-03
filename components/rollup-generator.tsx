@@ -779,44 +779,138 @@ ${venueSection}
           }} />
           <div className="relative z-10 flex flex-col p-5" style={{ minHeight: '800px' }}>
             
-            {/* ⭐ MAIN STAR - CLEAN & UNIVERSAL */}
-            <div className="text-center py-3 relative">
-              {/* Glow effect */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none" style={{ 
+            {/* 🎬 HOLLYWOOD SPOTLIGHT - LIKE THE MOCKUP */}
+            <div className="text-center relative">
+              
+              {/* === SPOTLIGHT SYSTEM === */}
+              <div className="relative flex justify-center" style={{ marginBottom: '-10px' }}>
+                {/* Light beam - BEHIND the lamp */}
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-none" style={{
+                  width: '200px',
+                  height: '280px',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(251,191,36,0.15) 20%, rgba(251,191,36,0.08) 50%, rgba(251,191,36,0.02) 80%, transparent 100%)',
+                  clipPath: 'polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%)',
+                  filter: 'blur(12px)',
+                  zIndex: 1
+                }} />
+                
+                {/* Inner bright core of light */}
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-none" style={{
+                  width: '100px',
+                  height: '200px',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 30%, transparent 70%)',
+                  clipPath: 'polygon(42% 0%, 58% 0%, 85% 100%, 15% 100%)',
+                  filter: 'blur(8px)',
+                  zIndex: 2
+                }} />
+                
+                {/* The spotlight lamp housing */}
+                <div className="relative z-10">
+                  {/* Lamp body */}
+                  <div className="relative">
+                    {/* Lamp shade (trapezoid shape) */}
+                    <div style={{
+                      width: '50px',
+                      height: '28px',
+                      background: 'linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
+                      borderRadius: '4px 4px 8px 8px',
+                      border: '2px solid #444',
+                      borderBottom: '3px solid #555',
+                      margin: '0 auto',
+                      position: 'relative',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.5), inset 0 -5px 15px rgba(251,191,36,0.3)'
+                    }}>
+                      {/* Light bulb glow inside */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '2px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '30px',
+                        height: '12px',
+                        background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(251,191,36,0.8) 40%, transparent 70%)',
+                        borderRadius: '0 0 50% 50%',
+                        filter: 'blur(2px)'
+                      }} />
+                    </div>
+                    
+                    {/* Lamp mount/arm */}
+                    <div style={{
+                      width: '8px',
+                      height: '12px',
+                      background: 'linear-gradient(90deg, #333, #555, #333)',
+                      margin: '-2px auto 0',
+                      borderRadius: '0 0 4px 4px'
+                    }} />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Ambient glow behind everything */}
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 w-full pointer-events-none" style={{ 
+                height: '250px',
                 background: isUndergroundVibe()
-                  ? 'radial-gradient(ellipse at center top, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.2) 30%, transparent 70%)'
-                  : 'radial-gradient(ellipse at center top, rgba(239,68,68,0.3) 0%, rgba(236,72,153,0.2) 30%, transparent 70%)', 
-                filter: 'blur(15px)' 
+                  ? 'radial-gradient(ellipse 80% 60% at center top, rgba(139,92,246,0.25) 0%, transparent 70%)'
+                  : 'radial-gradient(ellipse 80% 60% at center top, rgba(251,191,36,0.2) 0%, rgba(239,68,68,0.1) 40%, transparent 70%)', 
+                filter: 'blur(20px)',
+                zIndex: 0
               }} />
               
-              {/* Single icon */}
-              <div className="text-2xl mb-2">{isUndergroundVibe() ? '⚡' : '✨'}</div>
+              {/* Stars decoration */}
+              <div className="text-xl mb-1 relative z-10 pt-8">✨ 🌟 ✨</div>
               
-              {/* CONNECTION label */}
-              <div className="text-[11px] font-bold tracking-[0.4em] mb-2 uppercase" style={{ color: isUndergroundVibe() ? '#a78bfa' : '#fbbf24' }}>
-                ⚡ CONNECTION ⚡
+              {/* World Premiere text */}
+              <div className="text-[10px] font-bold tracking-[0.3em] mb-2 uppercase relative z-10" style={{ 
+                color: isUndergroundVibe() ? '#a78bfa' : '#fbbf24',
+                textShadow: isUndergroundVibe() ? '0 0 10px rgba(167,139,250,0.8)' : '0 0 10px rgba(251,191,36,0.8)'
+              }}>
+                {showHebrew ? '🎬 פרמיירה עולמית 🎬' : '🎬 WORLD PREMIERE 🎬'}
               </div>
               
-              {/* ONE glowing bar - thin but bright */}
-              <div className="relative px-4">
-                <div 
-                  className="mx-auto h-8 rounded-lg"
-                  style={{ 
-                    width: '85%',
-                    background: isUndergroundVibe()
-                      ? 'linear-gradient(90deg, #4f46e5, #8b5cf6, #a78bfa, #8b5cf6, #4f46e5)'
-                      : 'linear-gradient(90deg, #c026d3, #e879f9, #f0abfc, #e879f9, #c026d3)',
-                    boxShadow: isUndergroundVibe()
-                      ? '0 0 30px rgba(139,92,246,0.8), 0 0 60px rgba(139,92,246,0.4)'
-                      : '0 0 30px rgba(217,70,239,0.8), 0 0 60px rgba(217,70,239,0.4)',
-                  }}
-                />
+              {/* REAL-TIME */}
+              <div className="text-3xl font-black tracking-wider relative z-10" style={{ 
+                background: 'linear-gradient(180deg, #fef3c7, #fcd34d, #fbbf24, #f59e0b, #d97706)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 0 15px rgba(251,191,36,0.6))'
+              }}>
+                REAL-TIME
               </div>
               
-              {/* Universal tagline - English works everywhere */}
-              <div className="mt-3 text-sm font-bold text-white/90 tracking-wide">
-                🖤 Same frequency. Same moment. 🖤
+              {/* DATING */}
+              <div className="text-4xl font-black tracking-wide relative z-10" style={{ 
+                background: 'linear-gradient(180deg, #fdf4ff, #f5d0fe, #f0abfc, #e879f9, #d946ef, #c026d3)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 0 20px rgba(217,70,239,0.7))',
+                lineHeight: '1.1'
+              }}>
+                DATING
               </div>
+              
+              {/* EXPERIENCE */}
+              <div className="text-2xl font-black tracking-widest relative z-10" style={{ 
+                background: 'linear-gradient(180deg, #fef3c7, #fbbf24, #f59e0b)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 0 12px rgba(251,191,36,0.5))'
+              }}>
+                EXPERIENCE
+              </div>
+              
+              {/* Revolutionary tagline */}
+              <div className="mt-2 text-xs font-bold text-white/90 relative z-10">
+                {showHebrew ? '🔥 חוויית הדייטינג המהפכנית! 🔥' : '🔥 Revolutionary Dating Experience! 🔥'}
+              </div>
+              
+              {/* Red carpet bar */}
+              <div className="mt-3 mx-auto relative z-10" style={{
+                width: '80%',
+                height: '4px',
+                borderRadius: '4px',
+                background: 'linear-gradient(90deg, transparent, #ef4444, #fbbf24, #ef4444, transparent)',
+                boxShadow: '0 0 15px rgba(239,68,68,0.5)'
+              }} />
             </div>
             
             {/* Love Iguanas - Clean, minimal */}

@@ -40,8 +40,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  minimumScale: 1,  // ✅ ZOOM LOCK: Prevent zoom out
+  maximumScale: 1,  // ✅ ZOOM LOCK: Prevent zoom in
+  userScalable: false,  // ✅ ZOOM LOCK: Disable user scaling
   themeColor: '#4ade80',
   viewportFit: 'cover',  // ✅ FIX: Enable safe area insets
 }
@@ -52,12 +53,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" style={{ backgroundColor: '#0d2920' }}>
       <head>
-        {/* 🛡️ PREVENT GOOGLE DICTIONARY / TEXT SELECTION POPUP */}
+        {/* 🛡️ PREVENT GOOGLE DICTIONARY / TEXT SELECTION POPUP - ONLY IN /app */}
         <Script id="prevent-text-selection" strategy="beforeInteractive">
           {`
             (function() {
+              // Only run on /app route
+              if (!window.location.pathname.startsWith('/app')) {
+                return;
+              }
+              
               // Prevent text selection globally (except in input/textarea)
               document.addEventListener('selectstart', function(e) {
                 var tagName = e.target.tagName.toLowerCase();
@@ -82,10 +88,13 @@ export default function RootLayout({
                 }
               });
               
-              console.log('🛡️ Text selection prevention enabled');
+              console.log('🛡️ Text selection prevention enabled for /app');
             })();
           `}
         </Script>
+        
+        {/* 🔒 ZOOM PREVENTION REMOVED FROM WEBSITE - Only needed in PWA app mode */}
+        {/* The /app route has its own handling */}
         
         {/* Auto Cache Clear on Version Change - FIXED: Don't break OneSignal! */}
         <Script id="cache-clear" strategy="beforeInteractive">
@@ -182,12 +191,27 @@ export default function RootLayout({
                 
                 if (data.matchId) {
                   // ✅ Save matchId to localStorage so app can open chat
-                  localStorage.setItem('i4iguana_open_chat_matchId', data.matchId);
+                  localStorage.setItem('i4iguana_pending_chat_matchId', data.matchId);
                   console.log('🔔 Saved matchId for chat:', data.matchId);
                 }
                 
-                // Navigate to app
-                window.location.href = '/app';
+                // ✅ v2.8.26 FIX: Check if we're EXACTLY on /app (not admin or other pages)
+                const currentPath = window.location.pathname;
+                const isExactlyInApp = currentPath === '/app' || currentPath.startsWith('/app/');
+                
+                console.log('🔔 Current path:', currentPath, 'isExactlyInApp:', isExactlyInApp);
+                
+                if (isExactlyInApp) {
+                  // ✅ App is already open - just dispatch event to trigger navigation
+                  console.log('🔔 App already open - dispatching notification event (NO RELOAD)');
+                  window.dispatchEvent(new CustomEvent('i4iguana-notification-click', { 
+                    detail: { matchId: data.matchId, type: data.type || 'message' }
+                  }));
+                } else {
+                  // ✅ Not in app (could be admin, homepage, etc) - navigate to /app
+                  console.log('🔔 Not in /app - navigating to /app');
+                  window.location.href = '/app';
+                }
               });
               
               console.log('✅ OneSignal initialized (no auto-prompt)');
@@ -231,30 +255,29 @@ export default function RootLayout({
               }
             });
             
-            // ✅ CRITICAL: Prevent browser's native pull-to-refresh
-            // This prevents the page from reloading when user pulls down
-            let touchStartY = 0;
-            document.addEventListener('touchstart', (e) => {
-              touchStartY = e.touches[0].clientY;
-            }, { passive: true });
-            
-            document.addEventListener('touchmove', (e) => {
-              const touchY = e.touches[0].clientY;
-              const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+            // ✅ Pull-to-refresh prevention - ONLY for /app route!
+            if (window.location.pathname.startsWith('/app')) {
+              let touchStartY = 0;
+              document.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+              }, { passive: true });
               
-              // If at top of page and pulling down, prevent default
-              if (scrollTop <= 0 && touchY > touchStartY) {
-                // Check if any scrollable element is at top
-                const target = e.target;
-                if (target && target.closest) {
-                  const scrollableParent = target.closest('[data-scrollable]');
-                  if (scrollableParent && scrollableParent.scrollTop <= 0) {
-                    // Allow internal pull-to-refresh, block browser's
-                    return;
+              document.addEventListener('touchmove', (e) => {
+                const touchY = e.touches[0].clientY;
+                const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                
+                if (scrollTop <= 0 && touchY > touchStartY) {
+                  const target = e.target;
+                  if (target && target.closest) {
+                    const scrollableParent = target.closest('[data-scrollable]');
+                    if (scrollableParent && scrollableParent.scrollTop <= 0) {
+                      return;
+                    }
                   }
                 }
-              }
-            }, { passive: true });
+              }, { passive: true });
+              console.log('🔄 Pull-to-refresh prevention active on /app');
+            }
           `}
         </Script>
         
@@ -268,16 +291,10 @@ export default function RootLayout({
       <body 
         className={inter.className} 
         style={{ 
-          overscrollBehavior: 'none', 
-          overscrollBehaviorY: 'none',
-          WebkitUserSelect: 'none',
-          MozUserSelect: 'none',
-          msUserSelect: 'none',
-          userSelect: 'none',
-          WebkitTouchCallout: 'none',
           WebkitTapHighlightColor: 'transparent',
-          // ✅ NOTE: overflow/position removed - app has its own lock in app/app/page.tsx
-          touchAction: 'manipulation',
+          backgroundColor: '#0d2920',  // ✅ v2.8.24: Prevent white bars on iOS
+          // ✅ FIX: Removed touch-action, overscroll, user-select from body 
+          // These were blocking scroll on website! PWA has its own settings.
         }}
       >
         {/* ✅ CRITICAL: HTML Splash Screen - Shows IMMEDIATELY before React loads */}

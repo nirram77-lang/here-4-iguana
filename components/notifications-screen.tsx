@@ -2,22 +2,28 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ChevronRight, Bell, User, Trash2 } from "lucide-react"
+import { ArrowLeft, ChevronRight, Bell, User, Trash2, MessageCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { auth, db } from "@/lib/firebase"
-import { collection, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore"
+import { collection, query, where, orderBy, onSnapshot, Timestamp, doc } from "firebase/firestore"
 import { 
   Notification, 
   markNotificationAsRead, 
   deleteNotification,
   getUnreadNotificationCount 
 } from "@/lib/firestore-service"
+import { 
+  SuperLike, 
+  subscribeToPendingSuperLikes, 
+  acceptSuperLike 
+} from "@/lib/super-like-service"  // ✅ NEW: Super Like service
 import { useLanguage } from "@/lib/LanguageContext"
 
 interface NotificationsScreenProps {
   onNavigate: (screen: "home" | "notifications" | "profile" | "match" | "chat") => void
   hasActiveMatch?: boolean
   onNotificationClick?: (notification: Notification) => void
+  onSuperLikeAccept?: (matchId: string, chatId: string) => void  // ✅ NEW: Handle Super Like acceptance
 }
 
 // ✅ NEW: Grouped notification type
@@ -38,7 +44,8 @@ interface GroupedNotification {
 export default function NotificationsScreen({ 
   onNavigate, 
   hasActiveMatch = false,
-  onNotificationClick 
+  onNotificationClick,
+  onSuperLikeAccept  // ✅ NEW
 }: NotificationsScreenProps) {
   const { t, isRTL } = useLanguage()
   
@@ -47,6 +54,11 @@ export default function NotificationsScreen({
   const [loading, setLoading] = useState(true)
   const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null)
   const [viewingNotification, setViewingNotification] = useState<Notification | null>(null)  // ✅ NEW: For full view
+  
+  // ✅ NEW: Super Likes state
+  const [pendingSuperLikes, setPendingSuperLikes] = useState<SuperLike[]>([])
+  const [acceptingId, setAcceptingId] = useState<string | null>(null)  // Loading state for accept button
+  const [senderAvailability, setSenderAvailability] = useState<Record<string, boolean>>({})  // Track sender availability
 
   // ✅ NEW: Group notifications by sender
   const groupedNotifications = useMemo(() => {
@@ -151,6 +163,92 @@ export default function NotificationsScreen({
     }
   }, [])
 
+  // ✅ NEW: Real-time Super Likes listener
+  useEffect(() => {
+    const user = auth.currentUser
+    if (!user) return
+
+    console.log('🦎 Setting up Super Likes listener...')
+
+    const unsubscribe = subscribeToPendingSuperLikes(user.uid, (superLikes) => {
+      console.log(`🦎 Received ${superLikes.length} pending Super Likes`)
+      setPendingSuperLikes(superLikes)
+    })
+
+    return () => {
+      console.log('🔇 Unsubscribing from Super Likes listener')
+      unsubscribe()
+    }
+  }, [])
+
+  // ✅ NEW: Track sender availability for Super Likes
+  useEffect(() => {
+    if (pendingSuperLikes.length === 0) {
+      setSenderAvailability({})
+      return
+    }
+
+    // Get unique sender IDs
+    const senderIds = [...new Set(pendingSuperLikes.map(sl => sl.senderId))]
+    
+    // Set up listeners for each sender
+    const unsubscribers: (() => void)[] = []
+    
+    senderIds.forEach(senderId => {
+      const unsubscribe = onSnapshot(
+        doc(db, 'users', senderId),
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const userData = snapshot.data()
+            const isAvailable = userData.isAvailable === true
+            console.log(`🦎 Sender ${senderId.slice(0, 8)}... isAvailable: ${isAvailable}`)
+            
+            setSenderAvailability(prev => ({
+              ...prev,
+              [senderId]: isAvailable
+            }))
+          }
+        },
+        (error) => {
+          console.error('Error listening to sender:', error)
+        }
+      )
+      unsubscribers.push(unsubscribe)
+    })
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub())
+    }
+  }, [pendingSuperLikes])
+
+  // ✅ NEW: Handle accepting a Super Like
+  const handleAcceptSuperLike = async (superLike: SuperLike) => {
+    const user = auth.currentUser
+    if (!user) return
+
+    setAcceptingId(superLike.id)
+    
+    try {
+      console.log('🦎 Accepting Super Like:', superLike.id)
+      const result = await acceptSuperLike(superLike.id, user.uid)
+      
+      if (result.success && result.matchId) {
+        console.log('🎉 Super Like accepted! Match created:', result.matchId)
+        
+        // Notify parent to open the match/chat
+        if (onSuperLikeAccept) {
+          onSuperLikeAccept(result.matchId, superLike.chatId || result.matchId)
+        }
+      } else {
+        console.error('❌ Failed to accept Super Like:', result.error)
+      }
+    } catch (error) {
+      console.error('❌ Error accepting Super Like:', error)
+    } finally {
+      setAcceptingId(null)
+    }
+  }
+
   // Handle notification click
   // ✅ FIXED: First click = select, Second click = view/navigate
   const handleNotificationClick = async (notification: Notification) => {
@@ -221,6 +319,27 @@ export default function NotificationsScreen({
     } catch (error) {
       console.error('Error formatting time:', error)
       return t('notifications.timeAgo.justNow')
+    }
+  }
+
+  // ✅ NEW: Format Super Like time
+  const formatSuperLikeTime = (timestamp: Timestamp): string => {
+    try {
+      const now = new Date()
+      const superLikeTime = timestamp.toDate()
+      const diffMs = now.getTime() - superLikeTime.getTime()
+      const diffMins = Math.floor(diffMs / 60000)
+      
+      if (diffMins < 1) return t('notifications.timeAgo.justNow')
+      if (diffMins < 60) return `${diffMins} min`
+      
+      const diffHours = Math.floor(diffMins / 60)
+      if (diffHours < 24) return `${diffHours}h`
+    
+      const diffDays = Math.floor(diffHours / 24)
+      return `${diffDays}d`
+    } catch (error) {
+      return 'Now'
     }
   }
 
@@ -303,10 +422,22 @@ export default function NotificationsScreen({
           <h1 className="font-sans text-3xl font-black text-white tracking-tight">
             {t('notifications.title')}
           </h1>
-          {unreadCount > 0 && (
-            <p className="text-[#4ade80] text-sm font-semibold mt-0.5">
-              {unreadCount} {t('notifications.new')}
-            </p>
+          {(unreadCount > 0 || pendingSuperLikes.length > 0) && (
+            <div className="flex items-center gap-2 mt-0.5">
+              {pendingSuperLikes.length > 0 && (
+                <span className="text-purple-400 text-sm font-semibold flex items-center gap-1">
+                  🦎 {pendingSuperLikes.length} Super
+                </span>
+              )}
+              {unreadCount > 0 && pendingSuperLikes.length > 0 && (
+                <span className="text-white/30">•</span>
+              )}
+              {unreadCount > 0 && (
+                <span className="text-[#4ade80] text-sm font-semibold">
+                  {unreadCount} {t('notifications.new')}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -314,6 +445,132 @@ export default function NotificationsScreen({
       {/* 📋 NOTIFICATIONS LIST */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-2xl mx-auto space-y-3">
+          
+          {/* 🦎 SUPER LIKES SECTION - Always on top! */}
+          {pendingSuperLikes.length > 0 && (
+            <div className="mb-6">
+              {/* Section Header */}
+              <div className="flex items-center gap-2 mb-3" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                <motion.span 
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="text-2xl"
+                >
+                  🦎
+                </motion.span>
+                <h3 className="text-lg font-bold text-purple-400">
+                  {t('superLike.incomingTitle')} ({pendingSuperLikes.length})
+                </h3>
+              </div>
+              
+              {/* Super Like Cards */}
+              <div className="space-y-3">
+                {pendingSuperLikes.map((superLike, index) => (
+                  <motion.div
+                    key={superLike.id}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="relative bg-gradient-to-br from-purple-500/20 via-pink-500/10 to-purple-500/20 backdrop-blur-md rounded-2xl border-2 border-purple-400/50 shadow-lg shadow-purple-500/20 overflow-hidden"
+                  >
+                    {/* Glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-pink-500/10 animate-pulse pointer-events-none" />
+                    
+                    <div className="relative p-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                      <div className="flex items-center gap-4">
+                        {/* Photo */}
+                        <div className="relative">
+                          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-purple-400 shadow-lg shadow-purple-500/30">
+                            <img 
+                              src={superLike.senderPhoto || '/placeholder.svg'} 
+                              alt={superLike.senderName}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          {/* Online indicator */}
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-purple-500 rounded-full border-2 border-[#1a4d3e] flex items-center justify-center">
+                            <span className="text-[10px]">🦎</span>
+                          </div>
+                        </div>
+                        
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white font-bold text-lg truncate">
+                            {superLike.senderName}, {superLike.senderAge}
+                          </h4>
+                          
+                          {superLike.message ? (
+                            <p className="text-white/80 text-sm truncate">
+                              "{superLike.message}"
+                            </p>
+                          ) : (
+                            <p className="text-purple-300 text-sm">
+                              🦎 {t('superLike.noMessage')}
+                            </p>
+                          )}
+                          
+                          <div className="flex items-center gap-2 mt-1 text-white/50 text-xs">
+                            <span>📍 {superLike.zoneName}</span>
+                            <span>•</span>
+                            <span>
+                              {superLike.createdAt ? 
+                                formatSuperLikeTime(superLike.createdAt) : 
+                                'Just now'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Action Button or Locked Message */}
+                      {senderAvailability[superLike.senderId] === false ? (
+                        // 🔒 Sender left the area - show locked message
+                        <div className="mt-4 py-3 rounded-xl bg-gray-500/20 border border-gray-500/30 text-center">
+                          <p className="text-gray-400 font-bold flex items-center justify-center gap-2">
+                            🔒 {t('superLike.chatLocked')}
+                          </p>
+                          <p className="text-gray-500 text-sm mt-1">
+                            {superLike.senderName} {t('superLike.userLeftArea')}
+                          </p>
+                          <p className="text-gray-500/70 text-xs mt-1">
+                            {t('superLike.nextTimeFaster')}
+                          </p>
+                        </div>
+                      ) : (
+                        // ✅ Sender still available - show Open Chat button
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleAcceptSuperLike(superLike)}
+                          disabled={acceptingId === superLike.id}
+                          className="w-full mt-4 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 hover:from-purple-600 hover:via-pink-600 hover:to-purple-600 shadow-lg shadow-purple-500/30 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          {acceptingId === superLike.id ? (
+                            <motion.span
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            >
+                              🦎
+                            </motion.span>
+                          ) : (
+                            <>
+                              <MessageCircle className="h-5 w-5" />
+                              {t('superLike.openChat')}
+                            </>
+                          )}
+                        </motion.button>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Divider - only show if there are also regular notifications */}
+              {groupedNotifications.length > 0 && (
+                <div className="mt-6 mb-4 border-t border-white/10" />
+              )}
+            </div>
+          )}
+          
           {loading ? (
             // Loading state
             <div className="text-center py-12">
@@ -326,8 +583,8 @@ export default function NotificationsScreen({
               </motion.div>
               <p className="text-white/60 mt-4">Loading notifications...</p>
             </div>
-          ) : groupedNotifications.length === 0 ? (
-            // 🎬 HOLLYWOOD EMPTY STATE
+          ) : groupedNotifications.length === 0 && pendingSuperLikes.length === 0 ? (
+            // 🎬 HOLLYWOOD EMPTY STATE - Only show if no Super Likes AND no notifications
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

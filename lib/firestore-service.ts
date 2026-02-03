@@ -145,6 +145,7 @@ export interface UserProfile {
     lookingFor: 'male' | 'female' | 'both'
     expandSearch?: boolean  // ✅ NEW: Show profiles outside preferred range when running out
     smokingFilter?: 'any' | 'no' | 'no_or_social'  // ✅ v2.8.27: Filter by smoking preference
+    relationshipFilter?: 'all' | 'relationship' | 'casual' | 'friends'  // ✅ v2.8.28: Filter by relationship type
   }
   swipedRight: string[]
   swipedLeft: string[]
@@ -268,6 +269,7 @@ export const updateUserPreferences = async (
     lookingFor?: 'male' | 'female' | 'both'
     expandSearch?: boolean
     smokingFilter?: 'any' | 'no' | 'no_or_social'  // ✅ v2.8.27: Smoking filter
+    relationshipFilter?: 'all' | 'relationship' | 'casual' | 'friends'  // ✅ v2.8.28: Relationship filter
   }
 ): Promise<void> => {
   try {
@@ -324,11 +326,12 @@ export const findNearbyUsers = async (
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]
     const smokingFilter = currentUserProfile.preferences?.smokingFilter || 'any'  // ✅ v2.8.27: Smoking filter
+    const relationshipFilter = currentUserProfile.preferences?.relationshipFilter || 'all'  // ✅ v2.8.28: Relationship filter
     
     // ✅ 12-hour match cooldown - load users on cooldown
     const matchesOnCooldown = await getMatchesOnCooldown(currentUserId)
     
-    console.log(`👤 Current user: age=${currentUserAge}, gender=${currentUserGender}, looking for ages ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}, smoking filter: ${smokingFilter}`)
+    console.log(`👤 Current user: age=${currentUserAge}, gender=${currentUserGender}, looking for ages ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}, smoking filter: ${smokingFilter}, relationship filter: ${relationshipFilter}`)
     console.log(`⏰ Users on 12h match cooldown: ${matchesOnCooldown.size}`)
     
     const geohashes = getGeohashNeighbors(userLocation.geohash)
@@ -415,6 +418,15 @@ export const findNearbyUsers = async (
           }
           if (smokingFilter === 'no_or_social' && otherUserSmoking === 'yes') {
             console.log(`🚬 User ${user.name} filtered - regular smoker, looking for non-smokers or social only`)
+            return
+          }
+        }
+
+        // ✅ v2.8.28: Relationship type filter
+        if (relationshipFilter !== 'all') {
+          const otherUserLookingFor = (user as any).lookingFor || 'relationship'  // Default to 'relationship' if not set
+          if (otherUserLookingFor !== relationshipFilter) {
+            console.log(`💕 User ${user.name} filtered - looking for ${otherUserLookingFor}, but you want ${relationshipFilter}`)
             return
           }
         }
@@ -1305,6 +1317,13 @@ async function sendWeAreMeetingNotification(
     // ✅ KEEP: Send PUSH notification via OneSignal API (for when user is outside app)
     try {
       const matchId = [senderId, recipientId].sort().join('_')
+      console.log('═══════════════════════════════════════════════════')
+      console.log('📤 SENDING PUSH NOTIFICATION')
+      console.log(`   Type: meeting`)
+      console.log(`   Target: ${recipientId}`)
+      console.log(`   From: ${senderName}`)
+      console.log('═══════════════════════════════════════════════════')
+      
       const response = await fetch('/api/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1322,11 +1341,13 @@ async function sendWeAreMeetingNotification(
         })
       })
       
+      const result = await response.json()
+      console.log('📨 Push API Response:', response.status, result)
+      
       if (response.ok) {
         console.log('✅ PUSH notification sent to:', recipientId)
       } else {
-        const error = await response.json()
-        console.error('❌ Push API error:', error)
+        console.error('❌ Push API error:', result)
       }
     } catch (pushError) {
       console.error('⚠️ Push notification failed:', pushError)
@@ -1570,8 +1591,14 @@ export const createMatchNotifications = async (
     
     // ✅ KEEP: PUSH notifications via OneSignal (for when user is outside app)
     try {
+      console.log('═══════════════════════════════════════════════════')
+      console.log('📤 SENDING MATCH PUSH NOTIFICATIONS')
+      console.log(`   User1: ${user1Id} (${user1Name})`)
+      console.log(`   User2: ${user2Id} (${user2Name})`)
+      console.log('═══════════════════════════════════════════════════')
+      
       // Push to user 1
-      await fetch('/api/send-notification', {
+      const res1 = await fetch('/api/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1582,9 +1609,10 @@ export const createMatchNotifications = async (
           data: { matchId, fromUserId: user2Id, fromUserName: user2Name, fromUserPhoto: user2Photo }
         })
       })
+      console.log(`📨 Push to ${user1Id}: ${res1.status}`)
       
       // Push to user 2
-      await fetch('/api/send-notification', {
+      const res2 = await fetch('/api/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1595,6 +1623,7 @@ export const createMatchNotifications = async (
           data: { matchId, fromUserId: user1Id, fromUserName: user1Name, fromUserPhoto: user1Photo }
         })
       })
+      console.log(`📨 Push to ${user2Id}: ${res2.status}`)
       
       console.log('✅ PUSH notifications sent to both users')
     } catch (pushError) {
@@ -1652,6 +1681,7 @@ export const getUsersByVenue = async (
     const currentUserAge = currentUserProfile.age
     const currentUserAgeRange = currentUserProfile.preferences?.ageRange || [18, 80]
     const smokingFilter = currentUserProfile.preferences?.smokingFilter || 'any'  // ✅ v2.8.27: Smoking filter
+    const relationshipFilter = currentUserProfile.preferences?.relationshipFilter || 'all'  // ✅ v2.8.28: Relationship filter
     
     // ✅ VENUE-BASED COOLDOWN: Only applies at SAME venue!
     // Different venue = "fate brought us together!" = no cooldown 🔥
@@ -1665,6 +1695,7 @@ export const getUsersByVenue = async (
     console.log(`   Looking for: ${lookingFor}`)
     console.log(`   Age range: ${currentUserAgeRange[0]}-${currentUserAgeRange[1]}`)
     console.log(`   Smoking filter: ${smokingFilter}`)
+    console.log(`   Relationship filter: ${relationshipFilter}`)
     console.log(`   Onboarding complete: ${currentUserProfile.onboardingComplete}`)
     console.log(`⏰ Users on venue-specific cooldown: ${matchesOnCooldown.size}`)
     console.log(`🔥 Different venue = NO cooldown (fate feature!)`)
@@ -1767,6 +1798,15 @@ export const getUsersByVenue = async (
         }
         if (smokingFilter === 'no_or_social' && otherUserSmoking === 'yes') {
           console.log(`   🚬 SKIP: Regular smoker, looking for non-smokers or social only`)
+          return
+        }
+      }
+      
+      // ✅ v2.8.28: Relationship type filter
+      if (relationshipFilter !== 'all') {
+        const otherUserLookingFor = userData.lookingFor || 'relationship'  // Default to 'relationship' if not set
+        if (otherUserLookingFor !== relationshipFilter) {
+          console.log(`   💕 SKIP: Looking for ${otherUserLookingFor}, but you want ${relationshipFilter}`)
           return
         }
       }

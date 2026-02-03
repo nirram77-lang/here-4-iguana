@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { trackPageView, trackSectionView } from '@/lib/analytics-service'
 import PilotButton from '@/components/PilotButton'
-import GlobalNewsTicker from '@/components/global-news-ticker'
+import VenueTicker from '@/components/VenueTicker'
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
@@ -94,11 +94,6 @@ export default function LandingPage() {
   return (
     <div 
       className="min-h-screen bg-[#0a1f1a] text-white overflow-x-hidden landing-page"
-      style={{
-        touchAction: 'manipulation',
-        overscrollBehavior: 'none',
-        WebkitOverflowScrolling: 'touch'
-      }}
     >
       
       {/* Floating Hearts - Fixed on screen */}
@@ -109,14 +104,16 @@ export default function LandingPage() {
         <div className="absolute bottom-0 right-[35%] text-pink-400/40 text-2xl animate-floatHeart" style={{animationDelay: '4.5s'}}>💕</div>
       </div>
 
-      {/* 🌍 Global News Ticker - Bottom Left */}
-      <GlobalNewsTicker />
+      {/* 🔥 HOT ZONES + MAP TICKER - Like Portuguese page */}
+      <div className="hidden lg:block fixed left-4 top-24 z-40">
+        <VenueTicker lang="en" />
+      </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* NAVIGATION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrollY > 50 || menuOpen ? 'bg-[#0a1f1a]/95 backdrop-blur-md shadow-lg' : 'bg-transparent'
+        scrollY > 50 || menuOpen ? 'bg-[#0a1f1a] shadow-lg' : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -288,13 +285,13 @@ export default function LandingPage() {
           
           {/* Animated Circles */}
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" style={{animationDelay: '1s'}}></div>
           
-          {/* Radar Effect */}
+          {/* Radar Effect - Static rings for stability */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px]">
-            <div className="absolute inset-0 border border-green-500/20 rounded-full animate-ping" style={{animationDuration: '3s'}}></div>
-            <div className="absolute inset-8 border border-green-500/30 rounded-full animate-ping" style={{animationDuration: '3s', animationDelay: '0.5s'}}></div>
-            <div className="absolute inset-16 border border-green-500/40 rounded-full animate-ping" style={{animationDuration: '3s', animationDelay: '1s'}}></div>
+            <div className="absolute inset-0 border border-green-500/20 rounded-full opacity-50"></div>
+            <div className="absolute inset-8 border border-green-500/30 rounded-full opacity-50"></div>
+            <div className="absolute inset-16 border border-green-500/40 rounded-full opacity-50"></div>
           </div>
 
           {/* Iguana Mascot - Background */}
@@ -340,7 +337,6 @@ export default function LandingPage() {
                 
                 {/* Live Dot */}
                 <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
                 </span>
                 
@@ -355,78 +351,60 @@ export default function LandingPage() {
             </button>
           </div>
 
-          {/* Main Heading */}
-          <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight animate-fadeInUp">
-            <span className="text-white">
-              No endless swipes.
+          {/* Main Heading - Hollywood Style */}
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black mb-8 leading-tight animate-fadeInUp">
+            <span className="text-white block mb-2">
+              Screens don't create chemistry.
             </span>
-            <br />
-            <span className="text-white">
-              No games.
+            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(74,222,128,0.6)]">
+              Real meetings do
             </span>
-            <br />
-            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(74,222,128,0.5)]">
-              Real meeting.
-            </span>
-            {' '}
-            <span className="bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
-              Now.
-            </span>
+            <span className="inline-block w-3 h-3 md:w-4 md:h-4 bg-green-400 rounded-full animate-pulse ml-1 shadow-[0_0_20px_rgba(74,222,128,0.8)]"></span>
           </h1>
+          
+          {/* Layer 2 - Sharp clarification with Hollywood colors */}
+          <p className="text-xl md:text-2xl mb-8 animate-fadeInUp" style={{animationDelay: '0.5s'}}>
+            <span className="text-white/70">No endless swipes. No games.</span>
+            <br />
+            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(74,222,128,0.5)]">Real meeting.</span>
+            {' '}
+            <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">Now.</span>
+          </p>
 
-          {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-gray-400 mb-4 max-w-2xl mx-auto animate-fadeInUp" style={{animationDelay: '0.2s'}}>
-            <span className="text-pink-400">Real people.</span> <span className="text-white">Real places.</span> <span className="text-green-400 font-semibold">10-500 meters from you.</span>
+          {/* Layer 3 - Details with colors */}
+          <p className="text-lg md:text-xl mb-4 animate-fadeInUp" style={{animationDelay: '0.8s'}}>
+            <span className="text-pink-400">Real people.</span>
+            {' '}
+            <span className="text-white">Real places.</span>
+            {' '}
+            <span className="text-green-400 font-semibold">10-500 meters from you.</span>
           </p>
           
-          {/* She Decides - Subtitle */}
-          <p className="text-lg md:text-xl text-pink-400 font-semibold mb-10 animate-fadeInUp flex items-center justify-center gap-2" style={{animationDelay: '0.3s'}}>
+          {/* She Decides */}
+          <p className="text-lg md:text-xl text-pink-400 font-semibold mb-10 animate-fadeInUp flex items-center justify-center gap-2" style={{animationDelay: '1s'}}>
             <span className="text-pink-500">💜</span>
             <span>She decides. You meet.</span>
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fadeInUp" style={{animationDelay: '0.4s'}}>
+          {/* CTA Button */}
+          <div className="flex flex-col items-center gap-3 animate-fadeInUp" style={{animationDelay: '1.2s'}}>
             <Link 
               href="/download"
-              className="group px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-2"
+              className="group px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full font-bold text-xl shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all flex items-center gap-3"
             >
               <span>Open App</span>
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
-            <a 
-              href="#how-it-works"
-              className="px-8 py-4 border-2 border-white/20 rounded-full font-bold text-lg hover:bg-white/10 transition-all"
-            >
-              Learn More
-            </a>
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-center justify-center gap-8 md:gap-16 mt-16 animate-fadeInUp" style={{animationDelay: '0.6s'}}>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-green-400">10m</div>
-              <div className="text-gray-500 text-sm">Min Distance</div>
-            </div>
-            <div className="w-px h-12 bg-white/20"></div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-green-400">500m</div>
-              <div className="text-gray-500 text-sm">Max Range</div>
-            </div>
-            <div className="w-px h-12 bg-white/20"></div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-green-400">Real</div>
-              <div className="text-gray-500 text-sm">Time</div>
-            </div>
+            <span className="text-white/40 text-sm">No commitment. No hassle.</span>
           </div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
           <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
-            <div className="w-1 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <div className="w-1 h-2 bg-green-400 rounded-full"></div>
           </div>
         </div>
       </section>
@@ -640,7 +618,7 @@ export default function LandingPage() {
                   </div>
                   
                   {/* Floating Elements */}
-                  <div className="absolute -right-4 top-20 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-bounce">
+                  <div className="absolute -right-4 top-20 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
                     💕 Match!
                   </div>
                   <div className="absolute -left-4 bottom-32 bg-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg" style={{animationDelay: '0.5s'}}>
@@ -1009,8 +987,30 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* No Art Gallery Logo - Hollywood Style */}
+          <div className="py-6 md:py-10 flex justify-center">
+            <a 
+              href="https://noartgallery.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group relative"
+            >
+              {/* Background Glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 scale-150" />
+              
+              <img 
+                src="/no-art-gallery-logo.png" 
+                alt="No Art Gallery" 
+                className="h-6 md:h-10 w-auto relative z-10 transition-all duration-500 group-hover:scale-110"
+                style={{
+                  filter: 'drop-shadow(0 0 10px rgba(255, 140, 0, 0.5)) drop-shadow(0 0 20px rgba(255, 100, 0, 0.3))'
+                }}
+              />
+            </a>
+          </div>
+
           {/* Bottom */}
-          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-center md:text-left">
               <p className="text-gray-400 text-sm font-medium">
                 © {new Date().getFullYear()} I4IGUANA. All rights reserved.

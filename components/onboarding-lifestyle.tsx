@@ -41,6 +41,12 @@ const ISRAELI_INSTITUTIONS = [
   "Lev Academic Center - המרכז האקדמי לב",
   "Peres Academic Center - המרכז האקדמי פרס",
   "Ashkelon Academic College - המכללה האקדמית אשקלון",
+  "Beit Rivka Seminary - סמינר בית רבקה",
+  "Bnot Israel Seminary - סמינר בנות ישראל",
+  "Midreshet HaRova - מדרשת הרובע",
+  "Midreshet Lindenbaum - מדרשת לינדנבאום",
+  "Midreshet Orot - מדרשת אורות",
+  "Beit Ulpana Seminary - סמינר בית אולפנא",
   "Other - אחר",
   "No degree - ללא תואר",
   "Prefer not to say - מעדיף לא לציין"
@@ -133,7 +139,7 @@ export default function OnboardingLifestyle({
   initialOccupation = '',
   initialLanguages = ['he']
 }: OnboardingLifestyleProps) {
-  const { t, isRTL } = useLanguage()
+  const { t, isRTL, language } = useLanguage()
   
   // ✅ FIX: Helper to parse height string to number
   const parseHeightToNumber = (h: string): number => {
@@ -256,15 +262,32 @@ export default function OnboardingLifestyle({
 
   return (
     <div 
-      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920] overflow-y-auto"
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] to-[#0d2920]"
       style={{ 
-        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
-        paddingBottom: '100px'
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorX: 'none'
       }}
     >
-      {/* Header */}
-      <div className="flex items-center gap-4 p-4 flex-shrink-0">
-        <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+      {/* Header - Fixed with safe area */}
+      <div 
+        className="flex items-center gap-4 p-4 flex-shrink-0 sticky top-0 z-20 bg-gradient-to-b from-[#1a4d3e] to-[#1a4d3e]/95"
+        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
+      >
+        <button 
+          onClick={onBack} 
+          onTouchEnd={(e) => { e.preventDefault(); onBack(); }}
+          className="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-95"
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
           <ChevronLeft className="w-6 h-6 text-white" />
         </button>
         <div className="flex-1">
@@ -292,7 +315,7 @@ export default function OnboardingLifestyle({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Languages className="w-5 h-5 text-[#4ade80]" />
-                <label className="text-white font-semibold text-sm">Languages I Speak</label>
+                <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'שפות שאני מדבר/ת' : language === 'pt' ? 'Idiomas que Falo' : 'Languages I Speak'}</label>
                 <span className="text-white/40 text-xs">(select all that apply)</span>
               </div>
               
@@ -374,7 +397,7 @@ export default function OnboardingLifestyle({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Wine className="w-5 h-5 text-[#4ade80]" />
-                <label className="text-white font-semibold text-sm">Drinking</label>
+                <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'שתייה' : language === 'pt' ? 'Bebida' : 'Drinking'}</label>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -394,7 +417,7 @@ export default function OnboardingLifestyle({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Cigarette className="w-5 h-5 text-[#4ade80]" />
-                <label className="text-white font-semibold text-sm">Smoking</label>
+                <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'עישון' : language === 'pt' ? 'Fumo' : 'Smoking'}</label>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -415,7 +438,7 @@ export default function OnboardingLifestyle({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Ruler className="w-5 h-5 text-[#4ade80]" />
-                  <label className="text-white font-semibold text-sm">Height</label>
+                  <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'גובה' : language === 'pt' ? 'Altura' : 'Height'}</label>
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => handleUnitToggle('cm')} className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all ${heightUnit === 'cm' ? 'bg-[#4ade80] text-[#0d2920]' : 'bg-white/10 text-white/60'}`}>cm</button>
@@ -462,7 +485,7 @@ export default function OnboardingLifestyle({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <GraduationCap className="w-5 h-5 text-[#4ade80]" />
-                <label className="text-white font-semibold text-sm">Education</label>
+                <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'השכלה' : language === 'pt' ? 'Educação' : 'Education'}</label>
               </div>
               <div className="relative">
                 <div className="relative">
@@ -537,7 +560,7 @@ export default function OnboardingLifestyle({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Briefcase className="w-5 h-5 text-[#4ade80]" />
-                <label className="text-white font-semibold text-sm">Occupation</label>
+                <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'עיסוק' : language === 'pt' ? 'Profissão' : 'Occupation'}</label>
               </div>
               
               <input
@@ -565,7 +588,7 @@ export default function OnboardingLifestyle({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <MapPin className="w-5 h-5 text-[#4ade80]" />
-                <label className="text-white font-semibold text-sm">City</label>
+                <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'עיר' : language === 'pt' ? 'Cidade' : 'City'}</label>
               </div>
               <div className="relative">
                 <div className="relative">
@@ -640,7 +663,7 @@ export default function OnboardingLifestyle({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Heart className="w-5 h-5 text-[#4ade80]" />
-                <label className="text-white font-semibold text-sm">Looking For</label>
+                <label className="text-white font-semibold text-sm" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>{language === 'he' ? 'מחפש/ת' : language === 'pt' ? 'Procurando' : 'Looking For'}</label>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -656,15 +679,23 @@ export default function OnboardingLifestyle({
               </div>
             </div>
 
-            {/* Extra padding for button */}
-            <div className="h-4" />
+            {/* Extra padding for fixed button */}
+            <div className="h-24" />
           </div>
         </motion.div>
       </div>
 
-      {/* Continue Button - Fixed at bottom */}
-      <div className="p-4 bg-[#0d2920]/50 border-t border-[#4ade80]/20 flex-shrink-0">
-        <Button onClick={handleNext} className="w-full h-12 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] text-base font-bold rounded-2xl shadow-lg shadow-[#4ade80]/20">
+      {/* Continue Button - Fixed at bottom with safe area */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-[#0d2920] via-[#0d2920]/95 to-transparent border-t border-[#4ade80]/20"
+        style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+      >
+        <Button 
+          onClick={handleNext} 
+          onTouchEnd={(e) => { e.preventDefault(); handleNext(); }}
+          className="w-full h-12 bg-gradient-to-r from-[#4ade80] to-[#22c55e] hover:from-[#3bc970] hover:to-[#16a34a] text-[#0d2920] text-base font-bold rounded-2xl shadow-lg shadow-[#4ade80]/20 active:scale-95 transition-transform"
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
           {t('common.continue')}
         </Button>
       </div>

@@ -68,10 +68,12 @@ export default function SplashScreen({
 
   return (
     <div 
-      className="flex flex-col items-center justify-center relative overflow-hidden"
+      className="flex flex-col items-center justify-center relative overflow-hidden select-none"
       style={{ 
         minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
-        background: 'linear-gradient(160deg, #1a4d3e 0%, #0d2920 40%, #0a1f18 70%, #051410 100%)'
+        background: 'linear-gradient(160deg, #1a4d3e 0%, #0d2920 40%, #0a1f18 70%, #051410 100%)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none'
       }}
     >
       

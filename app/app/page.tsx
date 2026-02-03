@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Crown, Sparkles, X, Clock, Rocket, Star, Zap, Check, Heart, Gift, Home } from "lucide-react"
 import { onSnapshot, doc, collection, query, where, getDoc, getDocs, Timestamp } from "firebase/firestore"  // ✅ NEW
 import { db } from "@/lib/firebase"  // ✅ NEW
-import { getOrCreateDeviceId } from "@/lib/device-id"  // ✅ v2.8.4: Device ID for security
+import { getOrCreateDeviceId, initializeDeviceId, backupCriticalData } from "@/lib/device-id"  // ✅ v2.8.7: Device ID with IndexedDB backup!
 import SplashScreen from "@/components/splash-screen"
 import OnboardingWelcomeScreen from "@/components/onboarding-welcome-screen"
 import LoginScreen from "@/components/login-screen"
@@ -68,6 +68,7 @@ import { CheckInData, performCheckOut, getUserCheckInStatus, verifyUserStillAtVe
 import { getUserPassData, usePass, recordMatch } from "@/lib/pass-system"
 import { clearAllChatsForUser } from "@/lib/chat-system"  // ✅ NEW: Clear chat history on profile recreation
 import CouponModal from "@/components/coupon-modal"
+import PremiumUpgradeModal from "@/components/premium-upgrade-modal"  // ✅ v2.8.31: BIT payment option
 import PremiumPaywallModal from "@/components/premium-paywall-modal"  // ✅ NEW: Premium paywall for second match
 import { PASS_CONFIG } from "@/lib/constants"  // ✅ NEW: For FREE_MATCHES_LIMIT
 import { 
@@ -139,7 +140,7 @@ const EnjoyModeFallback = ({ onTimeout }: { onTimeout: () => void }) => {
 
 export default function Page() {
   const { user, loading: authLoading } = useAuth()
-  const { hasSelectedLanguage, t, isRTL } = useLanguage()  // ✅ v2.8.7: Language support
+  const { hasSelectedLanguage, t, isRTL, language } = useLanguage()  // ✅ v2.8.31: Added language
   const [currentScreen, setCurrentScreen] = useState<Screen>("splash")
   const [matchedUser, setMatchedUser] = useState<any>(null)
   const [selectedMatch, setSelectedMatch] = useState<any>(null)
@@ -149,9 +150,24 @@ export default function Page() {
   const [paymentLoading, setPaymentLoading] = useState<'weekly' | 'monthly' | 'skip-timer' | null>(null)
   const [showOutOfPasses, setShowOutOfPasses] = useState(false)
   const [showCouponModal, setShowCouponModal] = useState<'premium' | 'pass' | null>(null)  // ✅ NEW: Coupon modal
+  const [showPremiumUpgrade, setShowPremiumUpgrade] = useState(false)  // ✅ v2.8.31: BIT payment modal
   
   // ✅ v2.8.25: Pending notification to open chat directly
   const [pendingChatMatchId, setPendingChatMatchId] = useState<string | null>(null)
+  
+  // ✅ v2.8.7 CRITICAL: Initialize device ID early - recover from IndexedDB if localStorage was cleared!
+  // This fixes the Samsung "close all apps" bug that clears localStorage
+  useEffect(() => {
+    const recoverDeviceData = async () => {
+      try {
+        await initializeDeviceId()
+        console.log('🆔 Device ID initialization complete')
+      } catch (error) {
+        console.warn('⚠️ Device ID initialization error:', error)
+      }
+    }
+    recoverDeviceData()
+  }, [])
   
   // ✅ v2.8.25 CRITICAL: Check URL params for notification click on app load
   useEffect(() => {
@@ -168,6 +184,10 @@ export default function Page() {
       console.log('   type:', notificationType)
       console.log('═══════════════════════════════════════════════════')
       
+      // ✅ v2.8.26: Skip splash when coming from notification!
+      setSplashComplete(true)
+      console.log('⚡ Skipping splash - coming from notification click')
+      
       // ✅ Save to localStorage for persistence during auth/splash
       localStorage.setItem('i4iguana_pending_chat_matchId', openChatMatchId)
       setPendingChatMatchId(openChatMatchId)
@@ -181,6 +201,8 @@ export default function Page() {
     if (storedMatchId && !openChatMatchId) {
       console.log('🔔 Found pending chat in localStorage:', storedMatchId)
       setPendingChatMatchId(storedMatchId)
+      // ✅ v2.8.26: Also skip splash for pending notification
+      setSplashComplete(true)
     }
     
     // ✅ Listen for messages from service worker
@@ -197,8 +219,25 @@ export default function Page() {
     
     navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage)
     
+    // ✅ v2.8.26: Listen for notification clicks when app is already open (NO RELOAD!)
+    const handleNotificationClickEvent = (event: CustomEvent) => {
+      console.log('═══════════════════════════════════════════════════')
+      console.log('🔔 NOTIFICATION CLICK EVENT (app already open)!')
+      console.log('   matchId:', event.detail?.matchId)
+      console.log('   type:', event.detail?.type)
+      console.log('═══════════════════════════════════════════════════')
+      
+      if (event.detail?.matchId) {
+        localStorage.setItem('i4iguana_pending_chat_matchId', event.detail.matchId)
+        setPendingChatMatchId(event.detail.matchId)
+      }
+    }
+    
+    window.addEventListener('i4iguana-notification-click', handleNotificationClickEvent as EventListener)
+    
     return () => {
       navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage)
+      window.removeEventListener('i4iguana-notification-click', handleNotificationClickEvent as EventListener)
     }
   }, [])
   
@@ -305,13 +344,34 @@ export default function Page() {
     partnerPhoto?: string
   } | null>(null)
   
-  // ✅ v2.8.21 FIX: Redirect from meeting-feedback if no pending data (silent, no UI flash)
+  // ✅ v2.8.27 HERMETIC FIX: Track if we're transitioning TO feedback screen
+  // This prevents the race condition where currentScreen changes before pendingFeedback
+  const [isTransitioningToFeedback, setIsTransitioningToFeedback] = useState(false)
+  
+  // ✅ v2.8.27 FIX: Track pendingFeedback with ref for accurate check
+  const pendingFeedbackRef = useRef(pendingFeedback)
+  useEffect(() => {
+    pendingFeedbackRef.current = pendingFeedback
+  }, [pendingFeedback])
+  
+  // ✅ v2.8.31 SIMPLIFIED: Load from localStorage on mount ONLY
+  // NO REDIRECT! The render handles showing loading state
   useEffect(() => {
     if (currentScreen === "meeting-feedback" && !pendingFeedback) {
-      console.log('⚠️ [v2.8.21] Meeting feedback without pending data - silent redirect')
-      setCurrentScreen("world-selection")
+      const saved = localStorage.getItem('i4iguana_pending_feedback_data')
+      if (saved) {
+        try {
+          const data = JSON.parse(saved)
+          console.log('📋 [v2.8.31] useEffect: Restored pendingFeedback from localStorage:', data.partnerName)
+          setPendingFeedback(data)
+        } catch (e) {
+          console.error('❌ useEffect: Failed to parse saved feedback:', e)
+        }
+      } else {
+        console.log('⚠️ [v2.8.31] useEffect: No localStorage data either')
+      }
     }
-  }, [currentScreen, pendingFeedback])
+  }, [currentScreen]) // ✅ Run when screen changes to meeting-feedback
   
   // ✅ NEW: Track if this is a NEW match (for sound) vs returning from chat
   const [isNewMatch, setIsNewMatch] = useState(false)
@@ -418,6 +478,7 @@ export default function Page() {
   const isInEnjoyModeSessionRef = useRef(false)  // ✅ v2.8.22: Ref for enjoy mode state
   const matchedUserRef = useRef<any>(null)  // ✅ v2.8.26: Ref for matched user (for popstate)
   const matchExpiresAtRef = useRef<Date | null>(null)  // ✅ v2.8.26: Ref for match expiration (for popstate)
+  const isExitingEnjoyModeRef = useRef(false)  // ✅ v2.8.32: Prevent double calls to handleEnjoyModeExit
   
   // ✅ NEW: In-App Notification for messages
   const [inAppNotification, setInAppNotification] = useState<{
@@ -707,6 +768,28 @@ export default function Page() {
     return () => {
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener('wakeLockSettingChanged', handleCustomEvent)
+    }
+  }, [])
+  
+  // ✅ v2.8.31: Listen for profile screen events to open modals
+  useEffect(() => {
+    const handleOpenPremiumUpgrade = () => {
+      console.log('👑 Opening Premium Upgrade from Profile')
+      setShowPremiumUpgrade(true)
+    }
+    
+    const handleOpenCouponModal = (event: CustomEvent) => {
+      const type = event.detail?.type || 'premium'
+      console.log(`🎟️ Opening Coupon Modal from Profile: ${type}`)
+      setShowCouponModal(type as 'premium' | 'pass')
+    }
+    
+    window.addEventListener('openPremiumUpgrade', handleOpenPremiumUpgrade)
+    window.addEventListener('openCouponModal', handleOpenCouponModal as EventListener)
+    
+    return () => {
+      window.removeEventListener('openPremiumUpgrade', handleOpenPremiumUpgrade)
+      window.removeEventListener('openCouponModal', handleOpenCouponModal as EventListener)
     }
   }, [])
   
@@ -1386,18 +1469,31 @@ export default function Page() {
           const minutesInBackground = Math.round(timeInBackground / 1000 / 60)
           console.log(`📱 App returned from background after ${minutesInBackground} minutes`)
           
-          // ✅ v2.8.25: Check if user clicked notification while in background
+          // ✅ v2.8.26 CRITICAL: Check for pending notification FIRST - before any refresh logic!
           const pendingMatchId = localStorage.getItem('i4iguana_pending_chat_matchId')
-          if (pendingMatchId && matchedUser) {
-            console.log('🔔 NOTIFICATION CLICK: App returned from background - opening chat!')
-            localStorage.removeItem('i4iguana_pending_chat_matchId')
-            setSelectedMatch(matchedUser)
-            setCurrentScreen("chat")
-            backgroundTimeRef.current = null
-            return
+          if (pendingMatchId) {
+            console.log('═══════════════════════════════════════════════════')
+            console.log('🔔 NOTIFICATION CLICK: Opening chat immediately!')
+            console.log('   pendingMatchId:', pendingMatchId)
+            console.log('   matchedUser:', matchedUser?.name || 'loading...')
+            console.log('═══════════════════════════════════════════════════')
+            
+            if (matchedUser) {
+              // ✅ Matched user available - navigate now!
+              localStorage.removeItem('i4iguana_pending_chat_matchId')
+              setSelectedMatch(matchedUser)
+              setCurrentScreen("chat")
+              backgroundTimeRef.current = null
+              return // Don't do any refresh!
+            } else {
+              // ✅ User not loaded yet - setPendingChatMatchId will trigger navigation when ready
+              setPendingChatMatchId(pendingMatchId)
+              backgroundTimeRef.current = null
+              return // Don't do any refresh!
+            }
           }
           
-          // ✅ v2.8.26 SIMPLE RULE: Refresh only after 1 hour
+          // ✅ v2.8.26 SIMPLE RULE: Refresh only after 1 hour (and no pending notification)
           if (timeInBackground >= BACKGROUND_THRESHOLD) {
             console.log('🚀 Over 1 hour in background - refreshing')
             setSplashComplete(false)
@@ -1505,26 +1601,36 @@ export default function Page() {
           // User was previously logged in - Firebase might still be loading
           console.log('⏳ No user but was previously authenticated - waiting for Firebase to restore...')
           
-          // ✅ IMPROVED: Give Firebase more time (5 seconds instead of 3)
+          // ✅ v2.8.26 FIX: Safari PWA needs more time - detect and adjust
+          const isSafariPWA = typeof window !== 'undefined' && 
+            (window.navigator as any).standalone === true && 
+            /iPhone|iPad|iPod/.test(navigator.userAgent)
+          const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent || '')
+          
+          // ✅ Give Safari/iOS more time (8 seconds) vs others (5 seconds)
+          const waitTimeout = (isSafariPWA || isIOS) ? 8000 : 5000
+          const waitLabel = (isSafariPWA || isIOS) ? '8s (iOS)' : '5s'
+          
           const authWaitStart = localStorage.getItem('i4iguana_auth_wait_start')
           const now = Date.now()
           
           if (!authWaitStart) {
             // Start waiting
             localStorage.setItem('i4iguana_auth_wait_start', String(now))
-            console.log('   Starting 5 second wait for Firebase auth restoration...')
+            console.log(`   Starting ${waitLabel} wait for Firebase auth restoration...`)
+            if (isSafariPWA) console.log('   📱 Detected Safari PWA - using extended timeout')
             return // Wait for next checkAuth cycle
           }
           
           const waitTime = now - parseInt(authWaitStart)
-          if (waitTime < 5000) {  // ✅ Changed from 3000 to 5000
+          if (waitTime < waitTimeout) {
             // Still waiting
-            console.log(`   Waiting... ${Math.round(waitTime/1000)}s / 5s`)
+            console.log(`   Waiting... ${Math.round(waitTime/1000)}s / ${waitLabel}`)
             return // Keep waiting
           }
           
           // Waited long enough - auth really didn't restore
-          console.log('⏰ Waited 5 seconds - Firebase auth did not restore. Session expired.')
+          console.log(`⏰ Waited ${waitLabel} - Firebase auth did not restore. Session expired.`)
           localStorage.removeItem('i4iguana_auth_wait_start')
           localStorage.removeItem('i4iguana_was_authenticated')
           // Clean up saved state
@@ -1891,7 +1997,8 @@ export default function Page() {
       // ✅ STEP 2: Now we can safely check if already on app screen
       // ✅ FIXED: Don't include phone-verification - we want to re-check after login!
       // ✅ FIXED v2.5.21: Include Zone Mode screens to prevent reset!
-      const appScreens = ["world-selection", "home", "match", "notifications", "profile", "chat", "scan", "enjoy-mode", "mode-selection", "discovery", "zone-mode", "explore-zone"]
+      // ✅ v2.8.31: Added meeting-feedback to prevent redirect during feedback flow!
+      const appScreens = ["world-selection", "home", "match", "notifications", "profile", "chat", "scan", "enjoy-mode", "mode-selection", "discovery", "zone-mode", "explore-zone", "meeting-feedback"]
       if (appScreens.includes(currentScreen)) {
         // ✅ v2.8.3 CRITICAL FIX: If on match/enjoy-mode/chat but matchCreatedAt is null,
         // we need to load it from the server!
@@ -2118,9 +2225,12 @@ export default function Page() {
                   partnerPhoto: activeMatch.matchedUser.photos?.[0] || activeMatch.matchedUser.photoURL
                 }
                 
+                // ✅ v2.8.27 HERMETIC: Set transition flag
+                setIsTransitioningToFeedback(true)
                 setPendingFeedback(partnerInfo)
                 localStorage.removeItem('i4iguana_enjoy_mode')  // Clear flag
                 setCurrentScreen("meeting-feedback")
+                setTimeout(() => setIsTransitioningToFeedback(false), 100)
                 console.log('✅ Showing feedback screen after expired meeting!')
                 return  // Go to feedback!
               }
@@ -2306,6 +2416,19 @@ export default function Page() {
         
         const hasBasicProfile = profile && profile.photos && profile.photos.length > 0 && (profile.name || profile.displayName)
         
+        // ✅ v2.8.17 FIX: If user has completed onboarding BUT no localStorage cache,
+        // this is a RETURNING user on a new device/reinstall - require phone verification!
+        const cachedPhoneVerifiedCheck = localStorage.getItem('i4iguana_phone_verified')
+        if ((hasCompletedOnboarding || hasBasicProfile) && cachedPhoneVerifiedCheck !== 'true') {
+          console.log('🔐 RETURNING USER on new device/reinstall detected!')
+          console.log('   hasCompletedOnboarding:', hasCompletedOnboarding)
+          console.log('   hasBasicProfile:', hasBasicProfile)
+          console.log('   cachedPhoneVerified:', cachedPhoneVerifiedCheck)
+          console.log('   → Requiring phone verification (NOT onboarding!)')
+          setCurrentScreen("phone-verification")
+          return
+        }
+        
         if (hasCompletedOnboarding || hasBasicProfile) {
           console.log('✅ Existing user detected')
           
@@ -2338,6 +2461,8 @@ export default function Page() {
               // ✅ v2.8.22: Only show feedback if was in Enjoy Mode!
               if (wasInEnjoyMode) {
                 console.log('📋 Pending feedback found AND was in Enjoy Mode - going to feedback screen')
+                // ✅ v2.8.27 HERMETIC: Set transition flag
+                setIsTransitioningToFeedback(true)
                 setPendingFeedback({
                   matchId: pending.matchId,
                   partnerId: pending.partnerId,
@@ -2346,6 +2471,7 @@ export default function Page() {
                 })
                 localStorage.removeItem('i4iguana_enjoy_mode')  // Clear flag
                 setCurrentScreen("meeting-feedback")
+                setTimeout(() => setIsTransitioningToFeedback(false), 100)
                 return
               } else {
                 // ✅ v2.8.22: Not from Enjoy Mode - clear the stale pending feedback!
@@ -3067,9 +3193,12 @@ export default function Page() {
                 partnerPhoto: activeMatch.matchedUser.photos?.[0] || activeMatch.matchedUser.photoURL
               }
               
+              // ✅ v2.8.27 HERMETIC: Set transition flag
+              setIsTransitioningToFeedback(true)
               setPendingFeedback(partnerInfo)
               localStorage.removeItem('i4iguana_enjoy_mode')  // Clear flag
               setCurrentScreen("meeting-feedback")
+              setTimeout(() => setIsTransitioningToFeedback(false), 100)
               console.log('✅ Showing feedback screen after expired meeting!')
               return  // Go to feedback!
             }
@@ -4753,16 +4882,24 @@ export default function Page() {
 
   // ✅ NEW: Called when Enjoy Mode ends (timer or manual exit)
   const handleEnjoyModeExit = async (reason: 'timeout' | 'manual') => {
-    console.log(`🏠 Exiting Enjoy Mode - reason: ${reason}`)
-    console.log(`   user: ${user?.uid || 'NULL'}`)
-    console.log(`   matchedUser: ${matchedUser?.uid || 'NULL'}`)
+    // ✅ v2.8.31: Prevent double calls
+    if (isExitingEnjoyModeRef.current) {
+      console.log('⚠️ Already exiting Enjoy Mode - ignoring')
+      return
+    }
+    isExitingEnjoyModeRef.current = true
     
-    // ✅ v2.8.26 NEW LOGIC:
-    // - Manual exit (YOU leave) = YOU see feedback (share your experience)
-    // - Timeout = BOTH see feedback
-    // - Partner left (handled in modal) = NO feedback for you (you're disappointed)
+    console.log(`🏠 [v2.8.31] Exiting Enjoy Mode - reason: ${reason}`)
     
-    // Save partner info for feedback screen BEFORE clearing state
+    // ═══════════════════════════════════════════════════════════════════════
+    // v2.8.31 SUPER SIMPLE APPROACH:
+    // 1. Save partner info to localStorage (SYNC - always works!)
+    // 2. Clear all state
+    // 3. Navigate to feedback
+    // 4. Feedback screen reads from localStorage if state is empty
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // Step 1: Capture and SAVE to localStorage (synchronous, reliable!)
     const partnerInfo = matchedUser ? {
       matchId: currentMatchId || createMatchId(user!.uid, matchedUser.uid || matchedUser.id),
       partnerId: matchedUser.uid || matchedUser.id,
@@ -4770,51 +4907,58 @@ export default function Page() {
       partnerPhoto: matchedUser.photos?.[0] || matchedUser.photoURL
     } : null
     
-    // Mark meeting as completed in Firebase
-    if (user && matchedUser) {
-      const matchId = currentMatchId || createMatchId(user.uid, matchedUser.uid)
+    if (partnerInfo) {
+      // ✅ SAVE TO LOCALSTORAGE FIRST! This is synchronous and always works!
+      localStorage.setItem('i4iguana_pending_feedback_data', JSON.stringify(partnerInfo))
+      console.log('📋 [v2.8.31] Saved to localStorage:', partnerInfo.partnerName)
+      
+      // Step 2: Set state (React may batch these unpredictably, that's OK!)
+      setPendingFeedback(partnerInfo)
+      
+      // Step 3: Navigate to feedback screen
+      setCurrentScreen("meeting-feedback")
+      console.log('📋 [v2.8.31] Navigated to meeting-feedback')
+      
+      // Step 4: Clear other state (doesn't matter when this happens)
+      setMeetingStartedAt(null)
+      setIsInEnjoyModeSession(false)
+      localStorage.removeItem('i4iguana_enjoy_mode')
+      setMatchedUser(null)
+      setSelectedMatch(null)
+      setIsMatchLocked(false)
+      setIsViewingProfileFromChat(false)
+      setCurrentMatchId("")
+      
+    } else {
+      console.warn('⚠️ No partner info - going home')
+      setCurrentScreen("home")
+      setMeetingStartedAt(null)
+      setIsInEnjoyModeSession(false)
+      localStorage.removeItem('i4iguana_enjoy_mode')
+      setMatchedUser(null)
+      setSelectedMatch(null)
+      setIsMatchLocked(false)
+      setIsViewingProfileFromChat(false)
+      setCurrentMatchId("")
+    }
+    
+    // Reset exit flag
+    setTimeout(() => {
+      isExitingEnjoyModeRef.current = false
+    }, 1000)
+    
+    // Firebase calls (background, non-blocking)
+    const matchIdForFirebase = currentMatchId || (user && matchedUser ? createMatchId(user.uid, matchedUser.uid || matchedUser.id) : null)
+    if (user && matchIdForFirebase && partnerInfo) {
       try {
         const { markMeetingAsCompleted, setPendingFeedback: savePendingFeedback } = await import('@/lib/firestore-service')
-        await markMeetingAsCompleted(matchId, reason, user.uid)
-        console.log('✅ Meeting marked as completed in Firebase')
-        
-        // Save pending feedback in Firebase (for hermetic restore)
-        if (partnerInfo) {
-          await savePendingFeedback(
-            user.uid,
-            partnerInfo.matchId,
-            partnerInfo.partnerId,
-            partnerInfo.partnerName,
-            partnerInfo.partnerPhoto
-          )
-          console.log('✅ Pending feedback saved to Firebase')
-        }
+        await markMeetingAsCompleted(matchIdForFirebase, reason, user.uid)
+        await savePendingFeedback(user.uid, partnerInfo.matchId, partnerInfo.partnerId, partnerInfo.partnerName, partnerInfo.partnerPhoto)
+        console.log('✅ Firebase updated')
       } catch (err) {
-        console.error('Error marking meeting as completed:', err)
+        console.error('Firebase error (non-blocking):', err)
       }
     }
-    
-    // ✅ Show feedback screen for BOTH manual exit and timeout!
-    if (partnerInfo) {
-      console.log(`📋 Going to Meeting Feedback screen (reason: ${reason})`)
-      setPendingFeedback(partnerInfo)
-      setCurrentScreen("meeting-feedback")
-    } else {
-      console.warn('⚠️ No partner info for feedback - going home')
-      setCurrentScreen("home")
-    }
-    
-    // Clear enjoy mode state
-    setMeetingStartedAt(null)
-    setIsInEnjoyModeSession(false)
-    localStorage.removeItem('i4iguana_enjoy_mode')
-    
-    // Clear match state (after setting feedback!)
-    setMatchedUser(null)
-    setSelectedMatch(null)
-    setIsMatchLocked(false)
-    setIsViewingProfileFromChat(false)
-    setCurrentMatchId("")
   }
 
   // ✅ NEW: Handle meeting feedback submission
@@ -4868,11 +5012,15 @@ export default function Page() {
   const finishFeedbackFlow = () => {
     // Clear all match-related state
     setPendingFeedback(null)
+    setIsTransitioningToFeedback(false)
     setMatchedUser(null)
     setSelectedMatch(null)
     setIsMatchLocked(false)
     setIsViewingProfileFromChat(false)
     setMatchCreatedAt(null)
+    
+    // ✅ v2.8.31: Clear localStorage feedback data
+    localStorage.removeItem('i4iguana_pending_feedback_data')
     
     // ✅ v2.8.22: Clear enjoy mode flag - feedback flow is complete!
     localStorage.removeItem('i4iguana_enjoy_mode')
@@ -5391,7 +5539,7 @@ export default function Page() {
   }
 
   return (
-    <div className="h-screen w-screen bg-background overflow-hidden fixed inset-0">
+    <div className="h-screen w-screen overflow-hidden fixed inset-0" style={{ backgroundColor: '#0d2920' }}>
       {/* Splash Screen - Loading mode (user logged in) */}
       {/* ✅ v2.8.26: Skip splash if already completed (quick restore) */}
       {currentScreen === "splash" && !splashComplete && (
@@ -5484,6 +5632,10 @@ export default function Page() {
               // ✅ CRITICAL: Cache phone verification to prevent refresh bug
               localStorage.setItem('i4iguana_phone_verified', 'true')
               
+              // ✅ v2.8.7: Backup to IndexedDB to survive Samsung "close all" memory clearing!
+              await backupCriticalData()
+              console.log('🆔 Critical data backed up to IndexedDB')
+              
               // ✅ CRITICAL: Clear the race-condition flag now that verification is complete
               localStorage.removeItem('i4iguana_handling_deleted')
               
@@ -5545,6 +5697,11 @@ export default function Page() {
               console.log('✅ Dev phone saved:', devPhoneNumber)
               console.log('🆔 Device ID saved:', currentDeviceId.slice(0, 15) + '...')
               console.log('✅ isAvailable set to TRUE')
+              
+              // ✅ v2.8.7: Also set and backup phone verified in dev mode
+              localStorage.setItem('i4iguana_phone_verified', 'true')
+              await backupCriticalData()
+              console.log('🆔 Critical data backed up to IndexedDB')
             } catch (error) {
               console.log('⚠️ Error saving dev phone:', error)
             }
@@ -5997,6 +6154,8 @@ export default function Page() {
           }
           // ✅ v2.8.3: Pass matchCreatedAt to filter old messages
           matchCreatedAt={matchCreatedAt}
+          // ✅ NEW: Pass matchType for Super Like chats
+          matchType={selectedMatch?.matchType || 'regular'}
           // 🆕 Proximity features
           userLocation={userLocationForVenues}
           matchLocation={selectedMatch.location || null}
@@ -6076,7 +6235,8 @@ export default function Page() {
       {/* ✅ FALLBACK: Enjoy mode without matchedUser - show loading or redirect */}
       {/* ✅ v2.8.20 FIX: Don't show fallback if we have pendingFeedback (transitioning to feedback screen) */}
       {/* ✅ v2.8.26 FIX: Auto-redirect instead of showing button - prevents iOS race condition */}
-      {currentScreen === "enjoy-mode" && (!matchedUser || !meetingStartedAt) && !pendingFeedback && (
+      {/* ✅ v2.8.29 FIX: Also check isTransitioningToFeedback to prevent race condition */}
+      {currentScreen === "enjoy-mode" && (!matchedUser || !meetingStartedAt) && !pendingFeedback && !isTransitioningToFeedback && (
         <EnjoyModeFallback 
           onTimeout={() => {
             console.log('⚠️ Enjoy mode fallback timeout - returning to home')
@@ -6087,18 +6247,56 @@ export default function Page() {
       )}
 
       {/* ✅ NEW: Meeting Feedback Screen - After Enjoy Mode ends */}
-      {currentScreen === "meeting-feedback" && pendingFeedback && (
-        <MeetingFeedbackScreen
-          partnerName={pendingFeedback.partnerName}
-          partnerPhoto={pendingFeedback.partnerPhoto}
-          onSubmit={handleFeedbackSubmit}
-          onSkip={handleFeedbackSkip}
-        />
+      {/* ✅ v2.8.31: Also try localStorage if state is empty (race condition fallback) */}
+      {currentScreen === "meeting-feedback" && (
+        (() => {
+          console.log('═══════════════════════════════════════════════════')
+          console.log('📋 [v2.8.31] RENDERING FEEDBACK SCREEN')
+          console.log('   pendingFeedback state:', pendingFeedback ? pendingFeedback.partnerName : 'NULL')
+          
+          // Try state first, then localStorage
+          let feedbackData = pendingFeedback
+          
+          if (!feedbackData) {
+            console.log('   pendingFeedback is NULL, checking localStorage...')
+            try {
+              const saved = localStorage.getItem('i4iguana_pending_feedback_data')
+              console.log('   localStorage raw:', saved ? saved.substring(0, 50) + '...' : 'NULL')
+              feedbackData = saved ? JSON.parse(saved) : null
+              console.log('   localStorage parsed:', feedbackData ? feedbackData.partnerName : 'NULL')
+            } catch (e) {
+              console.error('   localStorage parse error:', e)
+              feedbackData = null
+            }
+          }
+          
+          console.log('   FINAL feedbackData:', feedbackData ? feedbackData.partnerName : 'NULL')
+          console.log('═══════════════════════════════════════════════════')
+          
+          if (feedbackData) {
+            return (
+              <MeetingFeedbackScreen
+                partnerName={feedbackData.partnerName}
+                partnerPhoto={feedbackData.partnerPhoto}
+                onSubmit={handleFeedbackSubmit}
+                onSkip={handleFeedbackSkip}
+              />
+            )
+          } else {
+            // No data anywhere - show loading briefly then redirect
+            console.log('❌ [v2.8.31] No feedback data - showing loading state')
+            return (
+              <div 
+                className="flex flex-col items-center justify-center h-screen"
+                style={{ background: 'linear-gradient(160deg, #1a4d3e 0%, #0d2920 40%, #0a1f18 70%, #051410 100%)' }}
+              >
+                <div className="text-6xl mb-4 animate-pulse">📋</div>
+                <div className="text-white/70 text-lg">Loading...</div>
+              </div>
+            )
+          }
+        })()
       )}
-      
-      {/* ✅ FALLBACK: Meeting feedback without pending data - render nothing, useEffect will redirect */}
-      {/* ✅ v2.8.21 FIX: Don't show any UI - redirect handled by useEffect below */}
-      {currentScreen === "meeting-feedback" && !pendingFeedback && null}
 
       {/* Profile Screen - with scroll wrapper */}
       {currentScreen === "profile" && user && (
@@ -6128,6 +6326,50 @@ export default function Page() {
           <NotificationsScreen
             onNavigate={handleNotificationsNavigate}
             onNotificationClick={handleNotificationClick}
+            onSuperLikeAccept={async (matchId, chatId) => {
+              console.log('🦎💜 Super Like accepted! Opening match...', matchId)
+              
+              // Load the match data from Firestore
+              try {
+                const matchDoc = await getDoc(doc(db, 'matches', matchId))
+                if (matchDoc.exists()) {
+                  const matchData = matchDoc.data()
+                  const otherUserId = matchData.users?.find((uid: string) => uid !== user?.uid)
+                  
+                  if (otherUserId) {
+                    const otherUserDoc = await getDoc(doc(db, 'users', otherUserId))
+                    if (otherUserDoc.exists()) {
+                      const otherUserData = otherUserDoc.data()
+                      
+                      // Set selected match with matchType
+                      setSelectedMatch({
+                        uid: otherUserId,
+                        name: otherUserData.name || otherUserData.displayName,
+                        photos: otherUserData.photos,
+                        photoURL: otherUserData.photos?.[0],
+                        age: otherUserData.age,
+                        matchType: 'super_like'  // ✅ Mark as Super Like match
+                      })
+                      setCurrentMatchId(matchId)
+                      setMatchedUser({
+                        uid: otherUserId,
+                        name: otherUserData.name || otherUserData.displayName,
+                        photos: otherUserData.photos,
+                        matchType: 'super_like'
+                      })
+                      setCurrentScreen("chat")  // Go directly to chat!
+                      return
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('❌ Error loading Super Like match:', error)
+              }
+              
+              // Fallback: go to match screen
+              setCurrentMatchId(matchId)
+              setCurrentScreen("match")
+            }}
           />
         </div>
       )}
@@ -6820,17 +7062,26 @@ export default function Page() {
         type={showCouponModal || 'premium'}
         onSuccess={async (result) => {
           console.log('🎟️ Coupon redeemed:', result)
-          // Refresh user data after coupon redemption
-          if (userPhoneNumber) {
-            const updatedPassData = await getUserPassData(userPhoneNumber)
+          // ✅ v2.8.31 FIX: Refresh user data using user.uid, NOT phoneNumber!
+          // getUserPassData expects userId, not phone number
+          if (user) {
+            console.log('🔄 Refreshing pass data for user:', user.uid)
+            const updatedPassData = await getUserPassData(user.uid)
+            console.log('✅ Updated pass data:', updatedPassData)
             setPassesLeft(updatedPassData.passesLeft)
             setIsPremium(updatedPassData.isPremium)
-            // ✅ Close OUT OF PASSES modal after successful redemption
+            // ✅ Also reset free matches counter if user is now premium
+            if (updatedPassData.isPremium) {
+              console.log('👑 User is now Premium! Resetting match limits')
+              setFreeMatchesUsedToday(0)
+            }
+            // ✅ Close all payment/pass modals after successful redemption
             setShowOutOfPasses(false)
-            // ✅ NEW: Also unlock the match if we're on match screen
-            if (isMatchLocked && matchedUser && user) {
+            setShowPremiumPaywall(false)
+            setShowCouponModal(null)
+            // ✅ Also unlock the match if we're on match screen
+            if (isMatchLocked && matchedUser) {
               setIsMatchLocked(false)
-              setShowPremiumPaywall(false)
               // ✅ CRITICAL: Also unlock in Firestore!
               try {
                 await unlockMatchForUser(user.uid, matchedUser.uid || matchedUser.id)
@@ -6842,6 +7093,16 @@ export default function Page() {
             }
           }
         }}
+      />
+      
+      {/* ✅ v2.8.31: Premium Upgrade Modal with BIT payment */}
+      <PremiumUpgradeModal
+        isOpen={showPremiumUpgrade}
+        onClose={() => setShowPremiumUpgrade(false)}
+        userId={user?.uid}
+        userEmail={user?.email || ''}
+        isRTL={isRTL}
+        language={language as 'he' | 'en' | 'pt'}
       />
       
       {/* ✅ NEW: Premium Paywall Modal - shows when match is LOCKED (second match onwards) */}
@@ -6857,14 +7118,9 @@ export default function Page() {
         matchesLimit={PASS_CONFIG.FREE_MATCHES_LIMIT}
         onSelectPlan={async (plan) => {
           console.log(`💳 User selected plan: ${plan}`)
-          // Show coupon modal for payment
-          if (plan === 'pass') {
-            setShowPremiumPaywall(false)
-            setShowCouponModal('pass')
-          } else {
-            setShowPremiumPaywall(false)
-            setShowCouponModal('premium')
-          }
+          // ✅ v2.8.31: Show PremiumUpgradeModal with BIT payment option
+          setShowPremiumPaywall(false)
+          setShowPremiumUpgrade(true)
         }}
       />
       

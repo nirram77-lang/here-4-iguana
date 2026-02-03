@@ -1,0 +1,11 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.i4iguana.twa",
+    "sha256_cert_fingerprints": [
+      "EC:E0:0D:F2:B4:3C:9C:25:1A:FE:AB:D1:AF:A0:82:C0:60:79:DB:9D:FB:0A:75:DF:1E:97:DD:9A:C3:09:8D:0E",
+      "C7:3B:8E:81:B7:D8:B1:D0:F0:4E:E7:2C:24:BD:84:F1:A3:41:B5:75:BF:89:07:22:96:66:4B:DE:EB:D9:F8:BF"
+    ]
+  }
+}]

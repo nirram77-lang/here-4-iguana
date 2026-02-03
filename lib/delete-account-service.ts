@@ -571,6 +571,9 @@ export const deleteUserAccount = async (userId: string): Promise<{
       'i4iguana_cached_screen',
       'i4iguana_user_id',
       'i4iguana_profile_complete',
+      'i4iguana_onboarding_data',  // ✅ v2.8.25: CRITICAL - Clear old photos!
+      'googleDisplayName',
+      'googleEmail',
       `onesignal_last_refresh_${userId}`
     ]
     keysToRemove.forEach(key => localStorage.removeItem(key))

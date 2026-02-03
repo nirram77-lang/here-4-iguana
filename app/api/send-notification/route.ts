@@ -66,11 +66,13 @@ export async function POST(request: NextRequest) {
     console.log('✅ API Key configured (starts with:', ONESIGNAL_REST_API_KEY.substring(0, 8) + '...)')
     console.log('🎯 Target user:', body.targetUserId)
     
-    // ✅ v2.8.22 FIX: Simplified payload to avoid size limits
-    // Only include essential data, limit to avoid 2048 byte limit
+    // ✅ v2.8.31 FIX: Use new OneSignal API format with include_aliases
     const notificationPayload = {
       app_id: ONESIGNAL_APP_ID,
-      include_external_user_ids: [body.targetUserId],
+      // ✅ NEW: Use include_aliases instead of deprecated include_external_user_ids
+      include_aliases: {
+        external_id: [body.targetUserId]
+      },
       target_channel: "push",
       headings: { en: body.title },
       contents: { en: body.message },

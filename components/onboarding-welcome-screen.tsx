@@ -38,14 +38,28 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
       >
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           
-          {/* Animated Iguana */}
+          {/* Animated Hearts - Dating Style */}
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="mb-8"
+            className="mb-8 relative"
           >
-            <div className="text-9xl">🦎</div>
+            <div className="text-8xl">💚</div>
+            <motion.div 
+              className="absolute -top-2 -right-4 text-4xl"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            >
+              ✨
+            </motion.div>
+            <motion.div 
+              className="absolute -bottom-2 -left-4 text-3xl"
+              animate={{ scale: [1, 1.3, 1] }}
+              transition={{ repeat: Infinity, duration: 2, delay: 0.5 }}
+            >
+              💫
+            </motion.div>
           </motion.div>
 
           {/* Welcome Text */}
@@ -143,7 +157,7 @@ export default function OnboardingWelcomeScreen({ onContinue }: OnboardingWelcom
           <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }}>
             <Heart className="w-8 h-8 text-pink-400 fill-pink-400" />
           </motion.div>
-          <span className="text-5xl">🦎</span>
+          <span className="text-5xl">💚</span>
           <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}>
             <Heart className="w-8 h-8 text-pink-400 fill-pink-400" />
           </motion.div>

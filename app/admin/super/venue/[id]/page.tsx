@@ -34,6 +34,7 @@ import { getAdminData } from '@/lib/admin-auth'
 import { doc, updateDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import VenueQRTemplate from '@/components/venue-qr-template'
+import { ENTERTAINMENT_ZONES, CITIES } from '@/lib/entertainment-zones'
 
 export default function VenueEditPage() {
   const router = useRouter()
@@ -55,6 +56,9 @@ export default function VenueEditPage() {
   const [adminPhone, setAdminPhone] = useState('')
   const [radius, setRadius] = useState('100')
   const [venueType, setVenueType] = useState<VenueType>('bar')  // ✅ NEW: Venue type
+  const [isActive, setIsActive] = useState(false)  // ✅ NEW: Active status
+  const [linkedZoneId, setLinkedZoneId] = useState('')  // ✅ NEW: Linked entertainment zone
+  const [city, setCity] = useState('')  // ✅ NEW: City for filtering zones
   
   // Password generation
   const [newPassword, setNewPassword] = useState('')
@@ -93,17 +97,51 @@ export default function VenueEditPage() {
 
         setVenue(venueData)
         
-        // Populate form
-        setDisplayName(venueData.displayName)
-        setAddress(venueData.location.address)
-        setLatitude(venueData.location.latitude.toString())
-        setLongitude(venueData.location.longitude.toString())
-        setAdminEmail(venueData.adminEmail)
+        // Populate form - handle both original and imported venue formats
+        setDisplayName(venueData.displayName || venueData.name || '')
+        
+        // Handle address - could be in location.address or directly as address
+        const venueAddress = venueData.location?.address || (venueData as any).address || ''
+        setAddress(venueAddress)
+        
+        // Handle coordinates - could be in location or directly on venue
+        const venueLat = venueData.location?.latitude || (venueData as any).latitude || 0
+        const venueLng = venueData.location?.longitude || (venueData as any).longitude || 0
+        setLatitude(venueLat.toString())
+        setLongitude(venueLng.toString())
+        
+        setAdminEmail(venueData.adminEmail || '')
         setAdminPhone((venueData as any).adminPhone || '')
-        setRadius(venueData.radius.toString())
+        setRadius((venueData.radius || 100).toString())
         setVenueType((venueData as any).venueType || 'bar')  // ✅ NEW: Load venue type
+        setIsActive(venueData.active || false)  // ✅ NEW: Load active status
+        setLinkedZoneId((venueData as any).linkedZoneId || '')  // ✅ NEW: Load linked zone
+        
+        // ✅ v2.8.27 FIX: Auto-detect city from address if not set or mismatched
+        let detectedCity = (venueData as any).city || ''
+        const addressLower = venueAddress.toLowerCase()
+        
+        // Try to detect city from address
+        for (const cityConfig of Object.values(CITIES)) {
+          const cityVariations = [
+            cityConfig.nameHe.toLowerCase(),
+            cityConfig.name.toLowerCase(),
+            cityConfig.id.replace(/-/g, ' ').toLowerCase()
+          ]
+          
+          if (cityVariations.some(v => addressLower.includes(v))) {
+            // Found city in address - use it if different from stored
+            if (detectedCity !== cityConfig.nameHe) {
+              console.log(`⚠️ City mismatch: stored="${detectedCity}", detected="${cityConfig.nameHe}" from address`)
+              detectedCity = cityConfig.nameHe
+            }
+            break
+          }
+        }
+        
+        setCity(detectedCity)
 
-        console.log('✅ Venue loaded:', venueData.displayName)
+        console.log('✅ Venue loaded:', venueData.displayName, 'city:', detectedCity)
         
       } catch (error) {
         console.error('❌ Error loading venue:', error)
@@ -153,7 +191,15 @@ export default function VenueEditPage() {
         adminEmail,
         adminPhone,
         radius: parseInt(radius),
-        venueType  // ✅ NEW: Save venue type
+        venueType,  // ✅ NEW: Save venue type
+        active: isActive  // ✅ NEW: Save active status
+      })
+      
+      // ✅ NEW: Also update linkedZoneId and city directly
+      await updateDoc(doc(db, 'venues', venueId), {
+        linkedZoneId: linkedZoneId || null,
+        city: city || null,
+        updatedAt: Timestamp.now()
       })
 
       setSuccess('Venue updated successfully!')
@@ -257,7 +303,7 @@ export default function VenueEditPage() {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📍 מועדון: ${venue?.displayName}
-📌 כתובת: ${venue?.location.address}
+📌 כתובת: ${venue?.location?.address || (venue as any)?.address || 'N/A'}
 
 🔐 פרטי התחברות:
 
@@ -322,7 +368,7 @@ https://i4iguana.com/admin/login
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
-                onClick={() => router.push('/admin/super')}
+                onClick={() => router.push('/admin/super/venues')}
                 variant="ghost"
                 size="sm"
                 className="text-white hover:bg-white/10"
@@ -462,6 +508,91 @@ https://i4iguana.com/admin/login
                     ))}
                   </div>
                 </div>
+                
+                {/* ✅ NEW: Entertainment Zone Selector */}
+                <div className="pt-4 border-t border-white/10">
+                  <label className="text-white/60 text-sm font-medium mb-2 block flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    אזור בילוי (Entertainment Zone)
+                  </label>
+                  
+                  {/* City selector first */}
+                  <div className="mb-3">
+                    <select
+                      value={city}
+                      onChange={(e) => {
+                        setCity(e.target.value)
+                        setLinkedZoneId('')  // Reset zone when city changes
+                      }}
+                      className="w-full h-12 px-4 bg-[#0d2920]/50 border border-[#4ade80]/20 rounded-lg text-white focus:outline-none focus:border-[#4ade80]"
+                    >
+                      <option value="">-- בחר עיר --</option>
+                      {Object.values(CITIES)
+                        .filter(c => c.isActive)
+                        .sort((a, b) => a.nameHe.localeCompare(b.nameHe, 'he'))
+                        .map(c => (
+                          <option key={c.id} value={c.nameHe}>{c.nameHe}</option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                  
+                  {/* Zone selector */}
+                  <select
+                    value={linkedZoneId}
+                    onChange={(e) => setLinkedZoneId(e.target.value)}
+                    className="w-full h-12 px-4 bg-[#0d2920]/50 border border-[#4ade80]/20 rounded-lg text-white focus:outline-none focus:border-[#4ade80]"
+                  >
+                    <option value="">-- בחר אזור בילוי --</option>
+                    {Object.values(ENTERTAINMENT_ZONES)
+                      .filter(z => z.isActive && (!city || z.cityHe === city))
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(zone => (
+                        <option key={zone.id} value={zone.id}>
+                          {zone.icon} {zone.name} - {zone.cityHe} ({zone.radius}m)
+                        </option>
+                      ))
+                    }
+                  </select>
+                  
+                  {linkedZoneId && ENTERTAINMENT_ZONES[linkedZoneId] && (
+                    <div className="mt-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 text-green-400">
+                        <span className="text-xl">{ENTERTAINMENT_ZONES[linkedZoneId].icon}</span>
+                        <span className="font-bold">{ENTERTAINMENT_ZONES[linkedZoneId].name}</span>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {ENTERTAINMENT_ZONES[linkedZoneId].vibe} • {ENTERTAINMENT_ZONES[linkedZoneId].radius}m radius
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* ✅ NEW: Active/Inactive Toggle */}
+                <div className="pt-4 border-t border-white/10">
+                  <label className="text-white/60 text-sm font-medium mb-3 block">
+                    Venue Status
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsActive(!isActive)}
+                    className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
+                      isActive
+                        ? 'bg-green-500/20 border-green-500 text-green-400'
+                        : 'bg-red-500/20 border-red-500 text-red-400'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                      <span className="font-bold text-lg">
+                        {isActive ? 'ACTIVE' : 'INACTIVE'}
+                      </span>
+                    </div>
+                    <span className="text-sm opacity-70">
+                      {isActive ? 'משתמשים יכולים להתחבר' : 'משתמשים לא יכולים להתחבר'}
+                    </span>
+                  </button>
+                </div>
               </div>
             </motion.div>
 
@@ -518,10 +649,10 @@ https://i4iguana.com/admin/login
                 <div className="p-4 bg-[#4ade80]/10 border border-[#4ade80]/30 rounded-xl">
                   <p className="text-white/60 text-xs mb-2">Current Location:</p>
                   <p className="text-[#4ade80] font-mono text-sm">
-                    📍 {venue?.location.latitude}, {venue?.location.longitude}
+                    📍 {venue?.location?.latitude || (venue as any)?.latitude || 'N/A'}, {venue?.location?.longitude || (venue as any)?.longitude || 'N/A'}
                   </p>
                   <a
-                    href={`https://www.google.com/maps?q=${venue?.location.latitude},${venue?.location.longitude}`}
+                    href={`https://www.google.com/maps?q=${venue?.location?.latitude || (venue as any)?.latitude || 0},${venue?.location?.longitude || (venue as any)?.longitude || 0}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-white/60 hover:text-white text-xs mt-2 inline-block"
@@ -652,7 +783,7 @@ https://i4iguana.com/admin/login
 🦎 I4IGUANA - פרטי התחברות למנהל
 
 📍 מועדון: ${venue?.displayName}
-📌 כתובת: ${venue?.location.address}
+📌 כתובת: ${venue?.location?.address || (venue as any)?.address || 'N/A'}
 
 🔐 פרטי התחברות:
 
@@ -779,7 +910,7 @@ https://i4iguana.com/admin/login
           className="mt-8 flex justify-end gap-4"
         >
           <Button
-            onClick={() => router.push('/admin/super')}
+            onClick={() => router.push('/admin/super/venues')}
             variant="outline"
             className="h-14 px-8"
             disabled={saving}

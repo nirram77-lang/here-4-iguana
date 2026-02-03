@@ -50,6 +50,8 @@ interface ChatScreenProps {
   currentVenueName?: string | null  // User's current venue
   // ✅ v2.8.3: Filter messages by match creation time
   matchCreatedAt?: Date | null
+  // ✅ NEW: Match type for Super Like chats
+  matchType?: 'regular' | 'super_like'
 }
 
 interface DisplayMessage {
@@ -85,7 +87,9 @@ export default function ChatScreen({
   matchLocation,
   currentVenueName,
   // ✅ v2.8.3: Filter messages by match creation time
-  matchCreatedAt
+  matchCreatedAt,
+  // ✅ NEW: Match type for Super Like
+  matchType = 'regular'
 }: ChatScreenProps) {
   const { t, isRTL } = useLanguage()
   
@@ -1330,25 +1334,64 @@ useEffect(() => {
             animate={{ scale: 1, opacity: 1 }}
             className="flex flex-col items-center gap-2 py-6"
           >
-            <div className="flex items-center gap-2">
-              <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#4ade80] bg-[#1a4d3e] flex items-center justify-center">
-                {matchUser.photo && matchUser.photo !== '/placeholder.jpg' ? (
-                  <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                ) : (
-                  <span className="text-2xl">👤</span>
-                )}
-              </div>
-              <div className="text-3xl">💬</div>
-              <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#4ade80] bg-[#4ade80]/20 flex items-center justify-center">
-                <span className="text-2xl">👤</span>
-              </div>
-            </div>
-            <p className="text-white/60 text-sm font-medium">
-              You matched with {matchUser.name}!
-            </p>
-            <p className="text-white/40 text-xs">
-              Say hi and suggest where to meet 👋
-            </p>
+            {matchType === 'super_like' ? (
+              // 🦎 Super Like Chat Welcome Message
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-purple-400 bg-[#1a4d3e] flex items-center justify-center shadow-lg shadow-purple-500/30">
+                    {matchUser.photo && matchUser.photo !== '/placeholder.jpg' ? (
+                      <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    ) : (
+                      <span className="text-2xl">👤</span>
+                    )}
+                  </div>
+                  <motion.div 
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="text-3xl"
+                  >
+                    🦎
+                  </motion.div>
+                  <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-purple-400 bg-purple-500/20 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                    <span className="text-2xl">👤</span>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-purple-500/20 via-pink-500/10 to-purple-500/20 border border-purple-400/40 rounded-xl p-4 mt-2 max-w-xs">
+                  <p className="text-purple-300 text-sm font-bold text-center">
+                    🦎 Super Like Match!
+                  </p>
+                  <p className="text-white/70 text-xs text-center mt-1">
+                    {t('superLike.chatSystemMessage')}
+                  </p>
+                  <p className="text-purple-400 text-xs text-center mt-2 font-semibold">
+                    {t('superLike.replyNow')}
+                  </p>
+                </div>
+              </>
+            ) : (
+              // 💚 Regular Match Welcome Message
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#4ade80] bg-[#1a4d3e] flex items-center justify-center">
+                    {matchUser.photo && matchUser.photo !== '/placeholder.jpg' ? (
+                      <img src={matchUser.photo} alt={matchUser.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    ) : (
+                      <span className="text-2xl">👤</span>
+                    )}
+                  </div>
+                  <div className="text-3xl">💬</div>
+                  <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#4ade80] bg-[#4ade80]/20 flex items-center justify-center">
+                    <span className="text-2xl">👤</span>
+                  </div>
+                </div>
+                <p className="text-white/60 text-sm font-medium">
+                  You matched with {matchUser.name}!
+                </p>
+                <p className="text-white/40 text-xs">
+                  Say hi and suggest where to meet 👋
+                </p>
+              </>
+            )}
           </motion.div>
         )}
 

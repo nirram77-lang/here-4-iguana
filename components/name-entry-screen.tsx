@@ -71,7 +71,13 @@ export default function NameEntryScreen({
   return (
     <div 
       className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410]"
-      style={{ minHeight: '100dvh', paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
+      style={{ 
+        minHeight: '100dvh', 
+        paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+        overflowX: 'hidden',
+        touchAction: 'pan-y',
+        overscrollBehaviorX: 'none'
+      }}
     >
       {/* Progress indicator */}
       <div className="p-4">
@@ -106,6 +112,7 @@ export default function NameEntryScreen({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="text-3xl font-bold text-white text-center mb-4"
+          style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
           {t('onboarding.name.title')}
         </motion.h1>
@@ -116,6 +123,7 @@ export default function NameEntryScreen({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="text-white/60 text-center mb-8 max-w-sm"
+          style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
           {t('onboarding.name.subtitle')}
         </motion.p>

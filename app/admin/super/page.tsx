@@ -36,7 +36,11 @@ import {
   Sparkles,
   BookOpen,
   Quote,
-  ExternalLink
+  ExternalLink,
+  ClipboardList,
+  FileText,
+  Headphones,
+  Bell
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
@@ -108,6 +112,26 @@ export default function SuperAdminPage() {
 
   const adminSections = [
     {
+      id: 'places-import',
+      title: 'Places Import',
+      description: 'מיפוי ברים, מועדונים ובתי קפה',
+      icon: Globe,
+      color: 'from-blue-500 to-cyan-600',
+      badge: 'NEW',
+      badgeColor: 'bg-blue-500',
+      path: '/admin/super/places-import'
+    },
+    {
+      id: 'mission',
+      title: 'Mission Control',
+      description: 'לוח משימות משותף',
+      icon: ClipboardList,
+      color: 'from-amber-500 to-orange-600',
+      badge: 'NEW',
+      badgeColor: 'bg-amber-500',
+      path: '/admin/super/mission'
+    },
+    {
       id: 'analytics',
       title: 'Analytics Dashboard',
       description: 'נתונים ומטריקות עסקיות',
@@ -148,6 +172,26 @@ export default function SuperAdminPage() {
       path: '/admin/super/funnydates'
     },
     {
+      id: 'invoices',
+      title: 'Invoices',
+      description: 'ניהול חשבוניות NO-ART GALLERY',
+      icon: FileText,
+      color: 'from-amber-500 to-yellow-600',
+      badge: 'NEW',
+      badgeColor: 'bg-amber-500',
+      path: '/admin/super/invoices'
+    },
+    {
+      id: 'audiobook',
+      title: 'רכישות אודיובוק',
+      description: '🇮🇱 עברית + 🇺🇸 English orders',
+      icon: Headphones,
+      color: 'from-red-500 to-rose-600',
+      badge: 'HE+EN',
+      badgeColor: 'bg-red-500',
+      path: '/admin/super/audiobook'
+    },
+    {
       id: 'dummies',
       title: 'Dummy Control',
       description: 'ניהול משתמשי דמה לפיילוטים',
@@ -178,6 +222,15 @@ export default function SuperAdminPage() {
       icon: TestTube,
       color: 'from-pink-500 to-rose-600',
       path: '/admin/super/simulator'
+    },
+    {
+      id: 'notifications',
+      title: 'Notifications Debug',
+      description: 'בדיקת התראות Push',
+      icon: Bell,
+      color: 'from-yellow-500 to-orange-600',
+      path: '/admin/super/notifications-debug',
+      badge: 'DEBUG'
     }
   ]
 
@@ -242,14 +295,24 @@ export default function SuperAdminPage() {
               </div>
             </div>
             
-            <Button
-              variant="outline"
-              onClick={() => router.push('/')}
-              className="border-green-500/30 text-green-400 hover:bg-green-500/10"
-            >
-              <Home className="w-4 h-4 ml-2" />
-              חזרה לאפליקציה
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/admin/super/control')}
+                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+              >
+                <BarChart3 className="w-4 h-4 ml-2" />
+                Control Panel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push('/')}
+                className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+              >
+                <Home className="w-4 h-4 ml-2" />
+                חזרה לאפליקציה
+              </Button>
+            </div>
           </div>
         </div>
       </motion.header>

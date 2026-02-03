@@ -8,10 +8,12 @@ import DatingCard from "./dating-card"
 import AvailableToggle from "./available-toggle"
 import HiddenState from "./hidden-state"
 import SearchSettingsModal from "./search-settings-modal"  // ✅ NEW
+import SuperLikeModal from "./super-like-modal"  // ✅ NEW: Super Like modal
 import DebugPanel from "./debug-panel"  // ✅ NEW: Debug panel for pilot testing
 import { useAuth } from "@/lib/AuthContext"
 import { useAvailableStatus } from "@/lib/useAvailableStatus"
 import { getUserProfile, updateUserPreferences } from "@/lib/firestore-service"  // ✅ NEW
+import { getSuperLikeStats, sendSuperLike, subscribeToPendingSuperLikes } from "@/lib/super-like-service"  // ✅ NEW: Super Like service
 import { useLanguage } from "@/lib/LanguageContext"
 
 interface HomeScreenProps {
@@ -29,9 +31,14 @@ interface HomeScreenProps {
   hasActiveMatch?: boolean
   onScan?: () => void  // ✅ NEW: Open QR scanner
   venueData?: {  // ✅ NEW: Current venue info
+    venueId?: string
     venueName: string
     checkedInAt: Date
     expiresAt: Date
+  } | null
+  zoneData?: {  // ✅ NEW: Current zone info
+    zoneId?: string
+    zoneName: string
   } | null
   onShowVenueStatus?: () => void  // ✅ NEW: Show venue details modal
   onSwitchMode?: () => void  // ✅ NEW: Switch between Venue/Zone mode
@@ -53,6 +60,7 @@ export default function HomeScreen({
   hasActiveMatch = false,
   onScan,  // ✅ NEW: QR Scanner callback
   venueData,  // ✅ NEW: Current venue info
+  zoneData,  // ✅ NEW: Current zone info
   onShowVenueStatus,  // ✅ NEW: Show venue details modal
   onSwitchMode,  // ✅ NEW: Switch between Venue/Zone mode
   appMode  // ✅ NEW: Current app mode
@@ -63,6 +71,9 @@ export default function HomeScreen({
   const [direction, setDirection] = useState<'left' | 'right' | null>(null)
   const [showSearchSettings, setShowSearchSettings] = useState(false)  // ✅ NEW: Renamed from showDistanceModal
   const [showDebugPanel, setShowDebugPanel] = useState(false)  // ✅ NEW: Debug panel for pilot
+  
+  // ✅ v2.8.27 FIX: Robust swipe lock to prevent double-swipes
+  const isSwipingRef = useRef(false)
   
   // ✅ v2.8.26 FIX: Track previous real user IDs to detect NEW real users
   const prevRealUserIdsRef = useRef<Set<string>>(new Set())
@@ -104,12 +115,20 @@ export default function HomeScreen({
     ageRange: [18, 80] as [number, number],
     lookingFor: 'both' as 'male' | 'female' | 'both',
     expandSearch: false,
-    smokingFilter: 'any' as 'any' | 'no' | 'no_or_social'  // ✅ NEW: Smoking filter
+    smokingFilter: 'any' as 'any' | 'no' | 'no_or_social',  // ✅ NEW: Smoking filter
+    relationshipFilter: 'all' as 'all' | 'relationship' | 'casual' | 'friends'  // ✅ v2.8.28: Relationship filter
   })
   
   // ✅ NEW: First-time user detection for QR scan hint
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false)
   const [showQRHint, setShowQRHint] = useState(false)
+
+  // ✅ NEW: Super Like state
+  const [showSuperLikeModal, setShowSuperLikeModal] = useState(false)
+  const [superLikeStats, setSuperLikeStats] = useState({ remaining: 3, total: 3, resetDate: '', isPremium: false })
+  const [superLikeTarget, setSuperLikeTarget] = useState<any>(null)
+  const [pendingSuperLikesCount, setPendingSuperLikesCount] = useState(0)  // ✅ NEW: Badge count
+  const [showSuperLikeToast, setShowSuperLikeToast] = useState(false)  // ✅ NEW: Success toast
 
   // ✅ Available Now Feature
   const { user } = useAuth()
@@ -128,7 +147,8 @@ export default function HomeScreen({
             ageRange: profile.preferences.ageRange || [18, 80],
             lookingFor: profile.preferences.lookingFor || 'both',
             expandSearch: profile.preferences.expandSearch || false,
-            smokingFilter: profile.preferences.smokingFilter || 'any'  // ✅ NEW
+            smokingFilter: profile.preferences.smokingFilter || 'any',  // ✅ NEW
+            relationshipFilter: profile.preferences.relationshipFilter || 'all'  // ✅ v2.8.28
           })
         }
       } catch (error) {
@@ -155,6 +175,35 @@ export default function HomeScreen({
     }
   }, [onScan])
 
+  // ✅ NEW: Load Super Like stats
+  useEffect(() => {
+    const loadSuperLikeStats = async () => {
+      if (!user?.uid) return
+      try {
+        const stats = await getSuperLikeStats(user.uid)
+        setSuperLikeStats(stats)
+      } catch (error) {
+        console.error('Error loading Super Like stats:', error)
+      }
+    }
+    
+    loadSuperLikeStats()
+  }, [user])
+
+  // ✅ NEW: Listen for pending Super Likes (for badge)
+  useEffect(() => {
+    if (!user?.uid) return
+
+    console.log('🦎 Setting up Super Likes badge listener...')
+    
+    const unsubscribe = subscribeToPendingSuperLikes(user.uid, (superLikes) => {
+      setPendingSuperLikesCount(superLikes.length)
+      console.log(`🦎 Badge count: ${superLikes.length}`)
+    })
+
+    return () => unsubscribe()
+  }, [user])
+
   const handleToggleAvailable = async (newState: boolean) => {
     try {
       await toggleAvailable(newState)
@@ -172,13 +221,16 @@ export default function HomeScreen({
   const handleSwipe = (swipeDirection: 'left' | 'right') => {
     console.log(`🔄 handleSwipe called: ${swipeDirection}`)
     console.log(`   current direction state: ${direction}`)
+    console.log(`   isSwipingRef: ${isSwipingRef.current}`)
     
-    // ✅ Prevent double-clicks during animation
-    if (direction !== null) {
-      console.log(`   ⚠️ BLOCKED: direction is not null (${direction})`)
+    // ✅ v2.8.27 FIX: Use ref for more robust double-swipe prevention
+    if (isSwipingRef.current || direction !== null) {
+      console.log(`   ⚠️ BLOCKED: swipe already in progress`)
       return
     }
     
+    // Lock immediately with ref (faster than state)
+    isSwipingRef.current = true
     setDirection(swipeDirection)
     console.log(`   ✅ Direction set to: ${swipeDirection}`)
 
@@ -194,13 +246,21 @@ export default function HomeScreen({
       onPass(currentUser)
     }
 
-    // ✅ v2.8.6 FIX: Wait for exit animation to FULLY complete
-    // Exit animation is 300ms, wait 350ms to be safe
+    // ✅ v2.8.27 FIX: Single timeout, longer delay to ensure animation completes
+    // ✅ v2.8.31 FIX: Increased timeout for iOS to prevent double image bug
     setTimeout(() => {
       console.log(`   🔄 Clearing direction and moving to next`)
-      setDirection(null)  // Clear direction FIRST
-      setCurrentIndex(prev => prev + 1)  // Then update index
-    }, 350)
+      setCurrentIndex(prev => prev + 1)
+      // Delay direction reset to let AnimatePresence finish exit animation
+      setTimeout(() => {
+        setDirection(null)
+        // Release lock after direction is cleared
+        setTimeout(() => {
+          isSwipingRef.current = false
+          console.log(`   🔓 Swipe lock released`)
+        }, 100)
+      }, 150)
+    }, 350)  // ✅ v2.8.31: Optimized timing
   }
 
   const handleButtonSwipe = (swipeDirection: 'left' | 'right') => {
@@ -246,6 +306,7 @@ export default function HomeScreen({
     lookingFor: 'male' | 'female' | 'both'
     expandSearch: boolean
     smokingFilter: 'any' | 'no' | 'no_or_social'  // ✅ NEW
+    relationshipFilter: 'all' | 'relationship' | 'casual' | 'friends'  // ✅ v2.8.28
   }) => {
     try {
       if (!user?.uid) return
@@ -259,7 +320,8 @@ export default function HomeScreen({
         ageRange: settings.ageRange,
         lookingFor: settings.lookingFor,
         expandSearch: settings.expandSearch,
-        smokingFilter: settings.smokingFilter  // ✅ NEW
+        smokingFilter: settings.smokingFilter,  // ✅ NEW
+        relationshipFilter: settings.relationshipFilter  // ✅ v2.8.28
       })
       
       // Update parent if callback provided
@@ -275,6 +337,55 @@ export default function HomeScreen({
       console.log('✅ Search settings saved:', settings)
     } catch (error) {
       console.error('Error saving settings:', error)
+    }
+  }
+
+  // ✅ NEW: Handle sending Super Like
+  const handleSendSuperLike = async (message?: string) => {
+    if (!user?.uid || !superLikeTarget) {
+      console.error('❌ Cannot send Super Like: missing user or target')
+      return
+    }
+    
+    try {
+      // Get user profile for sender data
+      const userProfile = await getUserProfile(user.uid)
+      
+      const result = await sendSuperLike(
+        user.uid,
+        {
+          name: userProfile?.name || userProfile?.displayName || 'Anonymous',
+          photo: userProfile?.photos?.[0] || userProfile?.photoURL || '',
+          age: userProfile?.age || 0
+        },
+        superLikeTarget.uid,
+        superLikeTarget.name || superLikeTarget.displayName || 'Unknown',
+        venueData?.venueId || zoneData?.zoneId || 'unknown',
+        venueData?.venueName || zoneData?.zoneName || 'Unknown Area',
+        message
+      )
+      
+      if (result.success) {
+        console.log('🦎💜 Super Like sent successfully!')
+        
+        // Update local stats
+        setSuperLikeStats(prev => ({
+          ...prev,
+          remaining: Math.max(0, prev.remaining - 1)
+        }))
+        
+        // ✅ Show success toast
+        setShowSuperLikeToast(true)
+        setTimeout(() => setShowSuperLikeToast(false), 3000)
+        
+        // Move to next user
+        handleButtonSwipe('right')
+      } else {
+        console.error('❌ Failed to send Super Like:', result.error)
+        // Could show a toast here
+      }
+    } catch (error) {
+      console.error('❌ Error sending Super Like:', error)
     }
   }
 
@@ -294,6 +405,11 @@ export default function HomeScreen({
         right: 0,
         bottom: 0,
         width: '100%',
+        maxWidth: '100vw',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        touchAction: 'pan-y',
+        overscrollBehavior: 'none',
         paddingTop: 'env(safe-area-inset-top, 0px)'
       }}
     >
@@ -503,6 +619,32 @@ export default function HomeScreen({
             >
               <HiddenState onBecomeAvailable={() => handleToggleAvailable(true)} />
             </motion.div>
+          ) : appMode === 'venue' && !venueData ? (
+            /* ✅ v2.8.31: Venue Mode - Not checked in yet - Show prompt instead of cards */
+            <motion.div
+              key="venue-required"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="text-center"
+            >
+              <div className="text-8xl mb-6">🍸</div>
+              <h2 className="text-2xl font-bold text-white mb-4" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {isRTL ? 'בחר מועדון' : 'Select a Venue'}
+              </h2>
+              <p className="text-white/60 mb-6" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                {isRTL ? 'התחבר למועדון כדי לראות מי נמצא שם' : 'Check into a venue to see who\'s there'}
+              </p>
+              {onScan && (
+                <Button
+                  onClick={onScan}
+                  className="bg-[#4ade80] hover:bg-[#3bc970] text-[#0d2920] font-bold px-8 py-6 text-lg"
+                >
+                  {isRTL ? '🍸 בחר מועדון' : '🍸 Select Venue'}
+                </Button>
+              )}
+            </motion.div>
           ) : loading ? (
             <motion.div
               key="loading"
@@ -545,7 +687,7 @@ export default function HomeScreen({
             </motion.div>
           ) : (
             <motion.div
-              key={`card-${currentIndex}`}
+              key={`card-${currentUser?.uid || currentUser?.oderId || currentIndex}`}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{
@@ -570,8 +712,10 @@ export default function HomeScreen({
       </div>
 
       {/* Action Buttons - ✅ v2.8.19: Fixed for iOS 12! */}
-      {!noMoreUsers && !loading && isAvailable && (
-        <div className="flex-shrink-0 flex items-center justify-center gap-6 p-4 pb-2">
+      {/* ✅ v2.8.31: Don't show buttons in venue mode when not checked in */}
+      {!noMoreUsers && !loading && isAvailable && !(appMode === 'venue' && !venueData) && (
+        <div className="flex-shrink-0 flex items-center justify-center gap-4 p-4 pb-2">
+          {/* ❌ PASS Button */}
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -583,7 +727,7 @@ export default function HomeScreen({
               // ✅ v2.8.19: onTouchEnd for iOS (including iOS 12!)
               e.preventDefault()
               console.log('❌ PASS onTouchEnd!')
-              if (!isLocked && direction === null) {
+              if (!isLocked && direction === null && !isSwipingRef.current) {
                 handleButtonSwipe('left')
               }
             }}
@@ -594,7 +738,7 @@ export default function HomeScreen({
                 return // Skip - already handled by onTouchEnd
               }
               console.log('❌ PASS onClick!')
-              if (!isLocked && direction === null) {
+              if (!isLocked && direction === null && !isSwipingRef.current) {
                 handleButtonSwipe('left')
               }
             }}
@@ -605,6 +749,67 @@ export default function HomeScreen({
             <X className="h-7 w-7 text-red-500" />
           </motion.button>
 
+          {/* 🦎 SUPER LIKE Button - Purple/Lilac Hollywood Style! */}
+          <motion.button
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.95 }}
+            onTouchStart={(e) => {
+              (e.currentTarget as any)._isTouchEvent = true
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              console.log('🦎 SUPER LIKE onTouchEnd!')
+              if (!isLocked && direction === null && !isSwipingRef.current && currentUser) {
+                // ✅ Check if out of Super Likes (and not premium)
+                if (superLikeStats.remaining <= 0 && !superLikeStats.isPremium && !isPremium) {
+                  console.log('🦎💰 Out of Super Likes! Opening Premium modal...')
+                  window.dispatchEvent(new Event('openPremiumUpgrade'))
+                  return
+                }
+                setSuperLikeTarget(currentUser)
+                setShowSuperLikeModal(true)
+              }
+            }}
+            onClick={(e) => {
+              if ((e.currentTarget as any)._isTouchEvent) {
+                (e.currentTarget as any)._isTouchEvent = false
+                return
+              }
+              console.log('🦎 SUPER LIKE onClick!')
+              if (!isLocked && direction === null && !isSwipingRef.current && currentUser) {
+                // ✅ Check if out of Super Likes (and not premium)
+                if (superLikeStats.remaining <= 0 && !superLikeStats.isPremium && !isPremium) {
+                  console.log('🦎💰 Out of Super Likes! Opening Premium modal...')
+                  window.dispatchEvent(new Event('openPremiumUpgrade'))
+                  return
+                }
+                setSuperLikeTarget(currentUser)
+                setShowSuperLikeModal(true)
+              }
+            }}
+            disabled={isLocked}
+            className={`relative h-16 w-16 rounded-full bg-gradient-to-br from-purple-500/30 via-pink-500/30 to-purple-500/30 border-3 border-purple-400 flex items-center justify-center hover:from-purple-500/40 hover:via-pink-500/40 hover:to-purple-500/40 transition-all shadow-xl shadow-purple-500/30 disabled:opacity-50 flex-shrink-0 overflow-hidden ${superLikeStats.remaining <= 0 && !superLikeStats.isPremium && !isPremium ? 'opacity-70' : ''}`}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none', borderWidth: '3px' }}
+          >
+            {/* Glow animation */}
+            <motion.div
+              animate={{ opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute inset-0 bg-gradient-to-br from-purple-400/20 to-pink-400/20"
+            />
+            {/* Icon */}
+            <span className="text-2xl relative z-10">🦎</span>
+            {/* Sparkles */}
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              className="absolute top-1 right-1 text-xs"
+            >
+              ✨
+            </motion.span>
+          </motion.button>
+
+          {/* 💚 LIKE Button */}
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -618,7 +823,8 @@ export default function HomeScreen({
               console.log('💚 AWESOME onTouchEnd!')
               console.log('   isLocked:', isLocked)
               console.log('   direction:', direction)
-              if (!isLocked && direction === null) {
+              console.log('   isSwipingRef:', isSwipingRef.current)
+              if (!isLocked && direction === null && !isSwipingRef.current) {
                 handleButtonSwipe('right')
               }
             }}
@@ -629,16 +835,31 @@ export default function HomeScreen({
                 return // Skip - already handled by onTouchEnd
               }
               console.log('💚 AWESOME onClick!')
-              if (!isLocked && direction === null) {
+              if (!isLocked && direction === null && !isSwipingRef.current) {
                 handleButtonSwipe('right')
               }
             }}
             disabled={isLocked}
-            className="h-18 w-18 rounded-full bg-[#4ade80]/30 border-4 border-[#4ade80] flex items-center justify-center hover:bg-[#4ade80]/40 transition-all shadow-xl disabled:opacity-50 flex-shrink-0"
-            style={{ height: '72px', width: '72px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }}
+            className="h-14 w-14 rounded-full bg-[#4ade80]/30 border-2 border-[#4ade80] flex items-center justify-center hover:bg-[#4ade80]/40 transition-all shadow-lg disabled:opacity-50 flex-shrink-0"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }}
           >
-            <Heart className="h-9 w-9 text-[#4ade80]" fill="currentColor" />
+            <Heart className="h-7 w-7 text-[#4ade80]" fill="currentColor" />
           </motion.button>
+        </div>
+      )}
+
+      {/* 💜 Super Likes Counter */}
+      {!noMoreUsers && !loading && isAvailable && !(appMode === 'venue' && !venueData) && (
+        <div className="flex-shrink-0 flex items-center justify-center pb-2">
+          {superLikeStats.remaining <= 0 && !superLikeStats.isPremium && !isPremium ? (
+            <span className="text-sm text-purple-400/60">
+              💜 {t('superLike.outOfLikes')}
+            </span>
+          ) : (
+            <span className="text-sm text-purple-400/80">
+              💜 {superLikeStats.isPremium || isPremium ? '∞' : `${superLikeStats.remaining}/3`} Super Likes
+            </span>
+          )}
         </div>
       )}
 
@@ -659,10 +880,23 @@ export default function HomeScreen({
 
         <button
           onClick={() => onNavigate("notifications")}
-          className="flex flex-col items-center gap-1"
+          className="flex flex-col items-center gap-1 relative"
         >
           <Bell className="h-6 w-6 text-white/60" />
           <span className="text-xs text-white/60">{t('nav.notifications')}</span>
+          
+          {/* 🦎 Super Like Badge */}
+          {pendingSuperLikesCount > 0 && (
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full border-2 border-[#0d2920] flex items-center justify-center shadow-lg shadow-purple-500/50"
+            >
+              <span className="text-[10px] font-bold text-white">
+                {pendingSuperLikesCount > 9 ? '9+' : pendingSuperLikesCount}
+              </span>
+            </motion.div>
+          )}
         </button>
 
         {hasActiveMatch && (
@@ -694,6 +928,7 @@ export default function HomeScreen({
         currentGender={searchPreferences.lookingFor}
         currentExpandSearch={searchPreferences.expandSearch}
         currentSmokingFilter={searchPreferences.smokingFilter}
+        currentRelationshipFilter={searchPreferences.relationshipFilter}
         onSave={handleSaveSettings}
       />
 
@@ -702,6 +937,45 @@ export default function HomeScreen({
         isOpen={showDebugPanel}
         onClose={() => setShowDebugPanel(false)}
       />
+
+      {/* ✅ NEW: Super Like Modal */}
+      <SuperLikeModal
+        isOpen={showSuperLikeModal}
+        onClose={() => {
+          setShowSuperLikeModal(false)
+          setSuperLikeTarget(null)
+        }}
+        onSend={handleSendSuperLike}
+        recipientName={superLikeTarget?.name || superLikeTarget?.displayName || 'Unknown'}
+        recipientPhoto={superLikeTarget?.photos?.[0] || superLikeTarget?.photoURL || ''}
+        recipientAge={superLikeTarget?.age}
+        zoneName={venueData?.venueName || zoneData?.zoneName || 'Unknown Area'}
+        superLikesRemaining={superLikeStats.remaining}
+        isPremium={superLikeStats.isPremium || isPremium}
+      />
+
+      {/* ✅ NEW: Super Like Success Toast */}
+      <AnimatePresence>
+        {showSuperLikeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-50"
+          >
+            <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 text-white px-6 py-3 rounded-full shadow-2xl shadow-purple-500/50 flex items-center gap-2 font-bold">
+              <motion.span
+                animate={{ rotate: [0, 15, -15, 0] }}
+                transition={{ duration: 0.5, repeat: 2 }}
+              >
+                🦎
+              </motion.span>
+              <span>{t('superLike.sent')}</span>
+              <span>💜</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

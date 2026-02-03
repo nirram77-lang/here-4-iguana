@@ -594,12 +594,20 @@ export default function AdminControlPanel() {
             <h1 className="text-3xl font-bold mb-2">🦎 I4IGUANA Control Panel</h1>
             <p className="text-gray-400">Manage coupons, users, and check-ins</p>
           </div>
-          <button
-            onClick={() => window.location.href = '/admin/super/db'}
-            className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-lg font-medium flex items-center gap-2"
-          >
-            🗄️ Database Manager
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => window.location.href = '/admin/super'}
+              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium flex items-center gap-2"
+            >
+              🎛️ Super Admin
+            </button>
+            <button
+              onClick={() => window.location.href = '/admin/super/db'}
+              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-lg font-medium flex items-center gap-2"
+            >
+              🗄️ Database Manager
+            </button>
+          </div>
         </div>
 
         {/* Message */}

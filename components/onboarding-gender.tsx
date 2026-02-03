@@ -62,9 +62,20 @@ export default function OnboardingGender({
 
   return (
     <div 
-      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative overflow-y-auto overflow-x-hidden"
+      className="flex flex-col bg-gradient-to-b from-[#1a4d3e] via-[#0d2920] to-[#051410] relative"
+      data-onboarding="true"
       style={{ 
-        minHeight: viewportHeight ? `${viewportHeight}px` : '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorX: 'none',
         paddingBottom: '100px'
       }}
     >

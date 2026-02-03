@@ -13,7 +13,87 @@ import { uploadToCloudinary } from '../lib/cloudinary'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import LanguageSettings from '@/components/language-settings'  // ✅ v2.8.7: Language settings
+import SearchableSelectModal from '@/components/searchable-select-modal'  // ✅ NEW: Searchable select for education & city
 import { useLanguage } from '@/lib/LanguageContext'
+
+// ✅ רשימת מוסדות אקדמיים בישראל (כולל מוסדות דתיים)
+const ISRAELI_INSTITUTIONS = [
+  "Tel Aviv University - אוניברסיטת תל אביב",
+  "Hebrew University of Jerusalem - האוניברסיטה העברית",
+  "Technion - הטכניון",
+  "Ben-Gurion University - אוניברסיטת בן גוריון",
+  "Bar-Ilan University - אוניברסיטת בר אילן",
+  "University of Haifa - אוניברסיטת חיפה",
+  "Weizmann Institute - מכון ויצמן",
+  "Open University - האוניברסיטה הפתוחה",
+  "Reichman University (IDC) - הבינתחומי הרצליה",
+  "Ariel University - אוניברסיטת אריאל",
+  "Shenkar College - מכללת שנקר",
+  "Bezalel Academy - בצלאל אקדמיה לאמנות ועיצוב",
+  "Afeka College - מכללת אפקה",
+  "Holon Institute of Technology - HIT",
+  "Academic College of Tel Aviv-Yafo - המכללה האקדמית תל אביב-יפו",
+  "Sapir College - מכללת ספיר",
+  "Ruppin College - מכללת רופין",
+  "Kinneret College - המכללה האקדמית כנרת",
+  "College of Management - המכללה למנהל",
+  "Hadassah Academic College - המכללה האקדמית הדסה",
+  "Ort Braude College - מכללת אורט בראודה",
+  "Azrieli College - מכללת עזריאלי",
+  "Sami Shamoon College - מכללת סמי שמעון",
+  "Tel-Hai College - מכללת תל חי",
+  "Emek Yezreel College - המכללה האקדמית עמק יזרעאל",
+  "Western Galilee College - המכללה האקדמית גליל מערבי",
+  "Achva Academic College - המכללה האקדמית אחוה",
+  "Safed College - המכללה האקדמית צפת",
+  "Shalem College - המרכז האקדמי שלם",
+  "Netanya Academic College - המכללה האקדמית נתניה",
+  "Lev Academic Center - המרכז האקדמי לב",
+  "Peres Academic Center - המרכז האקדמי פרס",
+  "Ashkelon Academic College - המכללה האקדמית אשקלון",
+  "Beit Rivka Seminary - סמינר בית רבקה",
+  "Bnot Israel Seminary - סמינר בנות ישראל",
+  "Midreshet HaRova - מדרשת הרובע",
+  "Midreshet Lindenbaum - מדרשת לינדנבאום",
+  "Midreshet Orot - מדרשת אורות",
+  "Beit Ulpana Seminary - סמינר בית אולפנא",
+  "Other - אחר",
+  "No degree - ללא תואר",
+  "Prefer not to say - מעדיף לא לציין"
+]
+
+// ✅ רשימת ערים גדולות בישראל
+const ISRAELI_CITIES = [
+  "Tel Aviv - תל אביב",
+  "Jerusalem - ירושלים",
+  "Haifa - חיפה",
+  "Rishon LeZion - ראשון לציון",
+  "Petah Tikva - פתח תקווה",
+  "Ashdod - אשדוד",
+  "Netanya - נתניה",
+  "Beer Sheva - באר שבע",
+  "Holon - חולון",
+  "Bnei Brak - בני ברק",
+  "Ramat Gan - רמת גן",
+  "Ashkelon - אשקלון",
+  "Rehovot - רחובות",
+  "Bat Yam - בת ים",
+  "Herzliya - הרצליה",
+  "Kfar Saba - כפר סבא",
+  "Hadera - חדרה",
+  "Ra'anana - רעננה",
+  "Modi'in - מודיעין",
+  "Givatayim - גבעתיים",
+  "Nahariya - נהריה",
+  "Eilat - אילת",
+  "Nazareth - נצרת",
+  "Tiberias - טבריה",
+  "Acre - עכו",
+  "Ramat HaSharon - רמת השרון",
+  "Kiryat Gat - קריית גת",
+  "Kiryat Ata - קריית אתא",
+  "Other - אחר"
+]
 
 interface ProfileData {
   displayName: string
@@ -89,6 +169,10 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
   
   // ✅ FIX iOS: Use ref for file input instead of dynamic creation
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)  // ✅ NEW: Separate camera input
+  
+  // ✅ NEW: ActionSheet for photo upload options
+  const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false)
   
   // Height slider state
   const [heightValue, setHeightValue] = useState(170)
@@ -258,10 +342,24 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
     }
   }
 
-  // ✅ FIX iOS: Use ref instead of dynamic input creation
+  // ✅ FIX iOS: Show ActionSheet instead of directly opening camera
   const handlePhotoClick = () => {
+    setShowPhotoActionSheet(true)
+  }
+  
+  // ✅ NEW: Handle camera selection
+  const handleCameraSelect = () => {
+    setShowPhotoActionSheet(false)
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = ''
+      cameraInputRef.current.click()
+    }
+  }
+  
+  // ✅ NEW: Handle gallery selection
+  const handleGallerySelect = () => {
+    setShowPhotoActionSheet(false)
     if (fileInputRef.current) {
-      // Reset value to allow selecting same file again
       fileInputRef.current.value = ''
       fileInputRef.current.click()
     }
@@ -690,6 +788,8 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
       localStorage.removeItem('i4iguana_notification_modal_shown')  // ← NEW: Clear notification modal flag
       localStorage.removeItem('i4iguana_onesignal_linked')  // ← NEW: Clear OneSignal linked flag
       localStorage.removeItem('googleDisplayName')  // ← CRITICAL: Clear Google name so new login gets fresh name
+      localStorage.removeItem('googleEmail')  // ← v2.8.25: Clear Google email
+      localStorage.removeItem('i4iguana_onboarding_data')  // ← v2.8.25 CRITICAL: Clear old photos/onboarding data!
       // ✅ v2.8.23: Clear language selection so language selection screen appears
       localStorage.removeItem('i4iguana_language')
       localStorage.removeItem('i4iguana_language_selected')
@@ -757,9 +857,19 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
         paddingBottom: 'max(env(safe-area-inset-bottom), 96px)'
       }}
     >
-      {/* ✅ FIX iOS: Hidden file input - must be in DOM for iOS Safari */}
+      {/* ✅ FIX iOS: Two separate inputs - one for gallery, one for camera */}
+      {/* Gallery input - no capture attribute */}
       <input
         ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+        aria-hidden="true"
+      />
+      {/* Camera input - with capture attribute */}
+      <input
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
@@ -977,6 +1087,23 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                 style={{ direction: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}
               />
             </div>
+
+            {/* ✅ v2.8.25: Email Display - Read Only */}
+            {currentUser?.email && (
+              <div>
+                <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+                  <span className="text-lg">📧</span>
+                  {isRTL ? 'אימייל' : 'Email'}
+                </label>
+                <Input
+                  value={currentUser.email}
+                  readOnly
+                  disabled
+                  className="bg-white/5 border-white/10 text-white/60 h-12 rounded-xl cursor-not-allowed"
+                  style={{ direction: 'ltr', textAlign: 'left' }}
+                />
+              </div>
+            )}
 
             {/* ✅ Age via Birth Date - With Validation */}
             <div>
@@ -1230,27 +1357,29 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                 <span className="text-lg">🎓</span>
                 {isRTL ? 'השכלה' : 'Education'}
               </label>
-              <Input
+              <SearchableSelectModal
                 value={profileData.education}
-                onChange={(e) => setProfileData({ ...profileData, education: e.target.value })}
-                placeholder={isRTL ? 'ההשכלה שלך' : 'Your education'}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
-                style={{ direction: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}
+                onValueChange={(value) => setProfileData({ ...profileData, education: value })}
+                options={ISRAELI_INSTITUTIONS}
+                placeholder={isRTL ? 'בחר/י מוסד לימודים' : 'Select institution'}
+                icon="🎓"
+                label={isRTL ? 'השכלה' : 'Education'}
               />
             </div>
 
-            {/* ✅ NEW: City Field */}
+            {/* ✅ NEW: City Field - Searchable Modal */}
             <div>
               <label className="text-white/80 text-sm mb-2 block flex items-center gap-2" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
                 <span className="text-lg">🏠</span>
                 {isRTL ? 'עיר מגורים' : 'City'}
               </label>
-              <Input
+              <SearchableSelectModal
                 value={profileData.city || ''}
-                onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
-                placeholder={isRTL ? 'איפה את/ה גר/ה?' : 'Where do you live?'}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 h-12 rounded-xl"
-                style={{ direction: isRTL ? 'rtl' : 'ltr', textAlign: isRTL ? 'right' : 'left' }}
+                onValueChange={(value) => setProfileData({ ...profileData, city: value })}
+                options={ISRAELI_CITIES}
+                placeholder={isRTL ? 'בחר/י עיר' : 'Select city'}
+                icon="🏠"
+                label={isRTL ? 'עיר מגורים' : 'City'}
               />
             </div>
 
@@ -1369,6 +1498,52 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
                 <span className={isRTL ? 'mr-2' : 'ml-2'}>{isRTL ? 'שמור שינויים' : 'Save Changes'}</span>
               </>
             )}
+          </Button>
+        </motion.div>
+
+        {/* ✅ v2.8.31: Premium Upgrade & Coupon Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="pt-6 space-y-3"
+        >
+          {/* Premium Title */}
+          <div className="text-center mb-2">
+            <span className="text-2xl">👑</span>
+            <h3 className="text-white font-bold text-lg mt-1">
+              {isRTL ? 'מנוי פרימיום' : 'Premium Membership'}
+            </h3>
+            <p className="text-white/60 text-sm">
+              {isRTL ? 'התאמות ללא הגבלה, הודעות ללא הגבלה' : 'Unlimited matches & messages'}
+            </p>
+          </div>
+          
+          {/* Upgrade Button - Opens PremiumUpgradeModal */}
+          <Button
+            onClick={() => {
+              // Dispatch custom event to open premium modal in parent
+              window.dispatchEvent(new CustomEvent('openPremiumUpgrade'))
+            }}
+            className="w-full h-14 bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-400 hover:to-amber-400 text-[#0d2920] text-lg font-bold rounded-2xl shadow-lg shadow-yellow-500/30"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+          >
+            <span className="text-xl mr-2">💳</span>
+            {isRTL ? 'שדרג לפרימיום' : 'Upgrade to Premium'}
+          </Button>
+          
+          {/* Coupon Activation Button */}
+          <Button
+            onClick={() => {
+              // Dispatch custom event to open coupon modal in parent
+              window.dispatchEvent(new CustomEvent('openCouponModal', { detail: { type: 'premium' } }))
+            }}
+            variant="outline"
+            className="w-full h-12 border-2 border-[#4ade80]/50 bg-[#4ade80]/10 text-[#4ade80] hover:bg-[#4ade80]/20 hover:border-[#4ade80] rounded-xl"
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+          >
+            <span className="text-xl mr-2">🎟️</span>
+            {isRTL ? 'הפעל קופון' : 'Activate Coupon'}
           </Button>
         </motion.div>
 
@@ -1729,6 +1904,52 @@ export default function ProfileScreen({ onNavigate, hasActiveMatch = false, refr
           </motion.button>
         </div>
       </motion.div>
+
+      {/* ✅ NEW: Photo Source ActionSheet */}
+      <AnimatePresence>
+        {showPhotoActionSheet && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end justify-center"
+            onClick={() => setShowPhotoActionSheet(false)}
+          >
+            <motion.div
+              initial={{ y: 300 }}
+              animate={{ y: 0 }}
+              exit={{ y: 300 }}
+              transition={{ type: "spring", damping: 25 }}
+              className="w-full max-w-md mx-4 mb-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Options */}
+              <div className="bg-[#1a4d3e] rounded-2xl overflow-hidden mb-3">
+                <button
+                  onClick={handleCameraSelect}
+                  className="w-full py-4 px-6 text-white text-lg font-medium border-b border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center gap-3"
+                >
+                  📷 {isRTL ? 'צלם תמונה' : 'Take Photo'}
+                </button>
+                <button
+                  onClick={handleGallerySelect}
+                  className="w-full py-4 px-6 text-white text-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-3"
+                >
+                  🖼️ {isRTL ? 'בחר מהגלריה' : 'Choose from Gallery'}
+                </button>
+              </div>
+              
+              {/* Cancel Button */}
+              <button
+                onClick={() => setShowPhotoActionSheet(false)}
+                className="w-full py-4 px-6 bg-[#1a4d3e] rounded-2xl text-white/70 text-lg font-medium hover:bg-white/10 transition-colors"
+              >
+                {isRTL ? 'ביטול' : 'Cancel'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   )
