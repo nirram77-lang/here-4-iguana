@@ -192,23 +192,9 @@ export default function IsraelMapHollywood({ lang = 'he' }: Props) {
   }, [])
   
   // Animated counter
+  // Set count immediately - no animation to prevent shake
   useEffect(() => {
-    const duration = 2000
-    const steps = 60
-    const increment = totalUsers / steps
-    let current = 0
-    
-    const timer = setInterval(() => {
-      current += increment
-      if (current >= totalUsers) {
-        setAnimatedCount(totalUsers)
-        clearInterval(timer)
-      } else {
-        setAnimatedCount(Math.floor(current))
-      }
-    }, duration / steps)
-    
-    return () => clearInterval(timer)
+    setAnimatedCount(totalUsers)
   }, [])
   
   // Close tooltip on outside click
