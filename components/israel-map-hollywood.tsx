@@ -191,7 +191,6 @@ export default function IsraelMapHollywood({ lang = 'he' }: Props) {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
   
-  // Animated counter
   // Set count immediately - no animation to prevent shake
   useEffect(() => {
     setAnimatedCount(totalUsers)
@@ -458,9 +457,16 @@ export default function IsraelMapHollywood({ lang = 'he' }: Props) {
             className="absolute z-[100]"
             style={{
               left: `${Math.min(Math.max(activeCity.x, 30), 70)}%`,
-              top: `${Math.min(activeCity.y + 10, 80)}%`,
-              transform: 'translateX(-50%)',
+              // For cities at bottom (y > 55%), show tooltip ABOVE the city
+              top: activeCity.y > 55 
+                ? `${activeCity.y - 5}%` 
+                : `${Math.min(activeCity.y + 10, 80)}%`,
+              transform: activeCity.y > 55 
+                ? 'translate(-50%, -100%)' 
+                : 'translateX(-50%)',
             }}
+            onMouseEnter={() => !isMobile && setHoveredCity(activeCity)}
+            onMouseLeave={() => !isMobile && setHoveredCity(null)}
           >
             <div 
               className="relative rounded-xl overflow-hidden min-w-[180px]"
@@ -471,13 +477,17 @@ export default function IsraelMapHollywood({ lang = 'he' }: Props) {
                 animation: 'tooltipIn 0.2s ease-out',
               }}
             >
-              {/* Arrow */}
+              {/* Arrow - flip for bottom cities */}
               <div 
-                className="absolute -top-[6px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45"
+                className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 ${
+                  activeCity.y > 55 ? '-bottom-[6px]' : '-top-[6px]'
+                }`}
                 style={{
                   background: 'rgba(20, 40, 32, 0.98)',
-                  borderLeft: '1px solid rgba(251, 191, 36, 0.5)',
-                  borderTop: '1px solid rgba(251, 191, 36, 0.5)',
+                  borderLeft: activeCity.y > 55 ? 'none' : '1px solid rgba(251, 191, 36, 0.5)',
+                  borderTop: activeCity.y > 55 ? 'none' : '1px solid rgba(251, 191, 36, 0.5)',
+                  borderRight: activeCity.y > 55 ? '1px solid rgba(251, 191, 36, 0.5)' : 'none',
+                  borderBottom: activeCity.y > 55 ? '1px solid rgba(251, 191, 36, 0.5)' : 'none',
                 }}
               />
               
